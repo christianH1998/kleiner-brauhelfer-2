@@ -41,5 +41,8 @@ Optionen:
   | 7 | Tittingdorfer Spezial | Rezept | kleine Menge (8,2 L), dunkel |
   | 8 | Export hell (Kling) | Abgefüllt | untergärig, Schnellgärprobe, Nachgärung, Bewertung |
   | 9 | Hefeweizen (Kling) | Gebraut | obergärig, Gärung läuft, Nachisomerisierung 10 min |
+  | 10 | Hefeweizen (Kling) Nachbrau | Abgefüllt | obergärig (für Hefe-Auswertung S05, Phase 4 des Skripts) |
+
+  Aktuelle Referenz ab S05: `build-win64/regression/baseline-ext-s05.json` (6 Sude). `baseline-ext-s00.json` gilt nur für den alten Stand mit 5 Suden.
 
   Hefen: Braupartners Trockenhefe og und ug, dazu Hefegaben für alle Sude. Hopfen überall im Modus „Keine“, also Mengen fest.

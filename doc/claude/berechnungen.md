@@ -61,6 +61,7 @@ Kindmodelle reagieren auf `ModelSud::dataChanged`:
 - Live aus Ausrüstung gelesen: `KorrekturMenge`, `KorrekturWasser`, `KorrekturFarbe`, `Kosten`, `Typ`; kopiert beim Anlagenwechsel: `Sudhausausbeute`, `Verdampfungsrate`.
 - Ist-Felder (Würzemengen, SW Kochbeginn/-ende/Anstellen, SRE) werden im Status Rezept per Kaskade mit Sollwerten überschrieben.
 - Alkohol (ab ext-s03 vereinheitlicht): `AlkoholSoll` = Rezept (Soll); `AlkoholJungbier` (virtuell) = alkohol(SWIst, SWJungbier), vor Nachgärung; `erg_Alkohol` = fertiges Bier (erwartet) = alkohol(SWIst, SREIst, Zucker)/(1+Verdünnung/Menge), gespeichert bis Status Gebraut. `SREIst` = Schnellgärprobe falls aktiv, sonst SWJungbier. Gärverlauf-`Alc` = Stand je Messung. UI: alle drei in `TabAbfuellen` Gruppe „Vergärung“.
+- Auswertungsfelder (virtuell, ab ext-s05): `Hefe` (Namen der Hefegaben, „, “-getrennt), `DauerHauptgaerung` (Tage Braudatum→Abfülldatum, 0 = unbekannt), `TemperaturHauptgaerung` (Mittel `Hauptgaerverlauf.Temp`, 0 = keine Messung). Neue virtuelle Felder immer am Ende von Enum und `mVirtualField` anhängen.
 - `VerschneidungAbfuellen` = „Wasser für Zuckerlösung“ (`TabAbfuellen::tbWassserZuckerloesung`); verdünnt Alkohol nur bei Zucker > 0.
 - `ZuckerFaktor`, `FlaschenGroesse` global in INI-Gruppe `TabAbfuellen`.
 - Whirlpool-Gaben (Zeit < 0): t_eff = 0,549·t_Nachiso + Zeit (`modelhopfengaben.cpp` `ColAusbeute`) – siehe `fachmodelle.md` §4.

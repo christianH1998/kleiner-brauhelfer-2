@@ -239,3 +239,42 @@ Technik: keine Datenbank- und keine Rechenänderung. Geändert: settings (Farbe
 paletteBerechnet), widgets/doublespinbox, widgets/spinbox (Kennzeichnung schreibgeschützter
 Felder), tabrezept, tabbraudaten (.ui/.cpp), dlgbrauuebersicht.
 Test: Regressionsvergleich ohne Abweichungen, Rundlauf- und Umkehrtest OK.
+
+
+--------------------------------------------------------------------------------
+S05 – Statistik: Soll/Ist-Vergleich und Auswertung je Hefe (Tag ext-s05)  2026-11-21
+--------------------------------------------------------------------------------
+Alles in der Brauübersicht (Menü bzw. Knopf "Brauübersicht"):
+
+1. Neue Werte für das Diagramm (Auswahlfelder unter dem Diagramm) und die Tabelle:
+     Stammwürze Rezept (Soll), Anstellmenge (Ist) und Rezept (Soll), Ausbeute Rezept (Planung),
+     Verdampfungsrate Rezept, Endvergärungsgrad Rezept, Alkohol Rezept (Soll),
+     Dauer Hauptgärung (Tage Brau- bis Abfülldatum), Gärtemperatur (Mittel aller Messungen im
+     Hauptgärverlauf), Temperatur Jungbier beim Abfüllen.
+   Damit lassen sich Soll und Ist direkt übereinander legen, z. B. Diagramm 1 = Stammwürze,
+   Diagramm 2 = Stammwürze Rezept (Soll), oder Effektive Ausbeute gegen Ausbeute Rezept.
+   Die neuen Tabellenspalten sind zunächst ausgeblendet (Rechtsklick auf den Tabellenkopf blendet
+   sie ein). Die gespeicherte Diagrammauswahl bleibt erhalten.
+2. Neue Tabellenspalte "Hefe" (welche Hefe(n) im Sud verwendet wurden).
+3. Neuer Bereich "Auswertung je Hefe" neben der Statistik: je Hefe die Anzahl Sude, der scheinbare
+   Endvergärungsgrad (Mittel und Bereich), Restextrakt, Stammwürze, Gärtemperatur, Dauer der
+   Hauptgärung, Temperatur Jungbier, Alkohol und zum Vergleich der Endvergärungsgrad laut
+   Hersteller (aus dem Rohstofflager). Mittelwerte zählen nur Sude, bei denen der Wert erfasst
+   ist. Die Anzahl steht in eckigen Klammern.
+   Doppelklick auf eine Hefe filtert die ganze Übersicht (Tabelle, Diagramm, Statistik) auf
+   Sude mit dieser Hefe. Filtertext löschen zeigt wieder alle.
+   Die Auswertung richtet sich nach dem Filter oben, standardmäßig also nach abgefüllten und
+   verbrauchten Suden.
+
+Technik: keine Datenbankänderung. Neue berechnete Felder (nicht gespeichert) in ModelSud: Hefe,
+DauerHauptgaerung, TemperaturHauptgaerung. Geändert: modelsud, sudobject, dlgbrauuebersicht
+(.h/.cpp/.ui), mainwindow (Spaltenköpfe; "SW" der Ist-Spalte heißt jetzt "SW Ist").
+Test: Regressionsvergleich ohne Abweichungen (nur die neuen Felder), Rundlauf- und Umkehrtest
+OK. Plausibilität: untergärige Braupartner-Hefe in den Testsuden 72,7 % und 74,2 % scheinbarer
+EVG, Hersteller 70–75 %.
+Hinweis: Restextrakt und Temperatur vor dem Abfüllen werden wie bisher im Reiter Abfüllen
+eingetragen (Restextrakt Jungbier, Temperatur Jungbier) und fließen in die Auswertung ein.
+Wichtig: Die Brauübersicht zeigt grundsätzlich nur abgefüllte und verbrauchte Sude (so war es
+schon immer). Gebraute Sude in Gärung erscheinen dort und in der Hefe-Auswertung nicht.
+Testdaten ergänzt: "Hefeweizen (Kling) Nachbrau", abgefüllt, obergärig. Die Hefe-Auswertung
+zeigt damit 2 Hefen. Neue Vergleichsbasis: baseline-ext-s05.json.

@@ -34,12 +34,14 @@ private slots:
     void on_cbAuswahlL1_currentIndexChanged(int);
     void on_cbAuswahlL2_currentIndexChanged(int);
     void on_cbAuswahlL3_currentIndexChanged(int);
+    void on_tableHefe_cellDoubleClicked(int row, int column);
 
 private:
     void build();
     void updateDiagram();
     void updateFilterLabel();
     void updateStatistics();
+    void updateHefeAuswertung();
 
 private:
     struct AuswahlType
@@ -48,6 +50,7 @@ private:
         int precision;
         QString label;
         QString unit;
+        bool sichtbar = true; // Spalte in der Tabelle standardmaessig sichtbar
     };
 
 private:

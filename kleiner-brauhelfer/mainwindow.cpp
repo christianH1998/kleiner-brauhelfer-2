@@ -731,7 +731,7 @@ void MainWindow::initLabels()
     model->setHeaderData(ModelSud::ColIBU, Qt::Horizontal, tr("Bittere") + "\n(IBU)");
     model->setHeaderData(ModelSud::Colerg_AbgefuellteBiermenge, Qt::Horizontal, tr("Menge") + "\n(L)");
     model->setHeaderData(ModelSud::Colerg_Sudhausausbeute, Qt::Horizontal, tr("SHA") + "\n(%)");
-    model->setHeaderData(ModelSud::ColSWIst, Qt::Horizontal, tr("SW") + "\n(°P)");
+    model->setHeaderData(ModelSud::ColSWIst, Qt::Horizontal, tr("SW Ist") + "\n(°P)");
     model->setHeaderData(ModelSud::ColSREIst, Qt::Horizontal, tr("Restextrakt") + "\n(°P)");
     model->setHeaderData(ModelSud::Colerg_S_Gesamt, Qt::Horizontal, tr("Schüttung") + "\n(kg)");
     model->setHeaderData(ModelSud::Colerg_Preis, Qt::Horizontal, tr("Kosten") + QStringLiteral("\n(%1/l)").arg(QLocale().currencySymbol()));
@@ -742,6 +742,17 @@ void MainWindow::initLabels()
     model->setHeaderData(ModelSud::Colerg_EffektiveAusbeute, Qt::Horizontal, tr("Eff. SHA") + "\n(%)");
     model->setHeaderData(ModelSud::ColVerdampfungsrateIst, Qt::Horizontal, tr("Verdampfungsrate") + "\n(l/h)");
     model->setHeaderData(ModelSud::ColAusbeuteIgnorieren, Qt::Horizontal, tr("Für Durchschnitt Ignorieren"));
+    // ext-s05 (Brauübersicht: Soll/Ist, Gärung, Hefe)
+    model->setHeaderData(ModelSud::ColWuerzemengeAnstellen, Qt::Horizontal, tr("Anstellmenge Ist") + "\n(L)");
+    model->setHeaderData(ModelSud::ColMengeSollAnstellen, Qt::Horizontal, tr("Anstellmenge Soll") + "\n(L)");
+    model->setHeaderData(ModelSud::ColSudhausausbeute, Qt::Horizontal, tr("Ausbeute Rezept") + "\n(%)");
+    model->setHeaderData(ModelSud::ColVerdampfungsrate, Qt::Horizontal, tr("Verdampfung Rezept") + "\n(l/h)");
+    model->setHeaderData(ModelSud::ColVergaerungsgrad, Qt::Horizontal, tr("EVG Rezept") + "\n(%)");
+    model->setHeaderData(ModelSud::ColAlkoholSoll, Qt::Horizontal, tr("Alkohol Soll") + "\n(%vol)");
+    model->setHeaderData(ModelSud::ColDauerHauptgaerung, Qt::Horizontal, tr("Hauptgärung") + "\n(" + tr("Tage") + ")");
+    model->setHeaderData(ModelSud::ColTemperaturHauptgaerung, Qt::Horizontal, tr("Gärtemperatur") + "\n(°C)");
+    model->setHeaderData(ModelSud::ColTemperaturJungbier, Qt::Horizontal, tr("Temp. Jungbier") + "\n(°C)");
+    model->setHeaderData(ModelSud::ColHefe, Qt::Horizontal, tr("Hefe"));
 
     model = bh->modelMalz();
     model->setHeaderData(ModelMalz::ColName, Qt::Horizontal, tr("Name"));

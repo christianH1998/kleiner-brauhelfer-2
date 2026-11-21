@@ -60,6 +60,9 @@ ModelSud::ModelSud(Brauhelfer *bh, const QSqlDatabase &db) :
     mVirtualField.append(QStringLiteral("PhMaischeSoll"));
     mVirtualField.append(QStringLiteral("BewertungMittel"));
     mVirtualField.append(QStringLiteral("AlkoholJungbier"));
+    mVirtualField.append(QStringLiteral("Hefe"));
+    mVirtualField.append(QStringLiteral("DauerHauptgaerung"));
+    mVirtualField.append(QStringLiteral("TemperaturHauptgaerung"));
     connect(this, &SqlTableModel::modelReset, this, &ModelSud::onModelReset);
     connect(this, &SqlTableModel::rowsInserted, this, &ModelSud::onModelReset);
     connect(this, &SqlTableModel::rowsRemoved, this, &ModelSud::onModelReset);
@@ -261,6 +264,47 @@ QVariant ModelSud::dataExt(const QModelIndex &idx) const
     case ColSWIst:
     {
         return data(idx.row(), ColSWAnstellen).toDouble() + swWzGaerungCurrent[idx.row()];
+    }
+    case ColHefe:
+    {
+        // Namen der Hefegaben (ohne Doppelte), z. B. fuer Auswertungen je Hefe (ext-s05)
+        ProxyModel modelHefegaben;
+        modelHefegaben.setSourceModel(bh->modelHefegaben());
+        modelHefegaben.setFilterKeyColumn(ModelHefegaben::ColSudID);
+        modelHefegaben.setFilterRegularExpression(QStringLiteral("^%1$").arg(data(idx.row(), ColID).toInt()));
+        QStringList namen;
+        for (int r = 0; r < modelHefegaben.rowCount(); ++r)
+        {
+            QString name = modelHefegaben.data(r, ModelHefegaben::ColName).toString();
+            if (!name.isEmpty() && !namen.contains(name))
+                namen.append(name);
+        }
+        return namen.join(QStringLiteral(", "));
+    }
+    case ColDauerHauptgaerung:
+    {
+        // Tage von Braudatum bis Abfuelldatum (0 = nicht bekannt) (ext-s05)
+        QDateTime braudatum = data(idx.row(), ColBraudatum).toDateTime();
+        QDateTime abfuelldatum = data(idx.row(), ColAbfuelldatum).toDateTime();
+        if (!braudatum.isValid() || !abfuelldatum.isValid())
+            return 0;
+        qint64 tage = braudatum.daysTo(abfuelldatum);
+        return tage > 0 ? static_cast<int>(tage) : 0;
+    }
+    case ColTemperaturHauptgaerung:
+    {
+        // Mittlere Temperatur aller Messungen im Hauptgaerverlauf (0 = keine Messung) (ext-s05)
+        ProxyModel modelHauptgaerverlauf;
+        modelHauptgaerverlauf.setSourceModel(bh->modelHauptgaerverlauf());
+        modelHauptgaerverlauf.setFilterKeyColumn(ModelHauptgaerverlauf::ColSudID);
+        modelHauptgaerverlauf.setFilterRegularExpression(QStringLiteral("^%1$").arg(data(idx.row(), ColID).toInt()));
+        int n = modelHauptgaerverlauf.rowCount();
+        if (n == 0)
+            return 0.0;
+        double summe = 0.0;
+        for (int r = 0; r < n; ++r)
+            summe += modelHauptgaerverlauf.data(r, ModelHauptgaerverlauf::ColTemp).toDouble();
+        return summe / n;
     }
     case ColAlkoholJungbier:
     {

@@ -146,6 +146,8 @@
     </layout>
    </item>
    <item>
+    <layout class="QHBoxLayout" name="layoutStatistik">
+    <item>
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
       <string>Statistik</string>
@@ -687,6 +689,33 @@
       </item>
      </layout>
     </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupHefe">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Kennzahlen je Hefe über die oben gefilterten Sude. Mittelwerte nur über Sude, bei denen der Wert vorhanden ist (Anzahl in Klammern).&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Doppelklick&lt;/span&gt; auf eine Hefe filtert die Übersicht auf diese Hefe. Danach zeigen das Diagramm und die Statistik nur Sude mit dieser Hefe. Filter leeren zeigt wieder alle.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="title">
+      <string>Auswertung je Hefe</string>
+     </property>
+     <layout class="QVBoxLayout" name="layoutHefe">
+      <item>
+       <widget class="QTableWidget" name="tableHefe">
+        <property name="editTriggers">
+         <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+        </property>
+        <property name="selectionBehavior">
+         <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+        </property>
+        <property name="selectionMode">
+         <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   </layout>
    </item>
   </layout>
  </widget>

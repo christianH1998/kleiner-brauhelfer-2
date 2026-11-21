@@ -143,7 +143,7 @@ void DlgBrauUebersicht::build()
     mAuswahlListe.append({-1, 0, tr("<keine>"), ""});
     mAuswahlListe.append({ModelSud::Colerg_AbgefuellteBiermenge, 1, tr("Abgefüllte Biermenge"), "L"});
     mAuswahlListe.append({ModelSud::Colerg_S_Gesamt, 2, tr("Schüttung"), "kg"});
-    mAuswahlListe.append({ModelSud::ColSWIst, 1, tr("Stammwürze"), "°P"});
+    mAuswahlListe.append({ModelSud::ColSWIst, 1, tr("Stammwürze (Ist)"), "°P"});
     mAuswahlListe.append({ModelSud::Colerg_Sudhausausbeute, 0, tr("Sudhausausbeute (klassisch)"), "%"});
     mAuswahlListe.append({ModelSud::Colerg_EffektiveAusbeute, 0, tr("Effektive Ausbeute (Anstellwürze)"), "%"});
     mAuswahlListe.append({ModelSud::ColVerdampfungsrateIst, 1, tr("Verdampfungsrate"), "L/h"});
@@ -154,6 +154,18 @@ void DlgBrauUebersicht::build()
     mAuswahlListe.append({ModelSud::ColtEVG, 0, tr("Tatsächlicher Endvergärungsgrad"), "%"});
     if (gSettings->isModuleEnabled(Settings::ModulePreiskalkulation))
         mAuswahlListe.append({ModelSud::Colerg_Preis, 2, tr("Kosten"), QString("%1/L").arg(QLocale().currencySymbol())});
+    // ext-s05: Soll-Werte zum Vergleich mit Ist, Gaerung/Hefe (Spalten standardmaessig ausgeblendet,
+    // am Ende angehaengt, damit gespeicherte Auswahl-Indizes gueltig bleiben)
+    mAuswahlListe.append({ModelSud::ColSW, 1, tr("Stammwürze Rezept (Soll)"), "°P", false});
+    mAuswahlListe.append({ModelSud::ColWuerzemengeAnstellen, 1, tr("Anstellmenge (Ist)"), "L", false});
+    mAuswahlListe.append({ModelSud::ColMengeSollAnstellen, 1, tr("Anstellmenge Rezept (Soll)"), "L", false});
+    mAuswahlListe.append({ModelSud::ColSudhausausbeute, 1, tr("Ausbeute Rezept (Planung)"), "%", false});
+    mAuswahlListe.append({ModelSud::ColVerdampfungsrate, 1, tr("Verdampfungsrate Rezept"), "L/h", false});
+    mAuswahlListe.append({ModelSud::ColVergaerungsgrad, 0, tr("Endvergärungsgrad Rezept"), "%", false});
+    mAuswahlListe.append({ModelSud::ColAlkoholSoll, 1, tr("Alkohol Rezept (Soll)"), "%vol", false});
+    mAuswahlListe.append({ModelSud::ColDauerHauptgaerung, 0, tr("Dauer Hauptgärung"), tr("Tage"), false});
+    mAuswahlListe.append({ModelSud::ColTemperaturHauptgaerung, 1, tr("Gärtemperatur (⌀ Hauptgärung)"), "°C", false});
+    mAuswahlListe.append({ModelSud::ColTemperaturJungbier, 1, tr("Temperatur Jungbier (Abfüllen)"), "°C", false});
 
     ui->table->clearCols();
     ui->table->appendCol({ModelSud::ColSudname, true, false, 200, new SudNameDelegate(ui->table)});
@@ -161,6 +173,7 @@ void DlgBrauUebersicht::build()
     ui->table->appendCol({ModelSud::ColKategorie, true, true, 100, new TextDelegate(false, Qt::AlignCenter, ui->table)});
     ui->table->appendCol({ModelSud::ColAnlage, true, true, 100, new TextDelegate(false, Qt::AlignCenter, ui->table)});
     ui->table->appendCol({ModelSud::ColBraudatum, true, false, 100, new DateDelegate(false, false, ui->table)});
+    ui->table->appendCol({ModelSud::ColHefe, true, true, 160, new TextDelegate(false, Qt::AlignCenter, ui->table)});
     ui->cbAuswahlL1->clear();
     ui->cbAuswahlL2->clear();
     ui->cbAuswahlL3->clear();
@@ -168,7 +181,7 @@ void DlgBrauUebersicht::build()
     ui->cbAuswahlL3->addItem(mAuswahlListe[0].label);
     for (int i = 1; i < mAuswahlListe.count(); ++i)
     {
-        ui->table->appendCol({mAuswahlListe[i].col, true, true, 80, new DoubleSpinBoxDelegate(mAuswahlListe[i].precision, ui->table)});
+        ui->table->appendCol({mAuswahlListe[i].col, mAuswahlListe[i].sichtbar, true, 80, new DoubleSpinBoxDelegate(mAuswahlListe[i].precision, ui->table)});
         ui->cbAuswahlL1->addItem(mAuswahlListe[i].label);
         ui->cbAuswahlL2->addItem(mAuswahlListe[i].label);
         ui->cbAuswahlL3->addItem(mAuswahlListe[i].label);
@@ -339,4 +352,90 @@ void DlgBrauUebersicht::updateStatistics()
     ui->tbAlkoholgehalt->setValue(model->mean(ModelSud::Colerg_Alkohol));
     ui->tbKosten->setValue(model->mean(ModelSud::Colerg_Preis));
     ui->tbGesamtkosten->setValue(model->sum(ModelSud::Colerg_Preis));
+    updateHefeAuswertung();
+}
+
+void DlgBrauUebersicht::updateHefeAuswertung()
+{
+    // Kennzahlen je Hefe ueber die gefilterten Sude (ext-s05).
+    // Mittelwerte nur ueber vorhandene Werte (0 = nicht erfasst); Anzahl in Klammern.
+    struct Mittel
+    {
+        double summe = 0, min = 0, max = 0;
+        int n = 0;
+        void add(double v)
+        {
+            if (v <= 0.0)
+                return;
+            min = n == 0 ? v : qMin(min, v);
+            max = n == 0 ? v : qMax(max, v);
+            summe += v;
+            ++n;
+        }
+        QString text(int dez, bool bereich = false) const
+        {
+            if (n == 0)
+                return QStringLiteral("–");
+            QString s = QLocale().toString(summe / n, 'f', dez);
+            if (bereich && n > 1)
+                s += QStringLiteral(" (%1–%2)").arg(QLocale().toString(min, 'f', dez), QLocale().toString(max, 'f', dez));
+            return s + QStringLiteral(" [%1]").arg(n);
+        }
+    };
+    struct HefeDaten
+    {
+        int sude = 0;
+        Mittel sEVG, sre, sw, temperatur, dauer, tempJungbier, alkohol;
+    };
+
+    QMap<QString, HefeDaten> daten;
+    ProxyModel* model = static_cast<ProxyModel*>(ui->table->model());
+    for (int row = 0; row < model->rowCount(); ++row)
+    {
+        const QStringList hefen = model->data(row, ModelSud::ColHefe).toString().split(QStringLiteral(", "), Qt::SkipEmptyParts);
+        for (const QString& hefe : hefen)
+        {
+            HefeDaten& d = daten[hefe];
+            d.sude++;
+            d.sEVG.add(model->data(row, ModelSud::ColsEVG).toDouble());
+            d.sre.add(model->data(row, ModelSud::ColSREIst).toDouble());
+            d.sw.add(model->data(row, ModelSud::ColSWIst).toDouble());
+            d.temperatur.add(model->data(row, ModelSud::ColTemperaturHauptgaerung).toDouble());
+            d.dauer.add(model->data(row, ModelSud::ColDauerHauptgaerung).toDouble());
+            d.tempJungbier.add(model->data(row, ModelSud::ColTemperaturJungbier).toDouble());
+            d.alkohol.add(model->data(row, ModelSud::Colerg_Alkohol).toDouble());
+        }
+    }
+
+    const QStringList kopf = {tr("Hefe"), tr("Sude"), tr("Endvergärungsgrad\n(scheinbar, %)"), tr("Restextrakt\n(°P)"),
+                              tr("Stammwürze\n(°P)"), tr("Gärtemperatur\n(⌀ °C)"), tr("Hauptgärung\n(Tage)"),
+                              tr("Temperatur Jungbier\n(°C)"), tr("Alkohol fertig\n(%vol)"), tr("EVG laut Hersteller")};
+    ui->tableHefe->clear();
+    ui->tableHefe->setColumnCount(kopf.size());
+    ui->tableHefe->setHorizontalHeaderLabels(kopf);
+    ui->tableHefe->setRowCount(daten.size());
+    int r = 0;
+    for (auto it = daten.constBegin(); it != daten.constEnd(); ++it, ++r)
+    {
+        const HefeDaten& d = it.value();
+        QString evgHersteller = bh->modelHefe()->getValueFromSameRow(ModelHefe::ColName, it.key(), ModelHefe::ColEVG).toString();
+        const QStringList zellen = {it.key(), QString::number(d.sude), d.sEVG.text(0, true), d.sre.text(1, true),
+                                    d.sw.text(1), d.temperatur.text(1, true), d.dauer.text(0, true),
+                                    d.tempJungbier.text(1), d.alkohol.text(1), evgHersteller};
+        for (int c = 0; c < zellen.size(); ++c)
+        {
+            QTableWidgetItem* item = new QTableWidgetItem(zellen[c]);
+            item->setTextAlignment(c == 0 ? Qt::AlignLeft | Qt::AlignVCenter : Qt::AlignCenter);
+            ui->tableHefe->setItem(r, c, item);
+        }
+    }
+    ui->tableHefe->resizeColumnsToContents();
+}
+
+void DlgBrauUebersicht::on_tableHefe_cellDoubleClicked(int row, int column)
+{
+    Q_UNUSED(column)
+    QTableWidgetItem* item = ui->tableHefe->item(row, 0);
+    if (item)
+        ui->tbFilter->setText(item->text());
 }

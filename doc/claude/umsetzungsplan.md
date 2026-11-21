@@ -81,7 +81,7 @@ Phase 2 (Konzept, `doc/claude/konzept-erweiterung.md`) ist abgeschlossen. Der An
 - Tooltip „Sudhausausbeute = effektive Ausbeute …“ und Anzeige der klassischen SHA (berechnet).
 - Muster für Modus-Dropdown-Tooltips festlegen (Tooltip pro Eintrag über `setItemData(..., Qt::ToolTipRole)` + Tooltip am Combo).
 
-**S05 Statistik-Reihen + Hefe-Auswertung (ext-s05)**
+**S05 Statistik-Reihen + Hefe-Auswertung (ext-s05)** – *umgesetzt: Soll-Reihen + Gärdaten in `mAuswahlListe` (am Ende, Spalten ausgeblendet), Spalte Hefe, Gruppe „Auswertung je Hefe“ (QTableWidget, Doppelklick = Textfilter); virtuelle Felder `Hefe`, `DauerHauptgaerung`, `TemperaturHauptgaerung`*
 - Neue Einträge in `DlgBrauUebersicht::mAuswahlListe`: Ausbeute (eff./klassisch), Soll/Ist SW Anstellen, Soll/Ist Menge, Verdampfungsrate.
 - Hefe-Statistik (nur lesend): je Hefe aus `Hefegaben` die Anzahl Sude, mittlerer scheinbarer EVG, SRE, Gärtemperatur (vorhandene Felder `SWJungbier`, `TemperaturJungbier`, Schnellgärprobe). Als Tabelle oder Chart in der Brauübersicht.
 
