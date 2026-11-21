@@ -90,7 +90,7 @@ Phase 2 (Konzept, `doc/claude/konzept-erweiterung.md`) ist abgeschlossen. Der An
 - Berechnet aus Ziel-CO2 (`Sud.CO2`), Temperatur vor Abfüllung (`TemperaturJungbier`) und Restextrakt (`SWJungbier` gegen erwarteten Endvergärungsgrad), wiederverwendet aus der bestehenden `ZuckerAnteil`-Rechnung bzw. `BierCalc`. Noch ohne festen g/L-Wert je Sud (folgt in S13).
 
 ### MVP-2 – Migration 2010
-**S07 Migration 2010, nur Core (ext-s07)**
+**S07 Migration 2010, nur Core (ext-s07)** – *umgesetzt; Abweichung: Kodierung 0/NULL = bisheriges Verhalten (`WasserPreset` 0 keins…, `Abfuellart` 0 abgeleitet, `FaktorNachguss` 0 = nicht gesetzt), weil neue ungespeicherte Zeilen NULL lesen. `AusruestungHistorie` nur Tabelle (Modell in S14). Offener Hinweis: Update-Prüfung zeigt Releases des Originals (ggf. später auf Fork umstellen).*
 Eine gebündelte, idempotente Migration in `database_update.cpp` mit `ALTER TABLE ADD COLUMN` + `CREATE TABLE`, alle Defaults = Bestandverhalten:
 - `Sud`: `berechnungsArtMalz` (0), `berechnungsArtWasser` (0 = Bestand), `WasserPreset` (−1 = keins), `FaktorNachguss` (3,5), `NachisoModell` (0 = Bestand), `Abfuellart` (−1 = abgeleitet), `ZuckerProLiter` (NULL = berechnet)
 - `Ausruestung`: `Treberaufnahme` (0,96)
@@ -138,6 +138,7 @@ Eine gebündelte, idempotente Migration in `database_update.cpp` mit `ALTER TABL
 ### Stufe 2+
 - **S14 Kalibrierung (ext-s14)**: `DlgAusruestung` mit Gültigkeitsregeln, Median, Ausreißern, Vorschau und Historie, ergänzt um die Treberaufnahme aus Messwerten.
 - **S15 Diagramme/Statistik erweitert (ext-s15)**: Verluste je Brauschritt, Hefe-Vergleich, Gärverlauf-Vergleich, CSV-Export. Python nur, wenn ein konkretes Diagramm in QCustomPlot unverhältnismäßig aufwendig wäre (vorher abstimmen).
+- **S16 (optional) Export ins alte Datenbankformat 2009 (ext-s16)** – *Anwender 2026-11-21*: Kopie der aktuellen Datenbank als Version 2009 speichern, damit das Original-Programm (2.6.5) sie öffnen kann. Vorher Warnhinweis mit Liste der dabei verlorenen Daten (neue Sud-Spalten: Malz-/Wasser-/Whirlpool-Modus, Wasser-Preset, Nachguss-Faktor, Abfüllart, Zucker g/L; Ausrüstung.Treberaufnahme; Tabellen Messwerte und AusruestungHistorie). Hopfen-Modus 2 wird dabei auf „Keine“ (−1) gesetzt. Zugang unauffällig im Einstellungsdialog, Bereich Datenbank. Umsetzung: Kopie anlegen, neue Spalten/Tabellen per Tabellenumbau entfernen, `Global.db_Version = 2009`.
 - **Zurückgestellt**: Malzpotential, Zuckerarten-Liste, Flaschengröße je Sud (aktuell feste Anzeige 0,5/0,33 L).
 
 ## Kritische Dateien

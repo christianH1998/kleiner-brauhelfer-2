@@ -155,6 +155,7 @@ class LIB_EXPORT SudObject : public QObject
     Q_PROPERTY(ProxyModel* modelAnhang READ modelAnhang CONSTANT)
     Q_PROPERTY(ProxyModel* modelEtiketten READ modelEtiketten CONSTANT)
     Q_PROPERTY(ProxyModel* modelTags READ modelTags CONSTANT)
+    Q_PROPERTY(ProxyModel* modelMesswerte READ modelMesswerte CONSTANT)
 
 public:
 
@@ -261,6 +262,7 @@ public:
     ProxyModel* modelAnhang() const;
     ProxyModel* modelEtiketten() const;
     ProxyModel* modelTags() const;
+    ProxyModel* modelMesswerte() const;
 
     /**
      * @brief Substracts the brew ingredients from the inventory
@@ -308,6 +310,7 @@ private:
     ProxyModel* proxyModelAnhang;
     ProxyModel* proxyModelEtiketten;
     ProxyModel* proxyModelTags;
+    ProxyModel* proxyModelMesswerte;
 };
 
 #endif // SUDOBJECT_H

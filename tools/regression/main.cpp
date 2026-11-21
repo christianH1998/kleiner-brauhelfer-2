@@ -8,6 +8,8 @@
 //   --save: NUR FUER TESTDATEN. Arbeitet direkt auf der angegebenen Datenbank
 //   (keine Kopie) und speichert die Neuberechnung (Brauhelfer::save).
 //   --rundlauf-hopfen: statt Dump Rundlauftest der Hopfen-Berechnungsarten (Exit 0 = OK).
+//   --umkehrtest: Werte aendern und zuruecksetzen, Umkehrbarkeit pruefen (Exit 0 = OK).
+//   --migrate: aeltere Datenbank vorher aktualisieren (auf der Kopie; mit --save auf der Datei).
 
 #include <QCoreApplication>
 #include <QFile>
@@ -319,11 +321,38 @@ int main(int argc, char *argv[])
             err << "Verbindung fehlgeschlagen.\n";
             return 1;
         }
+        if (bh.databaseVersion() < bh.databaseVersionSupported() && args.contains(QStringLiteral("--migrate")))
+        {
+            // Migration wie in der App (main.cpp), hier auf der Kopie bzw. bei --save auf der Datei selbst
+            err << "Migriere Datenbank " << bh.databaseVersion() << " -> " << bh.databaseVersionSupported() << "\n";
+            if (!bh.updateDatabase())
+            {
+                err << "Migration fehlgeschlagen.\n";
+                return 1;
+            }
+        }
         if (bh.databaseVersion() != bh.databaseVersionSupported())
         {
             err << "Datenbankversion " << bh.databaseVersion() << " != unterstuetzt "
-                << bh.databaseVersionSupported() << " (zuerst in der App aktualisieren).\n";
+                << bh.databaseVersionSupported() << " (--migrate verwenden oder in der App aktualisieren).\n";
             return 1;
+        }
+
+        // Spaltenpruefung (Q_ASSERT in Database::setTables greift im Release-Build nicht)
+        {
+            const QList<QPair<SqlTableModel*, int>> pruefung = {
+                {bh.modelSud(), ModelSud::NumCols},
+                {bh.modelAusruestung(), ModelAusruestung::NumCols},
+                {bh.modelMesswerte(), ModelMesswerte::NumCols}};
+            for (const auto& p : pruefung)
+            {
+                if (p.first->columnCount() != p.second)
+                {
+                    err << "Spaltenanzahl passt nicht zum Enum: " << p.first->tableName() << " "
+                        << p.first->columnCount() << " != " << p.second << "\n";
+                    return 1;
+                }
+            }
         }
 
         if (args.contains(QStringLiteral("--umkehrtest")) && !save)
@@ -375,6 +404,7 @@ int main(int argc, char *argv[])
             {QStringLiteral("Hefe"), bh.modelHefe()},
             {QStringLiteral("WeitereZutaten"), bh.modelWeitereZutaten()},
             {QStringLiteral("Wasser"), bh.modelWasser()},
+            {QStringLiteral("Messwerte"), bh.modelMesswerte()},
         };
 
         QJsonObject root;

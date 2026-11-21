@@ -202,6 +202,16 @@ int ImportExport::importKbh(Brauhelfer* bh, const QByteArray &content)
         model->appendDirect(values);
     }
 
+    // Messwerte (ab DB-Version 2010); fehlen in älteren Exporten
+    model = bh->modelMesswerte();
+    array = root[model->tableName()].toArray();
+    for (QJsonArray::const_iterator it = array.constBegin(); it != array.constEnd(); ++it)
+    {
+        values = it->toObject().toVariantMap();
+        values[QStringLiteral("SudID")] = sudId;
+        model->appendDirect(values);
+    }
+
     bh->modelSud()->update(sudRow);
     return sudRow;
 }
@@ -1084,6 +1094,22 @@ QByteArray ImportExport::exportKbh(Brauhelfer* bh, int sudRow, const QStringList
         list.reserve(proxy.rowCount());
         for (int row = 0; row < proxy.rowCount(); ++row)
             list.append(model->toVariantMap(proxy.mapRowToSource(row), QList<int>(), {ModelWasseraufbereitung::ColID, ModelWasseraufbereitung::ColSudID}));
+        array = QJsonArray::fromVariantList(list);
+        if (!array.isEmpty())
+            root[model->tableName()] = array;
+    }
+
+    // Messwerte (Brauprotokoll, ab DB-Version 2010); ältere Versionen ignorieren den Eintrag
+    model = bh->modelMesswerte();
+    if (!exclude.contains(model->tableName()))
+    {
+        proxy.setSourceModel(model);
+        proxy.setFilterKeyColumn(ModelMesswerte::ColSudID);
+        proxy.setFilterRegularExpression(regExpId);
+        list.clear();
+        list.reserve(proxy.rowCount());
+        for (int row = 0; row < proxy.rowCount(); ++row)
+            list.append(model->toVariantMap(proxy.mapRowToSource(row), QList<int>(), {ModelMesswerte::ColID, ModelMesswerte::ColSudID}));
         array = QJsonArray::fromVariantList(list);
         if (!array.isEmpty())
             root[model->tableName()] = array;

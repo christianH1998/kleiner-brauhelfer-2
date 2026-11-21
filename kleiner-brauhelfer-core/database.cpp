@@ -39,6 +39,7 @@ void Database::createTables(Brauhelfer* bh)
     modeTags = new ModelTags(bh, db);
     modelKategorien = new ModelKategorien(bh, db);
     modelWasseraufbereitung = new ModelWasseraufbereitung(bh, db);
+    modelMesswerte = new ModelMesswerte(bh, db);
     modelSud->createConnections();
 
     mModels = {
@@ -63,6 +64,7 @@ void Database::createTables(Brauhelfer* bh)
         modeTags,
         modelKategorien,
         modelWasseraufbereitung,
+        modelMesswerte,
         modelSud
     };
 }
@@ -96,6 +98,8 @@ void Database::setTables()
     modeTags->setTable(QStringLiteral("Tags"));
     modelKategorien->setTable(QStringLiteral("Kategorien"));
     modelWasseraufbereitung->setTable(QStringLiteral("Wasseraufbereitung"));
+    modelMesswerte->setTable(QStringLiteral("Messwerte"));
+    modelMesswerte->setSort(ModelMesswerte::ColZeitstempel, Qt::AscendingOrder);
 
     // sanity check
     Q_ASSERT(modelSud->columnCount() == ModelSud::NumCols);
@@ -120,6 +124,7 @@ void Database::setTables()
     Q_ASSERT(modeTags->columnCount() == ModelTags::NumCols);
     Q_ASSERT(modelKategorien->columnCount() == ModelKategorien::NumCols);
     Q_ASSERT(modelWasseraufbereitung->columnCount() == ModelWasseraufbereitung::NumCols);
+    Q_ASSERT(modelMesswerte->columnCount() == ModelMesswerte::NumCols);
 }
 
 Database::~Database()
@@ -147,6 +152,7 @@ Database::~Database()
     delete modeTags;
     delete modelKategorien;
     delete modelWasseraufbereitung;
+    delete modelMesswerte;
     QSqlDatabase::removeDatabase(QStringLiteral("kbh"));
 }
 

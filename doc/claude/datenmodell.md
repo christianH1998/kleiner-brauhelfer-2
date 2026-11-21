@@ -1,6 +1,6 @@
 # Datenmodell & Datenbank
 
-Verifiziert gegen `kleiner-brauhelfer/data/kb_daten.sqlite` (Template-DB, `Global.db_Version = 2009`) und `kleiner-brauhelfer-core/`.
+Verifiziert gegen `kleiner-brauhelfer/data/kb_daten.sqlite` (Template-DB, ursprünglich `Global.db_Version = 2009`, ab ext-s07 **2010**) und `kleiner-brauhelfer-core/`.
 
 ## Tabellen → Modelle
 | Tabelle | Modell (`kleiner-brauhelfer-core/`) | Schlüssel/Bezug |
@@ -19,6 +19,8 @@ Verifiziert gegen `kleiner-brauhelfer/data/kb_daten.sqlite` (Template-DB, `Globa
 | Wasser | `ModelWasser` | Name ← Sud.Wasserprofil |
 | Kategorien | `ModelKategorien` | Name ← Sud.Kategorie |
 | Global | – | `db_Version` |
+| Messwerte (ab 2010) | `ModelMesswerte` | SudID; Brauprotokoll, eine Zeile je Messung (Schritt, Groesse, Wert, Sollwert-Snapshot, Temperatur, Methode, Zeitstempel, Bemerkung); Bedeutung der Codes ab ext-s12 |
+| AusruestungHistorie (ab 2010) | – (Modell ab ext-s14) | Anlage (Name); Kalibrierverlauf |
 
 - **Keine Foreign Keys.** Beziehungen rein logisch über `SudID` bzw. Namen (Text).
 - Gaben **kopieren** Stoffwerte beim Setzen des Namens (z. B. Malz Farbe/Potential/pH, Hopfen Alpha/Pellets) → Rezept bleibt stabil, auch wenn Rohstoff später geändert/gelöscht wird. `Model*Gaben::import(row)` legt fehlenden Rohstoff aus Gabe an.
@@ -46,10 +48,12 @@ Verifiziert gegen `kleiner-brauhelfer/data/kb_daten.sqlite` (Template-DB, `Globa
 - `append(values)`: `defaultValues()` + Rohwerte + danach `setDataExt` für alle Werte (Kaskaden laufen, Signale blockiert). `appendDirect(values)`: nur Rohwerte, keine Logik.
 - IDs: `getNextId()` = max(ID)+1 im Modell (nicht SQLite-Autoincrement).
 - Löschen: Zeile wird bis zum Speichern als gelöscht markiert (`ColDeleted`, Header „!“), `ProxyModel` filtert sie aus.
-- `ModelSud::removeRows` löscht Kindzeilen in Maischplan, Malz-/Hopfen-/WZ-/Hefegaben, Gärverläufen, Bewertungen, Anhang, Etiketten, Tags. **Wasseraufbereitung fehlt in der Liste** (verifiziert; mögliche Waisen-Zeilen, bestehendes Verhalten).
+- `ModelSud::removeRows` löscht Kindzeilen in Maischplan, Malz-/Hopfen-/WZ-/Hefegaben, Gärverläufen, Bewertungen, Messwerte (ab 2010), Anhang, Etiketten, Tags. **Wasseraufbereitung fehlt in der Liste** (verifiziert; mögliche Waisen-Zeilen, bestehendes Verhalten).
 
 ## DB-Versionierung & Migration
-- Unterstützte Version = `VER_MAJ*1000 + VER_MIN` aus `kleiner-brauhelfer-core.pro` (`VER_MIN = 9` → 2009) bzw. `CMakeLists.txt` (`VERSION 2.9.12`). Beide synchron halten.
+- Unterstützte Version = `VER_MAJ*1000 + VER_MIN` aus `kleiner-brauhelfer-core.pro` (`VER_MIN = 10` → **2010**, vorher 9 → 2009) bzw. `CMakeLists.txt` (`VERSION 2.10.0`). Beide synchron halten.
+- **Migration 2009 → 2010 (ext-s07, Fork):** nur neue Spalten/Tabellen, idempotent (Spalte nur anlegen, wenn sie fehlt; `CREATE TABLE IF NOT EXISTS`). Sud: `berechnungsArtMalz`, `berechnungsArtWasser`, `WasserPreset` (0 keins/1 Hell/2 Dunkel/3 Benutzer), `FaktorNachguss` (0 = nicht gesetzt), `NachisoModell`, `Abfuellart` (0 = abgeleitet wie bisher), `ZuckerProLiter` (NULL = berechnet); Ausruestung: `Treberaufnahme` (0.96); Tabellen `Messwerte`, `AusruestungHistorie`. **Kodierung: 0/NULL = bisheriges Verhalten**, weil neu angehängte, noch nicht gespeicherte Zeilen (z. B. kbh-Import alter Exporte, `appendDirect`) fehlende Spalten im Speicher als NULL lesen; DB-Defaults greifen erst beim Speichern. Messwerte werden beim Sud-Kopieren nicht übernommen, beim Teilen schon.
+- Original-Programm 2.6.5 (DB 2009) öffnet 2010er Datenbanken nicht. Das Update-Prüfen (`DlgCheckUpdate`) zeigt Releases des Originals an – deren Installation würde die DB nicht öffnen können (Hinweis für Anwender, ggf. später anpassen).
 - Minimal unterstützt: 21 (`Brauhelfer::supportedDatabaseVersionMinimal`).
 - `Database::update()` (`database_update.cpp`): Kette `if (version == N) {++version; transaction; ALTER/CREATE...; UPDATE Global; commit}`. Tabellen-Umbau via `RENAME TO TempTable` → `CREATE` → `INSERT ... SELECT` → `DROP`.
 - Ablauf beim Start (`main.cpp: connectDatabase()`): ältere DB → Nutzerabfrage, Backup-Kopie, Update auf Kopie `*_update.sqlite`, Rückkopie. Neuere DB als unterstützt → Abbruch.

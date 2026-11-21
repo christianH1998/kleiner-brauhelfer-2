@@ -43,6 +43,7 @@ DlgDatenbank::DlgDatenbank(QWidget *parent) :
     ui->comboBox->addItem(bh->modelWasseraufbereitung()->tableName());
     ui->comboBox->addItem(bh->modelWeitereZutaten()->tableName());
     ui->comboBox->addItem(bh->modelWeitereZutatenGaben()->tableName());
+    ui->comboBox->addItem(bh->modelMesswerte()->tableName());
     ui->comboBox->setCurrentIndex(17);
 
     ui->comboBoxSud->clear();
@@ -59,6 +60,7 @@ DlgDatenbank::DlgDatenbank(QWidget *parent) :
     ui->comboBoxSud->addItem(bh->modelSchnellgaerverlauf()->tableName());
     ui->comboBoxSud->addItem(bh->modelWasseraufbereitung()->tableName());
     ui->comboBoxSud->addItem(bh->modelWeitereZutatenGaben()->tableName());
+    ui->comboBoxSud->addItem(bh->modelMesswerte()->tableName());
     ui->comboBoxSud->setCurrentIndex(7);
 
     updateValues();
@@ -145,6 +147,8 @@ void DlgDatenbank::on_comboBox_currentTextChanged(const QString &table)
         model = bh->modelWeitereZutaten();
     else if (table == bh->modelWeitereZutatenGaben()->tableName())
         model = bh->modelWeitereZutatenGaben();
+    else if (table == bh->modelMesswerte()->tableName())
+        model = bh->modelMesswerte();
     if (model)
     {
         ui->tableView->setModel(model);
@@ -185,6 +189,8 @@ void DlgDatenbank::on_comboBoxSud_currentTextChanged(const QString &table)
         model = sud->modelWasseraufbereitung();
     else if (table == bh->modelWeitereZutatenGaben()->tableName())
         model = sud->modelWeitereZutatenGaben();
+    else if (table == bh->modelMesswerte()->tableName())
+        model = sud->modelMesswerte();
     if (model)
     {
         ui->tableViewSud->setModel(model);

@@ -83,6 +83,14 @@ public:
         ColBemerkungWasseraufbereitung,
         ColMengeHefestarter,
         ColSWHefestarter,
+        // DB-Version 2010 (ext-s07); 0/leer = Standard (bisheriges Verhalten)
+        ColberechnungsArtMalz,
+        ColberechnungsArtWasser,
+        ColWasserPreset,
+        ColFaktorNachguss,
+        ColNachisoModell,
+        ColAbfuellart,
+        ColZuckerProLiter,
         // virtual
         ColDeleted,
         ColMengeSollAnstellen,

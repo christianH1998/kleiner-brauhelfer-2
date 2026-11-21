@@ -1177,6 +1177,7 @@ bool ModelSud::removeRows(int row, int count, const QModelIndex &parent)
         removeRowsFrom(bh->modelHauptgaerverlauf(), ModelHauptgaerverlauf::ColSudID, sudIds);
         removeRowsFrom(bh->modelNachgaerverlauf(), ModelNachgaerverlauf::ColSudID, sudIds);
         removeRowsFrom(bh->modelBewertungen(), ModelBewertungen::ColSudID, sudIds);
+        removeRowsFrom(bh->modelMesswerte(), ModelMesswerte::ColSudID, sudIds);
         removeRowsFrom(bh->modelAnhang(), ModelAnhang::ColSudID, sudIds);
         removeRowsFrom(bh->modelEtiketten(), ModelEtiketten::ColSudID, sudIds);
         removeRowsFrom(bh->modelTags(), ModelTags::ColSudID, sudIds);

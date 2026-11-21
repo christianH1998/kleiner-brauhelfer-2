@@ -40,6 +40,7 @@ Brauhelfer::Brauhelfer(const QString &databasePath, QObject *parent) :
     connect(mDb->modeTags, &SqlTableModel::modified, this, &Brauhelfer::modified);
     connect(mDb->modelKategorien, &SqlTableModel::modified, this, &Brauhelfer::modified);
     connect(mDb->modelWasseraufbereitung, &SqlTableModel::modified, this, &Brauhelfer::modified);
+    connect(mDb->modelMesswerte, &SqlTableModel::modified, this, &Brauhelfer::modified);
 }
 
 Brauhelfer::~Brauhelfer()
@@ -283,6 +284,11 @@ ModelWasseraufbereitung *Brauhelfer::modelWasseraufbereitung() const
     return mDb->modelWasseraufbereitung;
 }
 
+ModelMesswerte *Brauhelfer::modelMesswerte() const
+{
+    return mDb->modelMesswerte;
+}
+
 int Brauhelfer::sudKopieren(int sudId, const QString& name, bool teilen)
 {
     int row = modelSud()->getRowWithValue(ModelSud::ColID, sudId);
@@ -326,6 +332,8 @@ int Brauhelfer::sudKopieren(int sudId, const QString& name, bool teilen)
         sudKopierenModel(modelHauptgaerverlauf(), ModelHauptgaerverlauf::ColSudID, sudId, {{ModelHauptgaerverlauf::ColSudID, neueSudId}});
         sudKopierenModel(modelNachgaerverlauf(), ModelNachgaerverlauf::ColSudID, sudId, {{ModelNachgaerverlauf::ColSudID, neueSudId}});
         sudKopierenModel(modelBewertungen(), ModelBewertungen::ColSudID, sudId, {{ModelBewertungen::ColSudID, neueSudId}});
+        // Messwerte (Brauprotokoll) nur beim Teilen übernehmen, nicht beim Kopieren als Rezept
+        sudKopierenModel(modelMesswerte(), ModelMesswerte::ColSudID, sudId, {{ModelMesswerte::ColSudID, neueSudId}});
     }
     modelSud()->update(row);
     return row;

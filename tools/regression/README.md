@@ -43,6 +43,7 @@ Optionen:
   | 9 | Hefeweizen (Kling) | Gebraut | obergärig, Gärung läuft, Nachisomerisierung 10 min |
   | 10 | Hefeweizen (Kling) Nachbrau | Abgefüllt | obergärig (für Hefe-Auswertung S05, Phase 4 des Skripts) |
 
-  Aktuelle Referenz ab S05: `build-win64/regression/baseline-ext-s05.json` (6 Sude). `baseline-ext-s00.json` gilt nur für den alten Stand mit 5 Suden.
+  Aktuelle Referenz ab S07 (DB 2010): `build-win64/regression/baseline-ext-s07.json` (6 Sude, migrierte Kopie). Ältere Referenzen: `baseline-ext-s05.json` (DB 2009, 6 Sude), `baseline-ext-s00.json` (5 Sude).
+  Ab S07 kbh-dump mit `--migrate` aufrufen, solange die Testdatenbank noch Version 2009 hat. Migriert wird nur die Kopie, die Datei bleibt unverändert.
 
   Hefen: Braupartners Trockenhefe og und ug, dazu Hefegaben für alle Sude. Hopfen überall im Modus „Keine“, also Mengen fest.

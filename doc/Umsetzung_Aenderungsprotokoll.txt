@@ -305,6 +305,48 @@ Je nach Auswahl sind dann nur die passenden Felder sichtbar. Dafür ist die Date
 S07 nötig (Anforderung erneut bestätigt am 2026-11-21).
 
 Technik: keine Datenbank- und keine Rechenänderung, nur Anzeige (tababfuellen .ui/.cpp).
-Test: Regressionsvergleich ohne Abweichungen. Plausibilität Testsude: Hefeweizen Nachbrau
+Test (S06): Regressionsvergleich ohne Abweichungen. Plausibilität Testsude: Hefeweizen Nachbrau
 (Ziel 6,5 g/L CO2, 20 °C) 8,7 g/L -> 4,4 g / 2,9 g je Flasche. Export hell nur 2,2 g/L, weil
 noch 0,6 °P Restextrakt nachgären.
+
+
+--------------------------------------------------------------------------------
+S07 – Datenbank-Migration auf Version 2010 (Tag ext-s07)            Stand 2026-11-21
+--------------------------------------------------------------------------------
+Für Anwender sichtbar: nur beim ersten Öffnen einer bestehenden Datenbank. Das Programm meldet
+dann, dass die Datenbank aktualisiert werden muss, und bietet eine Sicherheitskopie an (bitte
+annehmen). Danach rechnet und sieht alles genau aus wie vorher.
+
+WICHTIG:
+  - Unser Programm öffnet weiterhin alle alten Datenbanken und aktualisiert sie dabei.
+  - Das Original-Programm (2.6.5) kann eine aktualisierte Datenbank NICHT mehr öffnen. Für den
+    Rückweg die Sicherheitskopie verwenden oder einzelne Sude per kbh-Export übertragen. Neue
+    Angaben gehen dabei verloren. Ein Export ins alte Format ist als optionaler Punkt S16
+    eingeplant.
+  - Das Programm meldet beim Start ggf. Updates des ORIGINAL-Programms. Diese bitte nicht
+    installieren, sie können die 2010er Datenbank nicht öffnen.
+  - Zum Testen immer eine Kopie der Datenbank verwenden.
+
+Was neu in der Datenbank ist (Platz für die kommenden Stufen, noch ohne Bedienung):
+  Sud:          Malz-Modus (S09), Wasser-Modus, Wasser-Preset, Nachguss-Faktor (S10),
+                Whirlpool-/Hopfenseihen-Modell (S11), Karbonisierungsart, Zucker g/L (S13)
+  Ausrüstung:   Treberaufnahme in L/kg (bisher fest 0,96 im Programm) (S10)
+  Neue Tabelle  Messwerte (Brauprotokoll, S12): eine Zeile je Messung
+  Neue Tabelle  AusruestungHistorie (Kalibrierverlauf, S14)
+Alle neuen Werte stehen auf "wie bisher" (0 bzw. leer, Treberaufnahme 0,96). Bestehende Sude
+rechnen deshalb unverändert.
+
+Technik: Migration in database_update.cpp (nur neue Spalten/Tabellen, läuft auch, wenn Teile
+schon vorhanden sind). Core-Version 2.10.0 (.pro und CMake). Neues Modell ModelMesswerte (in
+Brauhelfer, SudObject, Datenbank-Ansicht), Löschen mit dem Sud, beim Kopieren nicht übernommen,
+beim Teilen schon, kbh-Export/-Import inkl. Messwerte. Vorlage-Datenbank für neue Installationen
+auf 2010 aktualisiert.
+
+Test:
+  - Kopie der Testdatenbank (2009) migriert: alle Werte aller 6 Sude identisch, nur neue Felder.
+  - Migration mit bereits vorhandener Spalte/Tabelle: läuft fehlerfrei durch.
+  - Standardwerte geprüft (Modi 0, Treberaufnahme 0,96, Zucker g/L leer).
+  - Rundlauftest Hopfen und Umkehrtest auf der migrierten Kopie: OK.
+  - Vorlage-Datenbank: Inhalt nach Migration unverändert.
+  - kbh-Export ins Original: alte Version ignoriert unbekannte Felder und die Tabelle Messwerte
+    (geprüft am Quellcode des Imports, nicht mit installiertem 2.6.5 getestet).

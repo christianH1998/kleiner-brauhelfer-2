@@ -29,6 +29,7 @@ class ModelEtiketten;
 class ModelTags;
 class ModelKategorien;
 class ModelWasseraufbereitung;
+class ModelMesswerte;
 
 class Database
 {
@@ -77,6 +78,7 @@ private:
     ModelTags* modeTags;
     ModelKategorien* modelKategorien;
     ModelWasseraufbereitung* modelWasseraufbereitung;
+    ModelMesswerte* modelMesswerte;
     int mVersion;
     QSqlError mLastError;
     QList<SqlTableModel*> mModels;

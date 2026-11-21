@@ -244,4 +244,6 @@ void ModelAusruestung::defaultValues(QMap<int, QVariant> &values) const
         values.insert(ColSudhausausbeute, 60.0);
     if (!values.contains(ColVerdampfungsrate))
         values.insert(ColVerdampfungsrate, 2.0);
+    if (!values.contains(ColTreberaufnahme))
+        values.insert(ColTreberaufnahme, 0.96);
 }

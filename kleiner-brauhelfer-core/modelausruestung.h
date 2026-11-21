@@ -30,6 +30,8 @@ public:
         ColSudpfanne_MaxFuellhoehe,
         ColKosten,
         ColBemerkung,
+        // DB-Version 2010 (ext-s07)
+        ColTreberaufnahme,
         // virtual
         ColDeleted,
         ColMaischebottich_Volumen,

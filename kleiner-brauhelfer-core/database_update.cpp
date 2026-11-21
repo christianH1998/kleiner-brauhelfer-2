@@ -1810,6 +1810,77 @@ bool Database::update()
             db.commit();
         }
 
+        if (version == 2009)
+        {
+            // Erweiterung Rezepteingabe/Brauprotokoll (ext-s07, Fork christianH1998).
+            // Nur neue Spalten/Tabellen, Standardwerte = bisheriges Verhalten.
+            // Idempotent: Spalten/Tabellen werden nur angelegt, wenn sie fehlen, damit die
+            // Migration bei einem spaeteren Versionskonflikt mit dem Original verschoben werden kann.
+            ++version;
+            qInfo(Brauhelfer::loggingCategory) << "Updating to version:" << version;
+            db.transaction();
+
+            auto spalteFehlt = [&](const QString& tabelle, const QString& spalte) -> bool {
+                QSqlQuery q = sqlExec(db, QStringLiteral("PRAGMA table_info(%1)").arg(tabelle));
+                while (q.next())
+                    if (q.value(1).toString().compare(spalte, Qt::CaseInsensitive) == 0)
+                        return false;
+                return true;
+            };
+            auto spalteHinzufuegen = [&](const QString& tabelle, const QString& spalte, const QString& definition) {
+                if (spalteFehlt(tabelle, spalte))
+                    sqlExec(db, QStringLiteral("ALTER TABLE %1 ADD COLUMN %2 %3").arg(tabelle, spalte, definition));
+            };
+
+            // Sud (Reihenfolge = Spalten-Enum ModelSud)
+            //  - berechnungsArtMalz:   0 = Ziel-SW -> Schuettung (bisher), 1 = Malzmengen fest -> SW (S09)
+            //  - berechnungsArtWasser: 0 = Nachguss folgt Wuerzemenge (bisher), 1 = Faktoren HG+NG (S10)
+            //  - WasserPreset:         0 = keins, 1 = Helles, 2 = Dunkles, 3 = Benutzerdefiniert (S10)
+            //  - FaktorNachguss:       L/kg, 0 = nicht gesetzt (S10)
+            //  - NachisoModell:        0 = bisherige Formel, 1 = Whirlpool-Variante (S11)
+            //  - Abfuellart:           0 = wie bisher abgeleitet, >0 = gewaehlte Karbonisierungsart (S13)
+            //  - ZuckerProLiter:       g/L, leer = berechnet (S13)
+            spalteHinzufuegen(QStringLiteral("Sud"), QStringLiteral("berechnungsArtMalz"), QStringLiteral("INTEGER DEFAULT 0"));
+            spalteHinzufuegen(QStringLiteral("Sud"), QStringLiteral("berechnungsArtWasser"), QStringLiteral("INTEGER DEFAULT 0"));
+            spalteHinzufuegen(QStringLiteral("Sud"), QStringLiteral("WasserPreset"), QStringLiteral("INTEGER DEFAULT 0"));
+            spalteHinzufuegen(QStringLiteral("Sud"), QStringLiteral("FaktorNachguss"), QStringLiteral("REAL DEFAULT 0"));
+            spalteHinzufuegen(QStringLiteral("Sud"), QStringLiteral("NachisoModell"), QStringLiteral("INTEGER DEFAULT 0"));
+            spalteHinzufuegen(QStringLiteral("Sud"), QStringLiteral("Abfuellart"), QStringLiteral("INTEGER DEFAULT 0"));
+            spalteHinzufuegen(QStringLiteral("Sud"), QStringLiteral("ZuckerProLiter"), QStringLiteral("REAL"));
+
+            // Ausruestung
+            //  - Treberaufnahme: L/kg Schuettung (bisher fest 0.96 im Code) (S10)
+            spalteHinzufuegen(QStringLiteral("Ausruestung"), QStringLiteral("Treberaufnahme"), QStringLiteral("REAL DEFAULT 0.96"));
+
+            // Neue Tabelle Messwerte (Brauprotokoll, S12): eine Zeile je Messung
+            sqlExec(db, QStringLiteral("CREATE TABLE IF NOT EXISTS Messwerte ("
+                                       "ID INTEGER PRIMARY KEY,"
+                                       "SudID INTEGER NOT NULL,"
+                                       "Schritt INTEGER NOT NULL DEFAULT 0,"
+                                       "Groesse INTEGER NOT NULL DEFAULT 0,"
+                                       "Wert REAL,"
+                                       "Sollwert REAL,"
+                                       "Temperatur REAL,"
+                                       "Methode INTEGER DEFAULT 0,"
+                                       "Zeitstempel DATETIME,"
+                                       "Bemerkung TEXT)"));
+
+            // Neue Tabelle AusruestungHistorie (Kalibrierverlauf, S14)
+            sqlExec(db, QStringLiteral("CREATE TABLE IF NOT EXISTS AusruestungHistorie ("
+                                       "ID INTEGER PRIMARY KEY,"
+                                       "Anlage TEXT NOT NULL,"
+                                       "Datum DATETIME,"
+                                       "Parameter INTEGER DEFAULT 0,"
+                                       "WertAlt REAL,"
+                                       "WertNeu REAL,"
+                                       "AnzahlSude INTEGER DEFAULT 0,"
+                                       "Methode INTEGER DEFAULT 0,"
+                                       "Bemerkung TEXT)"));
+
+            sqlExec(db, QStringLiteral("UPDATE Global SET db_Version=%1").arg(version));
+            db.commit();
+        }
+
         return true;
     }
     catch (const std::exception& ex)

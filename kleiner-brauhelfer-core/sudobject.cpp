@@ -20,7 +20,8 @@ SudObject::SudObject(Brauhelfer *bh, int id) :
     proxyModelBewertungen(new ProxyModel(this)),
     proxyModelAnhang(new ProxyModel(this)),
     proxyModelEtiketten(new ProxyModel(this)),
-    proxyModelTags(new ProxyModel(this))
+    proxyModelTags(new ProxyModel(this)),
+    proxyModelMesswerte(new ProxyModel(this))
 {
     modelMaischplan()->setSourceModel(mBh->modelMaischplan());
     modelMaischplan()->setFilterKeyColumn(ModelMaischplan::ColSudID);
@@ -51,6 +52,9 @@ SudObject::SudObject(Brauhelfer *bh, int id) :
     modelEtiketten()->setFilterKeyColumn(ModelEtiketten::ColSudID);
     modelTags()->setSourceModel(mBh->modelTags());
     modelTags()->setFilterKeyColumn(ModelTags::ColSudID);
+    modelMesswerte()->setSourceModel(mBh->modelMesswerte());
+    modelMesswerte()->setFilterKeyColumn(ModelMesswerte::ColSudID);
+    modelMesswerte()->sort(ModelMesswerte::ColZeitstempel, Qt::AscendingOrder);
 
     connect(mBh, &Brauhelfer::saved, this, &SudObject::onSudLayoutChanged);
     connect(mBh->modelSud(), &SqlTableModel::modified, this, &SudObject::modified);
@@ -75,6 +79,7 @@ SudObject::~SudObject()
     delete proxyModelAnhang;
     delete proxyModelEtiketten;
     delete proxyModelTags;
+    delete proxyModelMesswerte;
 }
 
 Brauhelfer* SudObject::bh() const
@@ -107,6 +112,7 @@ void SudObject::load(int id)
         modelBewertungen()->setFilterRegularExpression(regExpId);
         modelAnhang()->setFilterRegularExpression(regExpId);
         modelEtiketten()->setFilterRegularExpression(regExpId);
+        modelMesswerte()->setFilterRegularExpression(regExpId);
         modelTags()->setFilterRegularExpression(QRegularExpression(QStringLiteral("^(%1|-.*)$").arg(mId)));
 
         if (isLoaded())
@@ -217,6 +223,11 @@ ProxyModel* SudObject::modelEtiketten() const
 ProxyModel* SudObject::modelTags() const
 {
     return proxyModelTags;
+}
+
+ProxyModel* SudObject::modelMesswerte() const
+{
+    return proxyModelMesswerte;
 }
 
 int SudObject::id() const
