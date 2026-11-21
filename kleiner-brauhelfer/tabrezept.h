@@ -61,6 +61,7 @@ private slots:
     void on_btnNeueZusatzGabeKochen_clicked();
     void on_btnZusazGabenUebernehmenKochen_clicked();
     void on_cbBerechnungsartHopfen_currentIndexChanged(int index);
+    void on_cbBerechnungsartMalz_currentIndexChanged(int index);
     void on_btnHopfenAusgleichen_clicked();
 
     void hefeGaben_modified();
@@ -108,6 +109,7 @@ private:
     SudObject *mSud;
     QGraphicsItem *mGlasSvg;
     QString mTooltipBittere;
+    QString mTooltipSW;
     QByteArray mDefaultSplitterState;
     QByteArray mDefaultSplitterMaischenState;
     QByteArray mDefaultSplitterKochenState;

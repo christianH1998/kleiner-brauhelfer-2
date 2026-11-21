@@ -102,7 +102,7 @@ Eine gebündelte, idempotente Migration in `database_update.cpp` mit `ALTER TABL
 - Dropdown (Bestandswerte −1/0/1 + neu 2): „Ziel-IBU → Mengen nach Gewichtsanteil“, „Ziel-IBU → Mengen nach IBU-Anteil“, „Mengen fest, Bittere nicht berechnen“, **„Mengen fest → Bittere berechnen“ (neu)**, jeweils mit Tooltip.
 - Prüfen, ob der heutige Wechsel des Modus (`modelhopfengaben.cpp` `onSudDataChanged`, `colUpdate`) Werte verändert. Falls ja, das Verhalten an die Invariante anpassen.
 
-**S09 Malz-Modus „Mengen fest → SW berechnen“ (ext-s09)**
+**S09 Malz-Modus „Mengen fest → SW berechnen“ (ext-s09)** – *umgesetzt: `BierCalc::swAusSchuettung` (Fixpunkt), `ModelSud::updateSwAusMalzmengen` (SW nur bei Δ>1e-9 setzen), `ModelMalzschuettung` kg führend + `prozentAusMengen`; Rundlauftest `--rundlauf-malz`*
 - Dropdown „Ziel-SW → Schüttung berechnen“ (Bestand) / „Malzmengen fest → SW berechnen“.
 - Drift-Fix in `modelmalzschuettung.cpp` (`setDataExt`, `onSudDataChanged`) und `ModelSud::update` (Konzept §3).
 

@@ -46,6 +46,11 @@ private slots:
 
 private:
 
+    bool mengenFest(const QVariant &sudId) const;
+    void prozentAusMengen(const QVariant &sudId);
+
+private:
+
     Brauhelfer* bh;
 };
 

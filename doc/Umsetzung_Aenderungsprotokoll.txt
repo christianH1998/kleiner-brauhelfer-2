@@ -350,3 +350,51 @@ Test:
   - Vorlage-Datenbank: Inhalt nach Migration unverändert.
   - kbh-Export ins Original: alte Version ignoriert unbekannte Felder und die Tabelle Messwerte
     (geprüft am Quellcode des Imports, nicht mit installiertem 2.6.5 getestet).
+
+
+--------------------------------------------------------------------------------
+S08 – entfällt                                                       2026-11-21
+--------------------------------------------------------------------------------
+Die Hopfen-Modi mit eindeutigen Namen und Erklärungen wurden schon in S01 umgesetzt.
+
+
+--------------------------------------------------------------------------------
+S09 – Malzberechnung "Malzmengen fest -> Stammwürze berechnen" (Tag ext-s09)  2026-11-21
+--------------------------------------------------------------------------------
+Neue Funktion: Die kg je Malz werden eingegeben (z. B. beim Nachbrauen eines Rezepts aus dem
+Buch), und das Programm berechnet daraus die Stammwürze. Es gibt weiterhin nur ein
+Stammwürze-Feld.
+
+Bedienung (Reiter Rezept -> Schüttung, Auswahl "Malzberechnung" ganz oben):
+  - Ziel-Stammwürze -> Schüttung berechnen      (bisheriges Verhalten)
+  - Malzmengen fest -> Stammwürze berechnen     (NEU)
+  Erklärungen per Tooltip am Auswahlfeld und an jedem Eintrag.
+  Im neuen Modus:
+    - kg je Malz sind die Eingabe (auch bei nur einem Malz). Prozent und Extrakt sind berechnet.
+    - Die Gesamtschüttung ist die Summe der Malzmengen.
+    - Die Stammwürze (Reiter Rezept, links) ist schreibgeschützt und berechnet, aus Schüttung,
+      Menge, Sudhausausbeute und Extrakt weiterer Zutaten (z. B. Honig). Gleiche Formel wie
+      bisher, nur rückwärts.
+    - Ändert man Menge oder Sudhausausbeute, bleiben die Malzmengen gleich und die Stammwürze
+      ändert sich.
+
+Umschalten: Ein Wechsel zwischen den beiden Modi verändert keine Werte, sofern das Rezept
+stimmig ist (Prozentsumme 100 %). Bei einem Rezept mit Warnung "Summe der Anteile ungleich
+100 %" gleicht der Wechsel auf "Mengen fest" die Prozente an die tatsächlichen Mengen an. Die
+Stammwürze ergibt sich dann aus den echten Malzmengen.
+
+Bekannte Wechselwirkung (bis S12): Wie jede Änderung der Stammwürze belegt auch die berechnete
+Stammwürze im Status Rezept die Braudaten (SW Kochbeginn/-ende/Anstellen) neu mit Sollwerten
+vor. Braudaten also erst eintragen, wenn das Rezept feststeht.
+
+Technik: nutzt die Spalte Sud.berechnungsArtMalz aus S07. Neu: BierCalc::swAusSchuettung
+(Umkehrung der Schüttungsformel), ModelSud::updateSwAusMalzmengen, ModelMalzschuettung im
+Modus "fest" mit kg als führender Größe (Prozent aus der Summe, keine schleichende
+Verschiebung). Oberfläche: tabrezept (.ui/.cpp), wdgmalzgabe.
+Test:
+  - Regressionsvergleich: keine Abweichungen (bestehende Rezepte rechnen unverändert).
+  - Neuer Rundlauftest (kbh-dump --rundlauf-malz) an allen 6 Testsuden: Ziel -> fest -> Malz
+    +10 % und zurück -> Ziel -> SW ändern und zurück -> fest. Mengen, Schüttung und
+    Stammwürze bleiben bis auf Rechengenauigkeit (1e-16) gleich, und Malz +10 % erhöht die
+    Stammwürze.
+  - Umkehrtest erweitert (Menge und Sudhausausbeute im Modus "Mengen fest"): umkehrbar.

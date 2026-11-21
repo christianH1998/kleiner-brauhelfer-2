@@ -61,6 +61,10 @@ void TabRezept::setup(SudObject *sud)
     ui->tbSudnummer->setColumn(mSud, ModelSud::ColSudnummer);
     ui->tbBittere->setColumn(mSud, ModelSud::ColIBU);
     mTooltipBittere = ui->tbBittere->toolTip();
+    mTooltipSW = ui->tbSW->toolTip();
+    // Erklaerung je Eintrag (Index = Brauhelfer::BerechnungsartMalz) (ext-s09)
+    ui->cbBerechnungsartMalz->setItemData(0, tr("Stammwürze vorgeben. Je Malz wird der Anteil in % angegeben, Gesamtschüttung und kg je Malz werden berechnet (bisheriges Verhalten)."), Qt::ToolTipRole);
+    ui->cbBerechnungsartMalz->setItemData(1, tr("kg je Malz fest eingeben, z. B. beim Nachbrauen. Die Gesamtschüttung ist die Summe, die Stammwürze wird aus Schüttung, Menge und Sudhausausbeute berechnet. Ein Wechsel zurück ergibt wieder dieselben Mengen."), Qt::ToolTipRole);
     // Erklaerung je Eintrag (Index = Brauhelfer::BerechnungsartHopfen + 1)
     ui->cbBerechnungsartHopfen->setItemData(0, tr("Hopfenmengen in g frei eingeben. Die Bittere ist nur ein Eingabewert und wird nicht berechnet."), Qt::ToolTipRole);
     ui->cbBerechnungsartHopfen->setItemData(1, tr("Bittere (IBU) vorgeben. Je Gabe wird der Anteil am Gesamtgewicht in % angegeben, die Mengen werden berechnet."), Qt::ToolTipRole);
@@ -464,6 +468,7 @@ void TabRezept::checkEnabled()
     ui->wdgAddMaischen->setVisible(!gebraut);
     ui->wdgAddKochen->setVisible(!gebraut);
     ui->cbBerechnungsartHopfen->setEnabled(!gebraut);
+    ui->cbBerechnungsartMalz->setEnabled(!gebraut);
     ui->tbMengeHefestarter->setDisabled(gebraut);
     ui->tbSWHefestarter->setDisabled(gebraut);
     ui->wdgAddGaerung->setVisible(!abgefuellt);
@@ -774,6 +779,13 @@ void TabRezept::updateValues()
         ui->btnHopfenAusgleichen->setVisible(false);
         break;
     }
+    // Malzberechnung (ext-s09)
+    bool malzFest = static_cast<Brauhelfer::BerechnungsartMalz>(mSud->getberechnungsArtMalz()) == Brauhelfer::BerechnungsartMalz::MengenFest;
+    if (!ui->cbBerechnungsartMalz->hasFocus())
+        ui->cbBerechnungsartMalz->setCurrentIndex(malzFest ? 1 : 0);
+    ui->tbSW->setReadOnly(malzFest);
+    ui->tbSW->setToolTip(malzFest ? tr("<p><b>Berechnet</b> aus den Malzmengen (Malzberechnung „Malzmengen fest → Stammwürze berechnen“).</p>") + mTooltipSW : mTooltipSW);
+
     bool ibuBerechnet = berechnungsArtHopfen == Brauhelfer::BerechnungsartHopfen::IBUBerechnet;
     ui->tbBittere->setReadOnly(ibuBerechnet);
     ui->tbBittere->setToolTip(ibuBerechnet ? tr("<p><b>Berechnet</b> aus den Hopfengaben (Hopfenberechnung „Mengen fest → Bittere berechnen“).</p>") + mTooltipBittere : mTooltipBittere);
@@ -1315,6 +1327,15 @@ void TabRezept::on_btnZusazGabenUebernehmenKochen_clicked()
             }
         }
         mSud->modelWeitereZutatenGaben()->invalidate();
+    }
+}
+
+void TabRezept::on_cbBerechnungsartMalz_currentIndexChanged(int index)
+{
+    if (ui->cbBerechnungsartMalz->hasFocus())
+    {
+        mSud->setberechnungsArtMalz(index);
+        malzGaben_modified();
     }
 }
 

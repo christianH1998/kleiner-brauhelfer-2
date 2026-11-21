@@ -304,6 +304,17 @@ public:
     Q_INVOKABLE static double schuettung(double sw, double sw_dichte, double V, double sudhausausbeute);
 
     /**
+     * @brief Umkehrung von schuettung(): Stammwürzeanteil des Malzes aus der Schüttung (ext-s09)
+     * @param schuettung Schüttung [kg]
+     * @param swZusatzDichte Extraktanteil weiterer Zutaten, der in die Dichte eingeht [°P]
+     *        (sw_dichte = sw + swZusatzDichte, wie in ModelSud::update())
+     * @param V Volumen bei 20°C [L]
+     * @param sudhausausbeute Sudhausausbeute [%]
+     * @return Stammwürzeanteil des Malzes [°P], so dass schuettung(sw, sw + swZusatzDichte, V, sha) = schuettung
+     */
+    Q_INVOKABLE static double swAusSchuettung(double schuettung, double swZusatzDichte, double V, double sudhausausbeute);
+
+    /**
      * @brief Benötigte Wassermenge, um Sollstammwürze zu erreichen
      * @param swIst Iststammwürze [°P]
      * @param swSoll Sollstammwürze [°P]

@@ -122,11 +122,27 @@ void WdgMalzGabe::updateValues()
             ui->lblWarnung->setText(tr("Der maximal empfohlener Schüttungsanteil (%1%) wurde überschritten.").arg(max));
         }
 
-        if (mRow == 0 && mModel->rowCount() == 1)
+        bool malzFest = static_cast<Brauhelfer::BerechnungsartMalz>(mSud->getberechnungsArtMalz()) == Brauhelfer::BerechnungsartMalz::MengenFest;
+        if (malzFest)
+        {
+            // ext-s09: kg fuehrend, Prozent und Extrakt nur berechnet
+            ui->tbMenge->setReadOnly(false);
+            ui->tbMengeProzent->setReadOnly(true);
+            ui->tbExtrakt->setReadOnly(true);
+            ui->tbExtraktProzent->setReadOnly(true);
+            ui->tbMengeProzent->setError(false);
+            ui->tbExtraktProzent->setError(false);
+            ui->btnKorrektur->setVisible(false);
+            ui->btnKorrekturExtrakt->setVisible(false);
+            if (gSettings->isModuleEnabled(Settings::ModuleLagerverwaltung))
+                ui->btnAufbrauchen->setVisible(qAbs(ui->tbVorhanden->value() - ui->tbMenge->value()) > 0.001);
+        }
+        else if (mRow == 0 && mModel->rowCount() == 1)
         {
             ui->tbMenge->setReadOnly(true);
             ui->tbMengeProzent->setReadOnly(true);
             ui->tbExtrakt->setReadOnly(true);
+            ui->tbExtraktProzent->setReadOnly(false);
             ui->btnAufbrauchen->setVisible(false);
         }
         else
@@ -134,6 +150,7 @@ void WdgMalzGabe::updateValues()
             ui->tbMenge->setReadOnly(false);
             ui->tbMengeProzent->setReadOnly(false);
             ui->tbExtrakt->setReadOnly(false);
+            ui->tbExtraktProzent->setReadOnly(false);
             if (gSettings->isModuleEnabled(Settings::ModuleLagerverwaltung))
                 ui->btnAufbrauchen->setVisible(qAbs(ui->tbVorhanden->value() - ui->tbMenge->value()) > 0.001);
         }

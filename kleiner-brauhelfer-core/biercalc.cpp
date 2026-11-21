@@ -330,6 +330,23 @@ double BierCalc::schuettung(double sw, double sw_dichte, double V, double sudhau
     return sw * platoToDichte(sw_dichte) * V / sudhausausbeute;
 }
 
+double BierCalc::swAusSchuettung(double schuettung, double swZusatzDichte, double V, double sudhausausbeute)
+{
+    // schuettung = sw * rho(sw + z) * V / sha  ->  sw = schuettung * sha / (rho(sw + z) * V)
+    // Fixpunktiteration; rho haengt nur schwach von sw ab, Konvergenz nach wenigen Schritten.
+    if (schuettung <= 0.0 || V <= 0.0 || sudhausausbeute <= 0.0)
+        return 0.0;
+    double sw = schuettung * sudhausausbeute / V;
+    for (int i = 0; i < 100; ++i)
+    {
+        double swNeu = schuettung * sudhausausbeute / (platoToDichte(sw + swZusatzDichte) * V);
+        if (std::fabs(swNeu - sw) < 1e-13)
+            return swNeu;
+        sw = swNeu;
+    }
+    return sw;
+}
+
 double BierCalc::verschneidung(double swIst, double swSoll, double swWasser, double menge)
 {
     if (swIst < swSoll || swSoll < swWasser || swSoll == 0.0 || swWasser < 0.0)

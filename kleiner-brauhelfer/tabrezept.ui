@@ -996,6 +996,50 @@ p, li { white-space: pre-wrap; }
          <number>4</number>
         </property>
         <item>
+         <layout class="QHBoxLayout" name="layoutBerechnungsartMalz">
+          <property name="spacing">
+           <number>9</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="lblBerechnungsartMalz">
+            <property name="text">
+             <string>Malzberechnung</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="ComboBox" name="cbBerechnungsartMalz">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Hier wird gewählt, &lt;span style=&quot; font-weight:600;&quot;&gt;was vorgegeben und was berechnet&lt;/span&gt; wird: die Stammwürze oder die Malzmengen.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Ziel-Stammwürze → Schüttung berechnen&lt;/span&gt; (bisheriges Verhalten): Stammwürze, Menge und Sudhausausbeute werden vorgegeben, je Malz der Anteil in %. Die Gesamtschüttung und die kg je Malz werden berechnet.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Malzmengen fest → Stammwürze berechnen&lt;/span&gt;: Die kg je Malz werden eingegeben (z. B. Rezept nachbrauen). Die Gesamtschüttung ist die Summe, die Stammwürze wird aus Schüttung, Menge, Sudhausausbeute und weiteren Zutaten berechnet. Die Prozentanteile ergeben sich aus den Mengen.&lt;/p&gt;&lt;p&gt;Das &lt;span style=&quot; font-weight:600;&quot;&gt;Umschalten&lt;/span&gt; verändert keine Werte (bei stimmigem Rezept, Prozentsumme 100 %). Erst eine Eingabe im neuen Modus rechnet wie gewohnt nach.&lt;/p&gt;&lt;p&gt;Hinweis: Wie bei jeder Änderung der Stammwürze werden im Status Rezept die Braudaten mit den neuen Sollwerten vorbelegt.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <item>
+             <property name="text">
+              <string>Ziel-Stammwürze → Schüttung berechnen</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Malzmengen fest → Stammwürze berechnen</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <spacer name="spacerBerechnungsartMalz">
+            <property name="orientation">
+             <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+        <item>
          <widget class="QWidget" name="wdgWarnungMalz" native="true">
           <layout class="QHBoxLayout" name="horizontalLayout_19">
            <property name="spacing">

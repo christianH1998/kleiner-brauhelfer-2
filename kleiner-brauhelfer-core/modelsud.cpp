@@ -872,7 +872,16 @@ void ModelSud::update(int row, int colChanged)
         double sw_dichte = sw + swWzMaischenRecipe[row] + swWzKochenRecipe[row];
         double menge = data(row, ColMengeSollAnstellen).toDouble();
         double ausb = data(row, ColSudhausausbeute).toDouble();
-        double schuet = BierCalc::schuettung(sw, sw_dichte, menge, ausb);
+        double schuet;
+        if (static_cast<Brauhelfer::BerechnungsartMalz>(data(row, ColberechnungsArtMalz).toInt()) == Brauhelfer::BerechnungsartMalz::MengenFest)
+        {
+            // ext-s09: Malzmengen fest -> Schuettung = Summe, Stammwuerze rueckwaerts berechnet
+            schuet = updateSwAusMalzmengen(row);
+        }
+        else
+        {
+            schuet = BierCalc::schuettung(sw, sw_dichte, menge, ausb);
+        }
         setData(row, Colerg_S_Gesamt, schuet);
 
         // erg_W_Gesamt, erg_WHauptguss, erg_WNachguss
@@ -1054,6 +1063,35 @@ void ModelSud::updateFarbe(int row)
         ebc += dataAnlage(row, ModelAusruestung::ColKorrekturFarbe).toDouble();
     }
     setData(row, Colerg_Farbe, ebc);
+}
+
+double ModelSud::updateSwAusMalzmengen(int row)
+{
+    // Berechnungsart Malz "Mengen fest" (ext-s09): Schuettung = Summe der kg je Malz,
+    // Stammwuerze = Umkehrung der Schuettungsformel (gleiche Formel wie Modus Ziel-SW, daher
+    // liefert ein Moduswechsel in beide Richtungen dieselben Werte).
+    QRegularExpression sudReg(QStringLiteral("^%1$").arg(data(row, ColID).toInt()));
+    ProxyModel modelMalzschuettung;
+    modelMalzschuettung.setSourceModel(bh->modelMalzschuettung());
+    modelMalzschuettung.setFilterKeyColumn(ModelMalzschuettung::ColSudID);
+    modelMalzschuettung.setFilterRegularExpression(sudReg);
+    double schuet = 0.0;
+    for (int r = 0; r < modelMalzschuettung.rowCount(); ++r)
+        schuet += modelMalzschuettung.data(r, ModelMalzschuettung::Colerg_Menge).toDouble();
+
+    double menge = data(row, ColMengeSollAnstellen).toDouble();
+    double ausb = data(row, ColSudhausausbeute).toDouble();
+    if (menge > 0.0 && ausb > 0.0)
+    {
+        double swZusatzDichte = swWzMaischenRecipe[row] + swWzKochenRecipe[row];
+        double swMalz = BierCalc::swAusSchuettung(schuet, swZusatzDichte, menge, ausb);
+        double sw = swMalz + swWzMaischenRecipe[row] + swWzKochenRecipe[row] + swWzGaerungRecipe[row]
+                    + data(row, ColSWAnteilHefestarter).toDouble();
+        // nur bei echter Aenderung setzen: setData(SW) belegt im Rezeptstatus die Braudaten vor
+        if (std::isfinite(sw) && std::fabs(sw - data(row, ColSW).toDouble()) > 1e-9)
+            setData(row, ColSW, sw);
+    }
+    return schuet;
 }
 
 void ModelSud::updateIbuBerechnet(int row)

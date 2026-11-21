@@ -34,6 +34,7 @@ Kindmodelle reagieren auf `ModelSud::dataChanged`:
 
 ## Gaben-Logik
 - **Malz** (`modelmalzschuettung.cpp`): `setData(Prozent)` → `erg_Menge`; `setData(erg_Menge)` → Prozent = Menge/erg_S_Gesamt (Gesamtschüttung bleibt aus SW/SHA berechnet!). Virtuell: `Extrakt`, `ExtraktProzent`.
+  - Ab ext-s09 `Sud.berechnungsArtMalz` (`Brauhelfer::BerechnungsartMalz`): 0 `ZielSW` = obiges Verhalten; 1 `MengenFest`: `setData(erg_Menge)` setzt kg direkt und `prozentAusMengen` (alle Prozent = kg/Σkg); `update()` setzt `erg_S_Gesamt` = Σkg und `SW` = `BierCalc::swAusSchuettung(Σkg, wzMaischen+wzKochen, MengeSollAnstellen, SHA)` + Zusätze (Maischen, Kochen, Gärung, Hefestarter), nur bei Δ > 1e-9 (sonst Kaskade auf Braudaten). Wechsel auf 1 normiert nur Prozent. Rundlauf exakt (`kbh-dump --rundlauf-malz`).
 - **Hopfen** (`modelhopfengaben.cpp`): `Ausbeute` (virtuell) = 100 × `BierCalc::tinseth(t + Nachiso-Anteil, SW Mitte Kochen)` × 1.1 Pellets × 1.1 wenn Kochzeit−t > 15. `IBUAnteil` = Menge·Alpha·Ausbeute / (10·MengeSollAnstellen).
   - Berechnungsart `IBU`: Prozent = Anteil an Soll-IBU → Menge.
   - `Gewicht`: Prozent = Gewichtsanteil, Gesamtmenge so, dass Soll-IBU erreicht.

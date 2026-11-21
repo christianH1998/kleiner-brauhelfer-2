@@ -175,6 +175,7 @@ private:
     void updateWasser(int row);
     void updateFarbe(int row);
     void updateIbuBerechnet(int row);
+    double updateSwAusMalzmengen(int row);
     void updatePreis(int row);
     void removeRowsFrom(SqlTableModel* model, int colId, const QList<int>& sudIds);
 

@@ -96,6 +96,14 @@ public:
     };
     Q_ENUM(BerechnungsartHopfen)
 
+    // Sud.berechnungsArtMalz (ab DB 2010, ext-s09)
+    enum class BerechnungsartMalz
+    {
+        ZielSW = 0,      // Stammwuerze vorgegeben -> Schuettung und kg je Malz berechnet (bisher)
+        MengenFest = 1   // kg je Malz vorgegeben -> Gesamtschuettung = Summe, Stammwuerze berechnet
+    };
+    Q_ENUM(BerechnungsartMalz)
+
     enum class HopfenZeitpunkt
     {
         KochenAlt = 0,

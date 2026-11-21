@@ -9,6 +9,7 @@
 //   (keine Kopie) und speichert die Neuberechnung (Brauhelfer::save).
 //   --rundlauf-hopfen: statt Dump Rundlauftest der Hopfen-Berechnungsarten (Exit 0 = OK).
 //   --umkehrtest: Werte aendern und zuruecksetzen, Umkehrbarkeit pruefen (Exit 0 = OK).
+//   --rundlauf-malz: Rundlauftest Malz-Berechnungsart Ziel-SW <-> Mengen fest (Exit 0 = OK).
 //   --migrate: aeltere Datenbank vorher aktualisieren (auf der Kopie; mit --save auf der Datei).
 
 #include <QCoreApplication>
@@ -140,6 +141,104 @@ static int rundlaufHopfen(Brauhelfer& bh, QTextStream& out)
     return fehler;
 }
 
+// ---- Rundlauftest Malz-Berechnungsart (ext-s09) ----
+struct MalzStand
+{
+    QList<double> kg;
+    double sw;
+    double schuettung;
+};
+
+static MalzStand malzStand(Brauhelfer& bh, int sudRow)
+{
+    MalzStand s;
+    const QVariant sudId = bh.modelSud()->data(sudRow, ModelSud::ColID);
+    ModelMalzschuettung* m = bh.modelMalzschuettung();
+    const int colDeleted = m->fieldIndex(QStringLiteral("deleted"));
+    for (int r = 0; r < m->rowCount(); ++r)
+        if (m->data(r, ModelMalzschuettung::ColSudID) == sudId && !m->data(r, colDeleted).toBool())
+            s.kg.append(m->data(r, ModelMalzschuettung::Colerg_Menge).toDouble());
+    s.sw = bh.modelSud()->data(sudRow, ModelSud::ColSW).toDouble();
+    s.schuettung = bh.modelSud()->data(sudRow, ModelSud::Colerg_S_Gesamt).toDouble();
+    return s;
+}
+
+static double malzDiff(const MalzStand& a, const MalzStand& b)
+{
+    auto rel = [](double x, double y) { return std::fabs(x - y) / std::max(1.0, std::max(std::fabs(x), std::fabs(y))); };
+    double d = std::max(rel(a.sw, b.sw), rel(a.schuettung, b.schuettung));
+    if (a.kg.size() != b.kg.size())
+        return 1.0;
+    for (int i = 0; i < a.kg.size(); ++i)
+        d = std::max(d, rel(a.kg[i], b.kg[i]));
+    return d;
+}
+
+static int rundlaufMalz(Brauhelfer& bh, QTextStream& out)
+{
+    const double tol = 1e-9;
+    const int fest = static_cast<int>(Brauhelfer::BerechnungsartMalz::MengenFest);
+    const int ziel = static_cast<int>(Brauhelfer::BerechnungsartMalz::ZielSW);
+    int fehler = 0;
+    ModelSud* sud = bh.modelSud();
+    for (int row = 0; row < sud->rowCount(); ++row)
+    {
+        const QString name = sud->data(row, ModelSud::ColSudname).toString();
+        sud->setData(row, ModelSud::ColStatus, static_cast<int>(Brauhelfer::SudStatus::Rezept));
+        sud->setData(row, ModelSud::ColberechnungsArtMalz, ziel);
+        if (malzStand(bh, row).kg.isEmpty())
+            continue;
+        // Ausgangslage stimmig machen (Prozentsumme 100 %), wie "Ausgleichen" in der App
+        ModelMalzschuettung* m = bh.modelMalzschuettung();
+        const QVariant sudId = sud->data(row, ModelSud::ColID);
+        {
+            double summe = 0.0;
+            for (int r = 0; r < m->rowCount(); ++r)
+                if (m->data(r, ModelMalzschuettung::ColSudID) == sudId)
+                    summe += m->data(r, ModelMalzschuettung::ColProzent).toDouble();
+            if (std::fabs(summe - 100.0) > 1e-9 && summe > 0.0)
+                for (int r = 0; r < m->rowCount(); ++r)
+                    if (m->data(r, ModelMalzschuettung::ColSudID) == sudId)
+                        m->setData(r, ModelMalzschuettung::ColProzent, m->data(r, ModelMalzschuettung::ColProzent).toDouble() * 100.0 / summe);
+        }
+        const MalzStand a = malzStand(bh, row);
+
+        sud->setData(row, ModelSud::ColberechnungsArtMalz, fest);           // Ziel -> fest
+        const MalzStand b = malzStand(bh, row);
+        int r0 = -1;
+        for (int r = 0; r < m->rowCount() && r0 < 0; ++r)
+            if (m->data(r, ModelMalzschuettung::ColSudID) == sudId)
+                r0 = r;
+        const double kg0 = m->data(r0, ModelMalzschuettung::Colerg_Menge).toDouble();
+        m->setData(r0, ModelMalzschuettung::Colerg_Menge, kg0 * 1.1);      // Menge +10 %
+        const MalzStand mehr = malzStand(bh, row);
+        m->setData(r0, ModelMalzschuettung::Colerg_Menge, kg0);            // zurueck
+        const MalzStand c = malzStand(bh, row);
+        sud->setData(row, ModelSud::ColberechnungsArtMalz, ziel);           // fest -> Ziel
+        const MalzStand d = malzStand(bh, row);
+        const double sw0 = sud->data(row, ModelSud::ColSW).toDouble();
+        sud->setData(row, ModelSud::ColSW, sw0 + 0.5);                      // Ziel-Modus: SW aendern
+        sud->setData(row, ModelSud::ColSW, sw0);                            // und zurueck
+        const MalzStand e = malzStand(bh, row);
+        sud->setData(row, ModelSud::ColberechnungsArtMalz, fest);           // nochmal Ziel -> fest
+        const MalzStand f = malzStand(bh, row);
+
+        const double dWechsel = std::max({malzDiff(a, b), malzDiff(b, d), malzDiff(e, f)});
+        const double dZurueck = std::max(malzDiff(b, c), malzDiff(d, e));
+        const bool swGestiegen = mehr.sw > b.sw;
+        const bool ok = dWechsel <= tol && dZurueck <= tol && swGestiegen;
+        if (!ok)
+            ++fehler;
+        out << (ok ? "OK    " : "FEHLER") << " Sud '" << name << "' SW " << QString::number(a.sw, 'f', 2)
+            << " Schuettung " << QString::number(a.schuettung, 'f', 3) << " kg"
+            << " | Moduswechsel max. rel. " << QString::number(dWechsel, 'g', 3)
+            << " | Aendern+Zurueck " << QString::number(dZurueck, 'g', 3)
+            << " | Malz+10% -> SW " << QString::number(mehr.sw, 'f', 2) << (swGestiegen ? "" : " (nicht gestiegen!)") << "\n";
+    }
+    out << (fehler == 0 ? QStringLiteral("Rundlauftest Malz: alle OK\n") : QStringLiteral("Rundlauftest Malz: %1 Fehler\n").arg(fehler));
+    return fehler;
+}
+
 // ---- Umkehrtest: Wert aendern und exakt zuruecksetzen -> alles wieder wie vorher? ----
 static QMap<QString, QVariant> sudSnapshot(Brauhelfer& bh, int sudRow)
 {
@@ -198,8 +297,10 @@ static QStringList snapshotDiff(const QMap<QString, QVariant>& a, const QMap<QSt
 
 static int umkehrTest(Brauhelfer& bh, QTextStream& out)
 {
-    struct Feld { int col; const char* name; double delta; int hopfenArt; };
+    struct Feld { int col; const char* name; double delta; int hopfenArt; int malzArt = 0; };
     const QList<Feld> felder = {
+        {ModelSud::ColMenge, "Menge (Malz fest)", 2.0, -2, 1},
+        {ModelSud::ColSudhausausbeute, "Sudhausausbeute (Malz fest)", 2.0, -2, 1},
         {ModelSud::ColIBU, "IBU (Bittereanteil)", 1.0, 1},
         {ModelSud::ColIBU, "IBU (Gewichtsanteil)", 1.0, 0},
         {ModelSud::ColSW, "SW", 0.5, -2},
@@ -222,6 +323,7 @@ static int umkehrTest(Brauhelfer& bh, QTextStream& out)
         {
             if (f.hopfenArt != -2)
                 sud->setData(row, ModelSud::ColberechnungsArtHopfen, f.hopfenArt);
+            sud->setData(row, ModelSud::ColberechnungsArtMalz, f.malzArt);
             const double v0 = sud->data(row, f.col).toDouble();
             // 1. Durchgang: "erste Eingabe gleicht an" (inkonsistente Vorlage wird stimmig) - erwartet
             const QMap<QString, QVariant> start = sudSnapshot(bh, row);
@@ -353,6 +455,16 @@ int main(int argc, char *argv[])
                     return 1;
                 }
             }
+        }
+
+        if (args.contains(QStringLiteral("--rundlauf-malz")) && !save)
+        {
+            QTextStream out(stdout);
+            int fehler = rundlaufMalz(bh, out);
+            out.flush();
+            bh.discard();
+            bh.disconnectDatabase();
+            return fehler == 0 ? 0 : 3;
         }
 
         if (args.contains(QStringLiteral("--umkehrtest")) && !save)
