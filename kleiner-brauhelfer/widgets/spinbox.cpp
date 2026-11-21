@@ -61,6 +61,12 @@ void SpinBox::updatePalette()
         if (palette() != gSettings->paletteError)
             setPalette(gSettings->paletteError);
     }
+    else if (isReadOnly())
+    {
+        // berechneter Wert (nicht editierbar) einheitlich kennzeichnen (ext-s04)
+        if (palette() != gSettings->paletteBerechnet)
+            setPalette(gSettings->paletteBerechnet);
+    }
     else
     {
         if (palette() != QGuiApplication::palette())
@@ -89,6 +95,7 @@ void SpinBox::setReadOnly(bool r)
 {
     QSpinBox::setReadOnly(r);
     setButtonSymbols(r ? NoButtons : UpDownArrows);
+    updatePalette();
 }
 
 void SpinBox::setError(bool e)

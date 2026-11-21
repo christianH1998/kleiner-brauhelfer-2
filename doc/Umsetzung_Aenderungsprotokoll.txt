@@ -204,3 +204,38 @@ der nur die passenden Felder sichtbar sind. Das kommt in S13 (Abfüllart, brauch
 Datenbank-Migration S07).
 Neuer Wunsch: eine leicht erreichbare Gesamtübersicht des fertigen Biers ("was ist wirklich
 in der Flasche", per Knopf). Eingeplant als S13b, direkt nach der Abfüllart.
+
+
+--------------------------------------------------------------------------------
+S04 – Berechnete Werte kennzeichnen, Begriffe Ausbeute (Tag ext-s04) Stand 2026-11-21
+--------------------------------------------------------------------------------
+Neu:
+  1. Berechnete Zahlenfelder sind im ganzen Programm einheitlich hellblau-grau hinterlegt
+     (im dunklen Design dunkelblau-grau). Weiße Felder mit Pfeilen sind Eingaben. Das gilt
+     automatisch für alle Felder, die das Programm berechnet und die nicht bearbeitet werden
+     können, z. B. Schüttung, Wassermengen, Farbe, Alkohol, Vergärungsgrad sowie die Bittere im
+     Modus "Mengen fest -> Bittere berechnen". Die bisherigen Farben für "geändert" (gelb) und
+     "Fehler" (rot) haben weiter Vorrang. Gesperrte Felder gebrauter Sude bleiben grau wie bisher.
+  2. Begriffe zur Ausbeute eindeutig:
+     - Reiter Rezept, Feld "Sudhausausbeute": Der Tooltip erklärt, dass es fachlich die
+       effektive Ausbeute bezogen auf die Anstellwürze ist und wo die klassische steht. Der Name
+       bleibt.
+     - Reiter Braudaten: "Sudhausausbeute (klassisch)" (heiße Würze Kochende) und "Effektive
+       Ausbeute (Anstellwürze)" mit erklärenden Tooltips.
+     - Brauübersicht: gleiche Bezeichnungen in der Auswahl.
+
+Bewusste Abweichung vom Plan: Eine zusätzliche "klassische Sudhausausbeute" im Reiter Rezept
+habe ich nicht eingebaut. Das Planungsmodell rechnet zwischen Kochende und Anstellen ohne
+Verluste, daher wäre eine "klassische Soll-Ausbeute" praktisch gleich dem Planungswert und
+eher irreführend. Die klassische Ausbeute ist erst mit Messwerten aussagekräftig und steht
+in den Braudaten. Mit der Verlustkette (S10) und den Messwerten (S12/S14) wird das später
+genauer.
+
+Muster für Modus-Auswahlen (für alle künftigen Stufen): Auswahlfeld mit einem Tooltip, der
+alle Modi erklärt, plus ein Tooltip je Eintrag (setItemData(..., Qt::ToolTipRole)), wie bei
+der Hopfenberechnung in S01.
+
+Technik: keine Datenbank- und keine Rechenänderung. Geändert: settings (Farbe
+paletteBerechnet), widgets/doublespinbox, widgets/spinbox (Kennzeichnung schreibgeschützter
+Felder), tabrezept, tabbraudaten (.ui/.cpp), dlgbrauuebersicht.
+Test: Regressionsvergleich ohne Abweichungen, Rundlauf- und Umkehrtest OK.

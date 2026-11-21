@@ -68,6 +68,12 @@ void TabRezept::setup(SudObject *sud)
     ui->cbBerechnungsartHopfen->setItemData(3, tr("Hopfenmengen in g fest eingeben, z. B. beim Nachbrauen. Die Bittere wird aus Menge, Alpha, Kochzeit, Stammwürze und Würzemenge berechnet. Ein Wechsel zurück in einen Ziel-Bittere-Modus ergibt wieder dieselben Mengen."), Qt::ToolTipRole);
     ui->tbFarbe->setColumn(mSud, ModelSud::Colerg_Farbe);
     ui->tbSudhausausbeute->setColumn(mSud, ModelSud::ColSudhausausbeute);
+    ui->tbSudhausausbeute->setToolTip(tr("<p><b>Hinweis zur Bedeutung:</b> Dieser Planungswert ist fachlich die "
+                                         "<b>effektive Ausbeute</b>, bezogen auf die Würze im Gärbehälter (Anstellwürze, "
+                                         "also nach Hopfenseihen, Kühlung und Verlusten). Die klassische Sudhausausbeute der "
+                                         "Fachliteratur bezieht sich auf die heiße Würze am Kochende und liegt meist einige "
+                                         "Prozentpunkte höher. Beide Werte des gebrauten Suds stehen im Reiter Braudaten.</p>")
+                                      + ui->tbSudhausausbeute->toolTip());
     ui->tbVerdampfungsrate->setColumn(mSud, ModelSud::ColVerdampfungsrate);
     ui->tbVergaerungsgrad->setColumn(mSud, ModelSud::ColVergaerungsgrad);
     ui->tbReifezeit->setColumn(mSud, ModelSud::ColReifezeit);

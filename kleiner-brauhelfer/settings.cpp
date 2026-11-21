@@ -65,6 +65,7 @@ void Settings::initTheme()
     // colors
     QColor colorErrorWindow, colorErrorButton;
     QColor colorChangedBase, colorChangedWindow, colorChangedButton;
+    QColor colorBerechnetBase;
     QPalette palette = qApp->palette();
     switch (theme())
     {
@@ -78,6 +79,8 @@ void Settings::initTheme()
         colorChangedBase = QColor(255, 240, 175);
         colorChangedWindow = QColor(250, 235, 190);
         colorChangedButton = QColor(250, 235, 190); //QColor(240, 215, 140);
+
+        colorBerechnetBase = QColor(232, 237, 244);
 
         colorMalz = QColor(248, 242, 210);
         colorHopfen = QColor(232, 248, 225);
@@ -149,6 +152,8 @@ void Settings::initTheme()
         colorChangedWindow = QColor(85, 80, 50);
         colorChangedButton = QColor(85, 80, 50); //QColor(110, 102, 65);
 
+        colorBerechnetBase = QColor(36, 40, 50);
+
         colorMalz = QColor(55, 52, 40);
         colorHopfen = QColor(45, 60, 50);
         colorHefe = QColor(60, 48, 45);
@@ -219,6 +224,8 @@ void Settings::initTheme()
     paletteError.setColor(QPalette::Base, colorErrorBase);
     paletteError.setColor(QPalette::Window, colorErrorWindow);
     paletteError.setColor(QPalette::Button, colorErrorButton);
+    paletteBerechnet = palette;
+    paletteBerechnet.setColor(QPalette::Base, colorBerechnetBase);
     paletteErrorLabel = palette;
     paletteErrorLabel.setColor(QPalette::WindowText, colorErrorText);
 

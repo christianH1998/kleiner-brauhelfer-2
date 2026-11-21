@@ -107,6 +107,7 @@ public:
     QPalette paletteError;
     QPalette paletteErrorLabel;
     QPalette paletteChanged;
+    QPalette paletteBerechnet; // schreibgeschuetzte (berechnete) Zahlenfelder (ext-s04)
 
     QColor colorErrorBase;
     QColor colorErrorText;

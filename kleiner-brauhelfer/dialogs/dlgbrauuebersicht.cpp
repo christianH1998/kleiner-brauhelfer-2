@@ -144,8 +144,8 @@ void DlgBrauUebersicht::build()
     mAuswahlListe.append({ModelSud::Colerg_AbgefuellteBiermenge, 1, tr("Abgefüllte Biermenge"), "L"});
     mAuswahlListe.append({ModelSud::Colerg_S_Gesamt, 2, tr("Schüttung"), "kg"});
     mAuswahlListe.append({ModelSud::ColSWIst, 1, tr("Stammwürze"), "°P"});
-    mAuswahlListe.append({ModelSud::Colerg_Sudhausausbeute, 0, tr("Sudhausausbeute"), "%"});
-    mAuswahlListe.append({ModelSud::Colerg_EffektiveAusbeute, 0, tr("Effektive Sudhausausbeute"), "%"});
+    mAuswahlListe.append({ModelSud::Colerg_Sudhausausbeute, 0, tr("Sudhausausbeute (klassisch)"), "%"});
+    mAuswahlListe.append({ModelSud::Colerg_EffektiveAusbeute, 0, tr("Effektive Ausbeute (Anstellwürze)"), "%"});
     mAuswahlListe.append({ModelSud::ColVerdampfungsrateIst, 1, tr("Verdampfungsrate"), "L/h"});
     mAuswahlListe.append({ModelSud::Colerg_Alkohol, 1, tr("Alkohol fertiges Bier"), "%vol"});
     mAuswahlListe.append({ModelSud::ColAlkoholJungbier, 1, tr("Alkohol Jungbier"), "%vol"});

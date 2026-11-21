@@ -50,6 +50,15 @@ void TabBraudaten::setup(SudObject *sud)
     ui->tbAusbeuteEffektiv->setColumn(mSud, ModelSud::Colerg_EffektiveAusbeute);
     ui->tbVerdampfungRezept->setColumn(mSud, ModelSud::ColVerdampfungsrate);
     ui->tbAusbeuteRezept->setColumn(mSud, ModelSud::ColSudhausausbeute);
+    // Begriffe Ausbeute eindeutig (ext-s04)
+    ui->tbAusbeute->setToolTip(tr("<p><b>Klassische Sudhausausbeute</b>: bezogen auf die heiße Würze am Kochende "
+                                  "(Würzemenge vor dem Hopfenseihen und Stammwürze Kochende). Entspricht der "
+                                  "Sudhausausbeute der Fachliteratur.</p>") + ui->tbAusbeute->toolTip());
+    ui->tbAusbeuteEffektiv->setToolTip(tr("<p><b>Effektive Ausbeute</b>: bezogen auf die Würze im Gärbehälter "
+                                          "(Anstellwürze). Das ist dieselbe Größe wie der Planungswert "
+                                          "„Sudhausausbeute“ im Rezept (darunter) und wird für die Kalibrierung der "
+                                          "Anlage verwendet.</p>") + ui->tbAusbeuteEffektiv->toolTip());
+    ui->tbAusbeuteRezept->setToolTip(tr("<p>Planungswert aus dem Rezept (effektive Ausbeute).</p>") + ui->tbAusbeuteRezept->toolTip());
     ui->tbSWAnstellenSoll->setColumn(mSud, ModelSud::ColSWSollAnstellen);
     ui->tbMengeHefestarter->setColumn(mSud, ModelSud::ColMengeHefestarter);
     ui->tbSWHefestarter->setColumn(mSud, ModelSud::ColSWHefestarter);

@@ -30,3 +30,6 @@
 - UI-Texte deutsch mit `tr()`; Übersetzungen `translations/kbh_{en,nl,sv}.ts/.qm` (+ `.qph`), Templates je Sprache separat.
 - Tabellen: `widgets/tableview.h` mit `appendCol({col, visible, canHide, width, delegate})` (`TableView::ColumnDefinition`) + Delegates aus `model/`.
 - Neue Dateien in `kleiner-brauhelfer.pro` (`SOURCES`, `HEADERS`, `FORMS`) eintragen.
+- Kennzeichnung (ab ext-s04): schreibgeschützte `DoubleSpinBox`/`SpinBox` = berechneter Wert ⇒ automatisch `gSettings->paletteBerechnet` (Priorität: geändert > Fehler > berechnet > normal). Berechnete Felder daher per `setReadOnly(true)` (nicht `setDisabled`) darstellen; `setDisabled` bleibt für Status-Sperren.
+- Exakte Werte (ab ext-s01b): `DoubleSpinBoxSud`/`SpinBoxSud` schreiben beim Zurückstellen auf den Anzeigewert vom Fokusbeginn den exakten Modellwert zurück.
+- Modus-Auswahlen (ab ext-s01): `ComboBox` mit Gesamt-Tooltip (alle Modi erklärt) + Tooltip je Eintrag via `setItemData(i, text, Qt::ToolTipRole)`; Index = Enum + Offset; Moduswechsel darf keine Werte ändern.

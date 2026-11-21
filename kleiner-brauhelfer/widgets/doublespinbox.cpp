@@ -61,6 +61,12 @@ void DoubleSpinBox::updatePalette()
         if (palette() != gSettings->paletteError)
             setPalette(gSettings->paletteError);
     }
+    else if (isReadOnly())
+    {
+        // berechneter Wert (nicht editierbar) einheitlich kennzeichnen (ext-s04)
+        if (palette() != gSettings->paletteBerechnet)
+            setPalette(gSettings->paletteBerechnet);
+    }
     else
     {
         if (palette() != QGuiApplication::palette())
@@ -89,6 +95,7 @@ void DoubleSpinBox::setReadOnly(bool r)
 {
     QDoubleSpinBox::setReadOnly(r);
     setButtonSymbols(r ? NoButtons : UpDownArrows);
+    updatePalette();
 }
 
 void DoubleSpinBox::setError(bool e)

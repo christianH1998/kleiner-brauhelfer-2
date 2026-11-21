@@ -76,7 +76,7 @@ Phase 2 (Konzept, `doc/claude/konzept-erweiterung.md`) ist abgeschlossen. Der An
 - Virtuelles Feld `AlkoholJungbier`; `erg_Alkohol` = „fertiges Bier (erwartet)“ (Konzept §7.3).
 - Beschriftungen „Rezept (Soll)“ / „Jungbier“ / „fertiges Bier (erwartet)“ in `tababfuellen`, `tabrezept`, `templatetags.cpp` + Templates, Brauübersicht. `erg_Alkohol` bleibt unverändert gespeichert.
 
-**S04 Kennzeichnung und Tooltips (ext-s04)**
+**S04 Kennzeichnung und Tooltips (ext-s04)** – *umgesetzt: Kennzeichnung über Palette `paletteBerechnet` für alle schreibgeschützten `DoubleSpinBox`/`SpinBox`; klassische SHA im Rezept bewusst nicht angezeigt (Planungsmodell ohne Verluste Kochende→Anstellen, wäre ≈ Planungswert), stattdessen Begriffe in Rezept/Braudaten/Brauübersicht geschärft*
 - Zentrale Kennzeichnung eingegeben/berechnet in `widgets/` (`DoubleSpinBoxSud`/`WidgetDecorator`).
 - Tooltip „Sudhausausbeute = effektive Ausbeute …“ und Anzeige der klassischen SHA (berechnet).
 - Muster für Modus-Dropdown-Tooltips festlegen (Tooltip pro Eintrag über `setItemData(..., Qt::ToolTipRole)` + Tooltip am Combo).
