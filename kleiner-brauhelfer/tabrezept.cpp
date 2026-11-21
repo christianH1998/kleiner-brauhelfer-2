@@ -60,6 +60,12 @@ void TabRezept::setup(SudObject *sud)
     ui->tbSWAnteilHefestarter->setColumn(mSud, ModelSud::ColSWAnteilHefestarter);
     ui->tbSudnummer->setColumn(mSud, ModelSud::ColSudnummer);
     ui->tbBittere->setColumn(mSud, ModelSud::ColIBU);
+    mTooltipBittere = ui->tbBittere->toolTip();
+    // Erklaerung je Eintrag (Index = Brauhelfer::BerechnungsartHopfen + 1)
+    ui->cbBerechnungsartHopfen->setItemData(0, tr("Hopfenmengen in g frei eingeben. Die Bittere ist nur ein Eingabewert und wird nicht berechnet."), Qt::ToolTipRole);
+    ui->cbBerechnungsartHopfen->setItemData(1, tr("Bittere (IBU) vorgeben. Je Gabe wird der Anteil am Gesamtgewicht in % angegeben, die Mengen werden berechnet."), Qt::ToolTipRole);
+    ui->cbBerechnungsartHopfen->setItemData(2, tr("Bittere (IBU) vorgeben. Je Gabe wird der Anteil an der Bittere in % angegeben, die Mengen werden berechnet. Empfohlen für den Austausch von Hopfensorten."), Qt::ToolTipRole);
+    ui->cbBerechnungsartHopfen->setItemData(3, tr("Hopfenmengen in g fest eingeben, z. B. beim Nachbrauen. Die Bittere wird aus Menge, Alpha, Kochzeit, Stammwürze und Würzemenge berechnet. Ein Wechsel zurück in einen Ziel-Bittere-Modus ergibt wieder dieselben Mengen."), Qt::ToolTipRole);
     ui->tbFarbe->setColumn(mSud, ModelSud::Colerg_Farbe);
     ui->tbSudhausausbeute->setColumn(mSud, ModelSud::ColSudhausausbeute);
     ui->tbVerdampfungsrate->setColumn(mSud, ModelSud::ColVerdampfungsrate);
@@ -757,7 +763,14 @@ void TabRezept::updateValues()
         ui->lblWarnungHopfen->setText(tr("Die Summe der angegebenen Anteile an Bittere entspricht nicht der Gesamtbittere."));
         ui->btnHopfenAusgleichen->setVisible(true);
         break;
+    case Brauhelfer::BerechnungsartHopfen::IBUBerechnet:
+        ui->lblWarnungHopfen->setText(QString());
+        ui->btnHopfenAusgleichen->setVisible(false);
+        break;
     }
+    bool ibuBerechnet = berechnungsArtHopfen == Brauhelfer::BerechnungsartHopfen::IBUBerechnet;
+    ui->tbBittere->setReadOnly(ibuBerechnet);
+    ui->tbBittere->setToolTip(ibuBerechnet ? tr("<p><b>Berechnet</b> aus den Hopfengaben (Hopfenberechnung „Mengen fest → Bittere berechnen“).</p>") + mTooltipBittere : mTooltipBittere);
 
     updateGlas();
 }
@@ -1213,7 +1226,8 @@ void TabRezept::updateHopfenGaben()
             WdgHopfenGabe* wdg = static_cast<WdgHopfenGabe*>(ui->layoutHopfenGaben->itemAt(i)->widget());
             wdg->setFehlProzent(p);
         }
-        ui->wdgWarnungHopfen->setVisible(p != 0.0 && count > 1);
+        bool ibuBerechnet = static_cast<Brauhelfer::BerechnungsartHopfen>(mSud->getberechnungsArtHopfen()) == Brauhelfer::BerechnungsartHopfen::IBUBerechnet;
+        ui->wdgWarnungHopfen->setVisible(p != 0.0 && count > 1 && !ibuBerechnet);
     }
     else
     {

@@ -15,7 +15,8 @@ ChartHopfen::ChartHopfen(QWidget *parent) :
 void ChartHopfen::update(const SudObject* sud)
 {
     Brauhelfer::BerechnungsartHopfen art = (Brauhelfer::BerechnungsartHopfen)sud->getberechnungsArtHopfen();
-    double yMax = (art == Brauhelfer::BerechnungsartHopfen::Keine) ? 0 : 100;
+    bool mengenFest = art == Brauhelfer::BerechnungsartHopfen::Keine || art == Brauhelfer::BerechnungsartHopfen::IBUBerechnet;
+    double yMax = mengenFest ? 0 : 100;
     double sum = 0;
 
     clearPlottables();
@@ -32,6 +33,7 @@ void ChartHopfen::update(const SudObject* sud)
         switch (art)
         {
         case Brauhelfer::BerechnungsartHopfen::Keine:
+        case Brauhelfer::BerechnungsartHopfen::IBUBerechnet:
             val = model->data(row, ModelHopfengaben::Colerg_Menge).toDouble();
             break;
         case Brauhelfer::BerechnungsartHopfen::Gewicht:
@@ -59,6 +61,7 @@ void ChartHopfen::update(const SudObject* sud)
     switch (art)
     {
     case Brauhelfer::BerechnungsartHopfen::Keine:
+    case Brauhelfer::BerechnungsartHopfen::IBUBerechnet:
         yAxis->setLabel(tr("Menge") + " (g)");
         yAxis->setRange(0, std::ceil(yMax));
         yAxis2->setVisible(false);

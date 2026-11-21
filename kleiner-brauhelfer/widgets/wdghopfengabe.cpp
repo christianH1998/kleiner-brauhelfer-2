@@ -162,6 +162,7 @@ void WdgHopfenGabe::updateValues()
         switch (berechnungsArtHopfen)
         {
         case Brauhelfer::BerechnungsartHopfen::Keine:
+        case Brauhelfer::BerechnungsartHopfen::IBUBerechnet:
             ui->btnMengeKorrektur->setVisible(false);
             ui->tbMengeProzent->setVisible(false);
             ui->lblMengeProzent->setVisible(false);
@@ -189,7 +190,8 @@ void WdgHopfenGabe::updateValues()
             break;
         }
 
-        if (mRow == 0 && mModel->rowCount() == 1 && berechnungsArtHopfen != Brauhelfer::BerechnungsartHopfen::Keine)
+        if (mRow == 0 && mModel->rowCount() == 1 &&
+            (berechnungsArtHopfen == Brauhelfer::BerechnungsartHopfen::Gewicht || berechnungsArtHopfen == Brauhelfer::BerechnungsartHopfen::IBU))
         {
             ui->tbMenge->setReadOnly(true);
             ui->tbMengeProLiter->setReadOnly(true);

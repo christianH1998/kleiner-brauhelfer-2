@@ -89,6 +89,7 @@ bool ModelHopfengaben::setDataExt(const QModelIndex &idx, const QVariant &value)
             switch (berechnungsart)
             {
             case Brauhelfer::BerechnungsartHopfen::Keine:
+            case Brauhelfer::BerechnungsartHopfen::IBUBerechnet:
             {
                 break;
             }
@@ -146,6 +147,7 @@ bool ModelHopfengaben::setDataExt(const QModelIndex &idx, const QVariant &value)
             switch (berechnungsart)
             {
             case Brauhelfer::BerechnungsartHopfen::Keine:
+            case Brauhelfer::BerechnungsartHopfen::IBUBerechnet:
             {
                 break;
             }

@@ -442,7 +442,7 @@ bool DlgDatabaseCleaner::testRange6()
 {
     int col = ModelSud::ColberechnungsArtHopfen;
     int min = static_cast<int>(Brauhelfer::BerechnungsartHopfen::Keine);
-    int max = static_cast<int>(Brauhelfer::BerechnungsartHopfen::IBU);
+    int max = static_cast<int>(Brauhelfer::BerechnungsartHopfen::IBUBerechnet);
     SqlTableModel* model = bh->modelSud();
     CheckRangeProxyModel* proxy = new CheckRangeProxyModel(col, min, max, ui->tableView);
     proxy->setSourceModel(model);
@@ -456,7 +456,7 @@ bool DlgDatabaseCleaner::testRange6()
         ui->tableView->setColumnHidden(ModelSud::ColID, false);
         ui->tableView->setColumnHidden(ModelSud::ColSudname, false);
         ui->tableView->setColumnHidden(col, false);
-        ui->tableView->setItemDelegateForColumn(col, new ComboBoxDelegate({tr("Keine"), tr("Gewicht"), tr("Bittere")}, ui->tableView));
+        ui->tableView->setItemDelegateForColumn(col, new ComboBoxDelegate({tr("Keine"), tr("Gewicht"), tr("Bittere"), tr("Bittere berechnet")}, ui->tableView));
         connect(ui->tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &DlgDatabaseCleaner::selectionChanged);
         ui->tableView->setFocus();
         setTableIds(0);

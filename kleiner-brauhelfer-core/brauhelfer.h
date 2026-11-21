@@ -89,7 +89,8 @@ public:
     {
         Keine = -1,
         Gewicht = 0,
-        IBU = 1
+        IBU = 1,
+        IBUBerechnet = 2  // Mengen fest, Sud.IBU = Summe IBU-Anteile der Gaben (ab ext-s01)
     };
     Q_ENUM(BerechnungsartHopfen)
 

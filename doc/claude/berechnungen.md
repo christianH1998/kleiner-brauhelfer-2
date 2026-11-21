@@ -37,7 +37,8 @@ Kindmodelle reagieren auf `ModelSud::dataChanged`:
 - **Hopfen** (`modelhopfengaben.cpp`): `Ausbeute` (virtuell) = 100 × `BierCalc::tinseth(t + Nachiso-Anteil, SW Mitte Kochen)` × 1.1 Pellets × 1.1 wenn Kochzeit−t > 15. `IBUAnteil` = Menge·Alpha·Ausbeute / (10·MengeSollAnstellen).
   - Berechnungsart `IBU`: Prozent = Anteil an Soll-IBU → Menge.
   - `Gewicht`: Prozent = Gewichtsanteil, Gesamtmenge so, dass Soll-IBU erreicht.
-  - `Keine`: Mengen fix, keine Rückrechnung. **Es gibt keine Summenbildung der IBU aus Hopfenmengen** (nur `IBUAnteil` je Gabe, angezeigt in `WdgHopfenGabe`). Importe setzen `Keine` + `erg_Menge`.
+  - `Keine`: Mengen fix, keine Rückrechnung, IBU reiner Eingabewert. Importe setzen `Keine` + `erg_Menge`.
+  - `IBUBerechnet` (= 2, ab ext-s01, keine DB-Änderung): Mengen fix; `ModelSud::updateIbuBerechnet` (in `update()`, Status Rezept) setzt `Sud.IBU` = Σ `IBUAnteil` der Gaben. In `ModelHopfengaben::setDataExt` wie `Keine` (Prozent/Menge ohne Kaskade). Moduswechsel ↔ `Gewicht`/`IBU` ist exakt umkehrbar (Wechsel setzt `erg_Menge` auf sich selbst ⇒ nur Prozent neu; `IBUAnteil` linear in Menge). Geprüft mit `kbh-dump --rundlauf-hopfen` (Abweichung ~1e-16). Altversion (2.6.5) behandelt 2 wie `Keine`.
 - **WeitereZutaten**: `Extrakt` = Menge/L[g→kg] × Ausbeute (Stk ohne /1000); fließt über `updateSwWeitereZutaten` in SW-Aufteilung.
 - **Hefe**: nur Menge, Zugabestatus; keine Berechnung.
 - UI-Hilfsfunktionen in `tabrezept.cpp`: `on_btnMalzAusgleichen_clicked` (Prozente auf 100 normieren), `on_btnShaAnpassen_clicked` (SHA aus vorhandenen Malzmengen rückrechnen), `on_btnHopfenAusgleichen_clicked`, `vergaerungsgradUebernehmen` (EVG aus Hefe).
@@ -67,5 +68,5 @@ Kindmodelle reagieren auf `ModelSud::dataChanged`:
 
 ## Fehlende Umkehrrechnungen (relevant für Eingabe fertiger Rezepte)
 - SW aus Schüttung [kg] + SHA + Volumen: nicht vorhanden (Umkehr von `schuettung`, `sw_dichte` hängt von SW ab → iterativ oder Näherung).
-- Gesamt-IBU aus Hopfenmengen: nicht vorhanden (Σ `IBUAnteil` wäre Ansatz).
+- Gesamt-IBU aus Hopfenmengen: umgesetzt in ext-s01 (Berechnungsart `IBUBerechnet`).
 - Farbe aus Mengen: vorhanden (`updateFarbe` nutzt `erg_Menge`).

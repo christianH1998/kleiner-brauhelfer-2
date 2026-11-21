@@ -828,6 +828,9 @@ void ModelSud::update(int row, int colChanged)
         // erg_Farbe
         updateFarbe(row);
 
+        // IBU aus Hopfenmengen (nur Berechnungsart IBUBerechnet)
+        updateIbuBerechnet(row);
+
         // erg_Sudhausausbeute
         sw_dichte = data(row, ColSWKochende).toDouble();
         sw = sw_dichte - swWzMaischenRecipe[row] - swWzKochenRecipe[row];
@@ -998,6 +1001,25 @@ void ModelSud::updateFarbe(int row)
         ebc += dataAnlage(row, ModelAusruestung::ColKorrekturFarbe).toDouble();
     }
     setData(row, Colerg_Farbe, ebc);
+}
+
+void ModelSud::updateIbuBerechnet(int row)
+{
+    // Berechnungsart "Mengen fest -> Bittere berechnen": Sud.IBU = Summe der IBU-Anteile.
+    // Dieselbe Formel (ModelHopfengaben ColIBUAnteil) nutzen die Ziel-IBU-Modi rückwärts,
+    // daher liefert ein Moduswechsel in beide Richtungen dieselben Mengen bzw. dieselbe IBU.
+    if (static_cast<Brauhelfer::BerechnungsartHopfen>(data(row, ColberechnungsArtHopfen).toInt()) != Brauhelfer::BerechnungsartHopfen::IBUBerechnet)
+        return;
+    QRegularExpression sudReg(QStringLiteral("^%1$").arg(data(row, ColID).toInt()));
+    ProxyModel modelHopfengaben;
+    modelHopfengaben.setSourceModel(bh->modelHopfengaben());
+    modelHopfengaben.setFilterKeyColumn(ModelHopfengaben::ColSudID);
+    modelHopfengaben.setFilterRegularExpression(sudReg);
+    double ibu = 0.0;
+    for (int r = 0; r < modelHopfengaben.rowCount(); ++r)
+        ibu += modelHopfengaben.data(r, ModelHopfengaben::ColIBUAnteil).toDouble();
+    if (std::isfinite(ibu) && std::fabs(ibu - data(row, ColIBU).toDouble()) > 1e-9)
+        setData(row, ColIBU, ibu);
 }
 
 void ModelSud::updatePreis(int row)

@@ -7,6 +7,7 @@
 //   (wie beim Bearbeiten in der App; wirkt nur auf Sude im Status Rezept).
 //   --save: NUR FUER TESTDATEN. Arbeitet direkt auf der angegebenen Datenbank
 //   (keine Kopie) und speichert die Neuberechnung (Brauhelfer::save).
+//   --rundlauf-hopfen: statt Dump Rundlauftest der Hopfen-Berechnungsarten (Exit 0 = OK).
 
 #include <QCoreApplication>
 #include <QFile>
@@ -15,6 +16,8 @@
 #include <QJsonObject>
 #include <QTemporaryDir>
 #include <QTextStream>
+#include <algorithm>
+#include <cmath>
 #include "brauhelfer.h"
 
 static QJsonValue toJson(const QVariant& v)
@@ -36,6 +39,209 @@ static QJsonValue toJson(const QVariant& v)
     default:
         return v.toString();
     }
+}
+
+// ---- Rundlauftest Hopfen-Berechnungsart (ext-s01) ----
+// Prueft: Moduswechsel zwischen Ziel-IBU (Gewicht/IBU) und "Mengen fest -> IBU berechnet"
+// veraendert weder Hopfenmengen noch IBU. Arbeitet nur im Speicher (kein save()).
+struct HopfenStand
+{
+    QList<double> mengen;
+    double ibu;
+};
+
+static HopfenStand hopfenStand(Brauhelfer& bh, int sudRow)
+{
+    HopfenStand s;
+    const QVariant sudId = bh.modelSud()->data(sudRow, ModelSud::ColID);
+    ModelHopfengaben* m = bh.modelHopfengaben();
+    const int colDeleted = m->fieldIndex(QStringLiteral("deleted"));
+    for (int r = 0; r < m->rowCount(); ++r)
+        if (m->data(r, ModelHopfengaben::ColSudID) == sudId && !m->data(r, colDeleted).toBool())
+            s.mengen.append(m->data(r, ModelHopfengaben::Colerg_Menge).toDouble());
+    s.ibu = bh.modelSud()->data(sudRow, ModelSud::ColIBU).toDouble();
+    return s;
+}
+
+static double maxRelDiff(const HopfenStand& a, const HopfenStand& b)
+{
+    auto rel = [](double x, double y) { return std::fabs(x - y) / std::max(1.0, std::max(std::fabs(x), std::fabs(y))); };
+    double d = rel(a.ibu, b.ibu);
+    if (a.mengen.size() != b.mengen.size())
+        return 1.0;
+    for (int i = 0; i < a.mengen.size(); ++i)
+        d = std::max(d, rel(a.mengen[i], b.mengen[i]));
+    return d;
+}
+
+static void setArt(Brauhelfer& bh, int sudRow, Brauhelfer::BerechnungsartHopfen art)
+{
+    bh.modelSud()->setData(sudRow, ModelSud::ColberechnungsArtHopfen, static_cast<int>(art));
+}
+
+static int rundlaufHopfen(Brauhelfer& bh, QTextStream& out)
+{
+    using Art = Brauhelfer::BerechnungsartHopfen;
+    const double tol = 1e-9;
+    int fehler = 0;
+    for (int row = 0; row < bh.modelSud()->rowCount(); ++row)
+    {
+        const QString name = bh.modelSud()->data(row, ModelSud::ColSudname).toString();
+        // Test im Rezeptstatus (nur im Speicher), damit gerechnet wird
+        bh.modelSud()->setData(row, ModelSud::ColStatus, static_cast<int>(Brauhelfer::SudStatus::Rezept));
+        if (hopfenStand(bh, row).mengen.isEmpty())
+            continue;
+
+        // Start: Mengen fest -> IBU berechnet (aus den vorhandenen Mengen)
+        setArt(bh, row, Art::IBUBerechnet);
+        const HopfenStand basis = hopfenStand(bh, row);
+        QStringList zeilen;
+        double worst = 0.0;
+        for (Art ziel : {Art::Gewicht, Art::IBU})
+        {
+            setArt(bh, row, ziel);
+            const HopfenStand nachZiel = hopfenStand(bh, row);
+            // Eingabe im Ziel-Modus ohne Aenderung: IBU auf denselben Wert setzen -> Mengen neu berechnet
+            bh.modelSud()->setData(row, ModelSud::ColIBU, nachZiel.ibu + 1.0);
+            bh.modelSud()->setData(row, ModelSud::ColIBU, nachZiel.ibu);
+            const HopfenStand nachNeurechnung = hopfenStand(bh, row);
+            setArt(bh, row, Art::IBUBerechnet);
+            const HopfenStand zurueck = hopfenStand(bh, row);
+            const double d = std::max({maxRelDiff(basis, nachZiel), maxRelDiff(basis, nachNeurechnung), maxRelDiff(basis, zurueck)});
+            worst = std::max(worst, d);
+            zeilen << QStringLiteral("%1: %2").arg(ziel == Art::Gewicht ? QStringLiteral("Gewicht") : QStringLiteral("IBU")).arg(d, 0, 'g', 3);
+        }
+        // Aenderung im Modus "berechnet": Menge +10 % -> IBU muss steigen, Rueckweg wieder exakt
+        ModelHopfengaben* m = bh.modelHopfengaben();
+        const QVariant sudId = bh.modelSud()->data(row, ModelSud::ColID);
+        for (int r = 0; r < m->rowCount(); ++r)
+        {
+            if (m->data(r, ModelHopfengaben::ColSudID) == sudId)
+            {
+                m->setData(r, ModelHopfengaben::Colerg_Menge, m->data(r, ModelHopfengaben::Colerg_Menge).toDouble() * 1.1);
+                break;
+            }
+        }
+        const HopfenStand geaendert = hopfenStand(bh, row);
+        const bool ibuGestiegen = geaendert.ibu > basis.ibu;
+        setArt(bh, row, Art::IBU);
+        setArt(bh, row, Art::IBUBerechnet);
+        worst = std::max(worst, maxRelDiff(geaendert, hopfenStand(bh, row)));
+
+        const bool ok = worst <= tol && ibuGestiegen;
+        if (!ok)
+            ++fehler;
+        out << (ok ? "OK    " : "FEHLER") << " Sud '" << name << "' IBU " << QString::number(basis.ibu, 'f', 2)
+            << " | max. rel. Abweichung " << zeilen.join(QStringLiteral(", "))
+            << " | Menge+10% -> IBU " << QString::number(geaendert.ibu, 'f', 2) << (ibuGestiegen ? "" : " (nicht gestiegen!)") << "\n";
+    }
+    return fehler;
+}
+
+// ---- Umkehrtest: Wert aendern und exakt zuruecksetzen -> alles wieder wie vorher? ----
+static QMap<QString, QVariant> sudSnapshot(Brauhelfer& bh, int sudRow)
+{
+    QMap<QString, QVariant> s;
+    ModelSud* sud = bh.modelSud();
+    for (int c = 0; c < sud->columnCount(); ++c)
+    {
+        const QString n = sud->fieldName(c);
+        if (n != QStringLiteral("Gespeichert") && n != QStringLiteral("deleted"))
+            s.insert(QStringLiteral("Sud.") + n, sud->data(sudRow, c));
+    }
+    const QVariant sudId = sud->data(sudRow, ModelSud::ColID);
+    const QList<QPair<QString, SqlTableModel*>> kinder = {
+        {QStringLiteral("Malz"), bh.modelMalzschuettung()},
+        {QStringLiteral("Hopfen"), bh.modelHopfengaben()},
+        {QStringLiteral("WZ"), bh.modelWeitereZutatenGaben()},
+        {QStringLiteral("Maischplan"), bh.modelMaischplan()}};
+    for (const auto& k : kinder)
+    {
+        SqlTableModel* m = k.second;
+        const int colSud = m->fieldIndex(QStringLiteral("SudID"));
+        const int colDel = m->fieldIndex(QStringLiteral("deleted"));
+        int i = 0;
+        for (int r = 0; r < m->rowCount(); ++r)
+        {
+            if (m->data(r, colSud) != sudId || m->data(r, colDel).toBool())
+                continue;
+            for (int c = 0; c < m->columnCount(); ++c)
+                s.insert(QStringLiteral("%1[%2].%3").arg(k.first).arg(i).arg(m->fieldName(c)), m->data(r, c));
+            ++i;
+        }
+    }
+    return s;
+}
+
+static QStringList snapshotDiff(const QMap<QString, QVariant>& a, const QMap<QString, QVariant>& b)
+{
+    QStringList d;
+    for (auto it = a.constBegin(); it != a.constEnd(); ++it)
+    {
+        const QVariant vb = b.value(it.key());
+        bool okA, okB;
+        const double x = it.value().toDouble(&okA), y = vb.toDouble(&okB);
+        bool gleich = (okA && okB) ? std::fabs(x - y) <= 1e-9 * std::max(1.0, std::max(std::fabs(x), std::fabs(y)))
+                                   : it.value() == vb;
+        if (!gleich)
+            d << QStringLiteral("%1: %2 -> %3").arg(it.key(), it.value().toString(), vb.toString());
+    }
+    return d;
+}
+
+static int umkehrTest(Brauhelfer& bh, QTextStream& out)
+{
+    struct Feld { int col; const char* name; double delta; int hopfenArt; };
+    const QList<Feld> felder = {
+        {ModelSud::ColIBU, "IBU (Bittereanteil)", 1.0, 1},
+        {ModelSud::ColIBU, "IBU (Gewichtsanteil)", 1.0, 0},
+        {ModelSud::ColSW, "SW", 0.5, -2},
+        {ModelSud::ColMenge, "Menge", 2.0, -2},
+        {ModelSud::ColSudhausausbeute, "Sudhausausbeute", 2.0, -2},
+        {ModelSud::ColVerdampfungsrate, "Verdampfungsrate", 1.0, -2},
+        {ModelSud::ColKochdauer, "Kochdauer", 10.0, -2},
+        {ModelSud::ColNachisomerisierungszeit, "Nachisomerisierungszeit", 5.0, -2},
+        {ModelSud::ColFaktorHauptguss, "FaktorHauptguss", 0.5, -2},
+        {ModelSud::ColhighGravityFaktor, "highGravityFaktor", 10.0, -2},
+        {ModelSud::ColVergaerungsgrad, "Vergaerungsgrad", 2.0, -2},
+        {ModelSud::ColCO2, "CO2", 0.5, -2}};
+    int fehler = 0;
+    for (int row = 0; row < bh.modelSud()->rowCount(); ++row)
+    {
+        ModelSud* sud = bh.modelSud();
+        const QString name = sud->data(row, ModelSud::ColSudname).toString();
+        sud->setData(row, ModelSud::ColStatus, static_cast<int>(Brauhelfer::SudStatus::Rezept));
+        for (const Feld& f : felder)
+        {
+            if (f.hopfenArt != -2)
+                sud->setData(row, ModelSud::ColberechnungsArtHopfen, f.hopfenArt);
+            const QMap<QString, QVariant> vorher = sudSnapshot(bh, row);
+            const double v0 = sud->data(row, f.col).toDouble();
+            sud->setData(row, f.col, v0 + f.delta);
+            sud->setData(row, f.col, v0);
+            const QStringList exakt = snapshotDiff(vorher, sudSnapshot(bh, row));
+            // wie in der GUI: Ruecksetzen auf den angezeigten (gerundeten) Wert
+            const int dez = (f.col == ModelSud::ColIBU || f.col == ModelSud::ColKochdauer || f.col == ModelSud::ColNachisomerisierungszeit
+                             || f.col == ModelSud::ColhighGravityFaktor || f.col == ModelSud::ColVergaerungsgrad) ? 0 : 1;
+            const double angezeigt = std::round(v0 * std::pow(10, dez)) / std::pow(10, dez);
+            QString hinweis;
+            if (angezeigt != v0)
+                hinweis = QStringLiteral(" (gespeichert %1, angezeigt %2)").arg(v0, 0, 'g', 12).arg(angezeigt);
+            if (!exakt.isEmpty())
+            {
+                ++fehler;
+                out << "NICHT UMKEHRBAR  " << name << " / " << f.name << hinweis << ": " << exakt.size() << " Feld(er)\n";
+                for (const QString& z : exakt.mid(0, 8))
+                    out << "      " << z << "\n";
+            }
+            else if (!hinweis.isEmpty())
+            {
+                out << "ok, aber Anzeige gerundet  " << name << " / " << f.name << hinweis << "\n";
+            }
+        }
+    }
+    out << (fehler == 0 ? QStringLiteral("Umkehrtest: alle exakt umkehrbar\n") : QStringLiteral("Umkehrtest: %1 nicht umkehrbar\n").arg(fehler));
+    return fehler;
 }
 
 static QJsonArray dumpModel(SqlTableModel* model)
@@ -99,6 +305,32 @@ int main(int argc, char *argv[])
             err << "Datenbankversion " << bh.databaseVersion() << " != unterstuetzt "
                 << bh.databaseVersionSupported() << " (zuerst in der App aktualisieren).\n";
             return 1;
+        }
+
+        if (args.contains(QStringLiteral("--umkehrtest")) && !save)
+        {
+            QTextStream out(stdout);
+            int fehler = umkehrTest(bh, out);
+            out.flush();
+            bh.discard();
+            bh.disconnectDatabase();
+            return fehler == 0 ? 0 : 3;
+        }
+
+        if (args.contains(QStringLiteral("--rundlauf-hopfen")))
+        {
+            if (save)
+            {
+                err << "--rundlauf-hopfen nicht zusammen mit --save.\n";
+                return 2;
+            }
+            QTextStream out(stdout);
+            int fehler = rundlaufHopfen(bh, out);
+            out << (fehler == 0 ? "Rundlauftest Hopfen: alle OK\n" : QStringLiteral("Rundlauftest Hopfen: %1 Fehler\n").arg(fehler));
+            out.flush();
+            bh.discard();
+            bh.disconnectDatabase();
+            return fehler == 0 ? 0 : 3;
         }
 
         if (recalc)

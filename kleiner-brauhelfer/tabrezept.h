@@ -107,6 +107,7 @@ private:
     Ui::TabRezept *ui;
     SudObject *mSud;
     QGraphicsItem *mGlasSvg;
+    QString mTooltipBittere;
     QByteArray mDefaultSplitterState;
     QByteArray mDefaultSplitterMaischenState;
     QByteArray mDefaultSplitterKochenState;

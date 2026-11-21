@@ -58,9 +58,15 @@ Phase 2 (Konzept, `doc/claude/konzept-erweiterung.md`) ist abgeschlossen. Der An
 - Commit: `CLAUDE.md`, `doc/claude/*`, Regressionswerkzeug.
 
 ### MVP-1 – ohne Datenbankänderung
-**S01 Bittere aus Hopfenmengen (ext-s01)**
-- Virtuelles Feld `ModelSud::ColIbuBerechnet` = Σ `IBUAnteil` der Hopfengaben des Suds (`modelsud.cpp` `dataExt`, Muster der vorhandenen Virtualfelder).
-- Anzeige in `TabRezept` neben der Soll-IBU, im Modus „Keine“ mit Abweichungshinweis und Tooltip.
+**S01 Bittere aus Hopfenmengen (ext-s01)** – *geändert auf Wunsch des Anwenders (2026-11-21): ein einziges IBU-Feld, kein zweites Anzeigefeld; Hopfen-Teil von S08 vorgezogen*
+- Neue Berechnungsart `BerechnungsartHopfen::IBUBerechnet = 2` in der bestehenden Spalte (keine DB-Änderung): Mengen fest, `Sud.IBU` = Σ `IBUAnteil` (`ModelSud::updateIbuBerechnet`).
+- Dropdown mit eindeutigen Namen und Tooltips je Eintrag; IBU-Feld im neuen Modus schreibgeschützt.
+- Rundlauf Ziel-IBU ↔ berechnet ist exakt (`kbh-dump --rundlauf-hopfen`).
+
+**S01b Bugfix Umkehrbarkeit (ext-s01b)** – *neu nach Anwendertest S01*
+- Hopfen-Prozent nur bei Benutzereingabe auf 0–100 % begrenzen, nicht bei internen Neuberechnungen (`ModelHopfengaben::setDataExt` ColProzent).
+- Anzeige-Rundung: Bittere mit 1 Nachkommastelle; exakter Wert im Tooltip; Eingabe des unveränderten (gerundeten) Anzeigewerts schreibt nicht.
+- Ist-Feld-Überschreibung durch SW/Menge-Kaskade ⇒ bleibt S12.
 
 **S02 Stammwürze aus Malzmengen (ext-s02)**
 - `BierCalc`: Umkehrfunktion Schüttung → SW (Fixpunkt, `fachmodelle.md` §2) plus Extrakt aus weiteren Zutaten.
@@ -92,7 +98,7 @@ Eine gebündelte, idempotente Migration in `database_update.cpp` mit `ALTER TABL
 - Nachziehen: Spalten-Enums, `defaultValues`, `copyValues`, `sudKopieren`/`sudTeilen`, `removeRows`, `createTables/setTables`, `SudObject`-Proxy, Export/Import kbh (neue Tabelle), Template-DB `data/kb_daten.sqlite`, Versionsnummer (`kleiner-brauhelfer-core.pro`, `CMakeLists.txt`).
 - Test: alte DB (2009) öffnen → Backup + Migration, Regressionsvergleich identisch; kbh-Export in die Altversion importierbar.
 
-**S08 Hopfen-Modi mit eindeutigen Namen (ext-s08)**
+**S08 Hopfen-Modi mit eindeutigen Namen (ext-s08)** – *in S01 erledigt; S08 entfällt bzw. nur Nacharbeiten*
 - Dropdown (Bestandswerte −1/0/1 + neu 2): „Ziel-IBU → Mengen nach Gewichtsanteil“, „Ziel-IBU → Mengen nach IBU-Anteil“, „Mengen fest, Bittere nicht berechnen“, **„Mengen fest → Bittere berechnen“ (neu)**, jeweils mit Tooltip.
 - Prüfen, ob der heutige Wechsel des Modus (`modelhopfengaben.cpp` `onSudDataChanged`, `colUpdate`) Werte verändert. Falls ja, das Verhalten an die Invariante anpassen.
 

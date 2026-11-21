@@ -54,3 +54,66 @@ den neu eingetragenen Daten (Hefe/Preis, Schnellgärprobe, Nachgärung, Bewertun
 Erkenntnis für spätere Stufen: Für "Export hell" rechnet das Programm bei 62 % Ausbeute eine
 Schüttung von 4,31 kg, Kling gibt 4,64 kg an. Genau diesen Fall behandelt später der
 Malz-Modus "Malzmengen fest -> SW berechnen" (S09).
+
+
+--------------------------------------------------------------------------------
+S01 – Bittere aus Hopfenmengen berechnen (Tag ext-s01)              Stand 2026-11-21
+--------------------------------------------------------------------------------
+Neue Funktion: Hopfenberechnung "Mengen fest -> Bittere berechnen".
+Die Hopfenmengen in g werden eingegeben (z. B. beim Nachbrauen eines Rezepts), und das
+Programm berechnet daraus die Bittere (IBU). Es gibt weiterhin nur ein Bittere-Feld.
+
+Bedienung (Reiter Rezept -> Kochen, Auswahl "Hopfenberechnung"):
+  - Mengen fest, Bittere nicht berechnen      (bisher "ignorieren")
+  - Ziel-Bittere -> Mengen nach Gewichtsanteil (bisher "Gewicht")
+  - Ziel-Bittere -> Mengen nach Bittereanteil  (bisher "Bittere")
+  - Mengen fest -> Bittere berechnen           (NEU)
+  Mit der Maus über das Auswahlfeld bzw. über die einzelnen Einträge fahren, dann erscheint
+  jeweils eine Erklärung.
+  Im neuen Modus ist das Bittere-Feld (Reiter Rezept, oben) schreibgeschützt und zeigt den
+  berechneten Wert. Der Tooltip weist darauf hin, dass der Wert berechnet ist. Die Prozentfelder
+  der Hopfengaben sind ausgeblendet, das Diagramm zeigt die Mengen in g.
+  Die Bittere rechnet automatisch neu, sobald sich Menge, Alpha, Kochzeit der Gabe, Zeitpunkt,
+  Stammwürze, Würzemenge, Kochdauer oder Nachisomerisierungszeit ändern.
+
+Umschalten:
+  - Zwischen "Ziel-Bittere ..." und "Mengen fest -> Bittere berechnen" verändert ein Wechsel
+    keine Werte. Wer z. B. im neuen Modus Mengen einträgt und dann auf "Ziel-Bittere" zurück-
+    schaltet, behält dieselben Mengen. Eine neue Eingabe im Ziel-Modus rechnet wie gewohnt.
+  - Wechsel von "Bittere nicht berechnen" auf "Bittere berechnen": Hier ersetzt die berechnete
+    Bittere den vorher eingetragenen Wert. Das ist gewollt und mit "Rückgängig" umkehrbar.
+  - Bestehende Rezepte behalten ihren Modus und rechnen unverändert.
+  - Ältere Programmversionen (2.6.5) zeigen bei solchen Suden "ignorieren": Die Mengen bleiben,
+    die Bittere zeigt den zuletzt berechneten Wert.
+
+Technik: kein Datenbank-Update nötig (neuer Wert 2 in der vorhandenen Spalte
+berechnungsArtHopfen). Geändert: Core (brauhelfer.h, modelsud, modelhopfengaben, brauhelfer.cpp
+für "Sud teilen"), Oberfläche (tabrezept, wdghopfengabe, charthopfen, Datenbank-Bereinigung).
+
+Test:
+  - Regressionsvergleich: alle bestehenden Sude unverändert ("Keine Abweichungen").
+  - Neuer automatischer Rundlauftest (kbh-dump --rundlauf-hopfen) für alle 5 Testsude:
+    Wechsel berechnet -> Gewicht/Bittere -> Neuberechnung -> berechnet ergibt identische
+    Mengen und Bittere (Abweichung im Bereich 1e-16, also Rechengenauigkeit). Bei Menge +10 %
+    steigt die Bittere.
+  - Manueller Test in der App: siehe Checkliste beim Commit.
+
+Hinweis aus dem Test: Die aus Klings Mengen berechnete Bittere weicht von seinen Angaben ab
+(Export hell: 37,7 statt 24 EBU; Hefeweizen: 26,7 statt 18 EBU). Ursachen sind vermutlich
+das Rechenmodell (Tinseth inkl. Zuschläge +10 % Pellets/+10 % Kochgabe im Programm gegenüber
+älteren EBU-Tabellen) und die Gabezeit 80 min. Das ist keine Fehlfunktion, aber beim
+Nachbrauen alter Rezepte zu beachten.
+Übersetzungen (translations/*.ts) sind für die neuen Texte noch nicht nachgezogen.
+
+Befund aus dem Anwendertest (Bittere 19 -> 20 -> 19 ergibt andere Mengen) und neuer
+Umkehrtest (kbh-dump --umkehrtest: Wert ändern und exakt zurücksetzen). Ursachen, alle schon
+vor S01 im Programm vorhanden:
+  1. Die Anzeige rundet (Bittere ganzzahlig, Ausbeute/Faktoren 1 Nachkommastelle), gespeichert
+     ist der exakte Wert. Die Eingabe des angezeigten Werts überschreibt den exakten.
+     Rückgängig (Strg+Z) stellt den exakten Wert wieder her.          -> Bugfix S01b
+  2. Hopfenanteile über 100 % (Soll-Bittere passt nicht zu den Mengen) werden bei der nächsten
+     Bittere-Eingabe auf 100 % gekappt, die Hopfenmenge sinkt dauerhaft. -> Bugfix S01b
+  3. Eine Änderung von Stammwürze oder Menge im Status Rezept überschreibt eingetragene
+     Braudaten (SW Kochbeginn/-ende/Anstellen, Würzemengen, Jungbier) mit Sollwerten.
+                                                                      -> Lösung in S12
+     Bis dahin: Braudaten erst eintragen, wenn Stammwürze und Menge feststehen.

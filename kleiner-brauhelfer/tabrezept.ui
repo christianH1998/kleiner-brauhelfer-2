@@ -1464,21 +1464,26 @@ p, li { white-space: pre-wrap; }
           <item row="0" column="1">
            <widget class="ComboBox" name="cbBerechnungsartHopfen">
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Hier wird die Art der &lt;span style=&quot; font-weight:600;&quot;&gt;Hopfenberechnung&lt;/span&gt; gewählt. Dieses Popup taucht auf, wenn ein &lt;span style=&quot; font-weight:600;&quot;&gt;Rezept importiert&lt;/span&gt; wurde, das nicht den Vorgaben der Anlage im Kleinen Brauhelfer entspricht. Die ist meist der Fall, wenn die Hopfenverteilung nicht 100% entspricht. Mit den Formeln zur Auswahl passt der Kleine Brauhelfer diese Inkonsistenzen an.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Ignorieren&lt;/span&gt; bedeutet, es wird keine Hopfenberechnung durchgeführt. Die Mengen können frei eingestellt werden, die &lt;span style=&quot; font-weight:600;&quot;&gt;Sollbittere&lt;/span&gt; wird &lt;span style=&quot; font-weight:600;&quot;&gt;ignoriert&lt;/span&gt;.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Gewicht&lt;/span&gt; bedeutet, der Prozentwert entspricht dem prozentualen &lt;span style=&quot; font-weight:600;&quot;&gt;Gewichtsanteil&lt;/span&gt; der gesamt benötigten Menge Hopfen. Die Alpha-Werte werden nicht berücksichtigt.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;IBU&lt;/span&gt; bedeutet, der Prozentwert entspricht dem &lt;span style=&quot; font-weight:600;&quot;&gt;IBU-Anteil &lt;/span&gt;der Sollbittere je Hopfensorte. Diese Berechnungsart wird empfohlen, weil Hopfensorten mit verschiedenen Alpha-Werten sich besser austauschen lassen. (Hintergrund ist, dass Hopfensorten nach Erntejahr in ihren Werten an Alphasäure schwanken.)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Hier wird gewählt, &lt;span style=&quot; font-weight:600;&quot;&gt;was vorgegeben und was berechnet&lt;/span&gt; wird: die Bittere (IBU) oder die Hopfenmengen.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Mengen fest, Bittere nicht berechnen&lt;/span&gt;: Die Mengen werden frei eingegeben, die Bittere ist ein reiner Eingabewert und wird nicht berechnet.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Ziel-Bittere → Mengen nach Gewichtsanteil&lt;/span&gt;: Die Bittere wird vorgegeben, je Gabe der Anteil am Gesamtgewicht in %. Die Mengen werden berechnet.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Ziel-Bittere → Mengen nach Bittereanteil&lt;/span&gt;: Die Bittere wird vorgegeben, je Gabe der Anteil an der Bittere in %. Die Mengen werden berechnet. Empfohlen, weil sich Hopfen mit anderem Alphawert so direkt austauschen lässt.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Mengen fest → Bittere berechnen&lt;/span&gt;: Die Mengen in g werden eingegeben (z. B. Rezept nachbrauen), die Bittere wird aus Menge, Alpha, Kochzeit, Stammwürze und Würzemenge berechnet.&lt;/p&gt;&lt;p&gt;Das &lt;span style=&quot; font-weight:600;&quot;&gt;Umschalten&lt;/span&gt; zwischen den Ziel-Bittere-Modi und „Mengen fest → Bittere berechnen“ verändert keine Werte. Erst eine Eingabe im neuen Modus rechnet wie gewohnt nach. Beim Wechsel von „Bittere nicht berechnen“ auf „Bittere berechnen“ ersetzt die berechnete Bittere den eingegebenen Wert.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <item>
              <property name="text">
-              <string>ignorieren</string>
+              <string>Mengen fest, Bittere nicht berechnen</string>
              </property>
             </item>
             <item>
              <property name="text">
-              <string>Gewicht</string>
+              <string>Ziel-Bittere → Mengen nach Gewichtsanteil</string>
              </property>
             </item>
             <item>
              <property name="text">
-              <string>Bittere</string>
+              <string>Ziel-Bittere → Mengen nach Bittereanteil</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Mengen fest → Bittere berechnen</string>
              </property>
             </item>
            </widget>
@@ -1486,7 +1491,7 @@ p, li { white-space: pre-wrap; }
           <item row="0" column="0">
            <widget class="QLabel" name="label_41">
             <property name="text">
-             <string>Prozentanteil entspricht</string>
+             <string>Hopfenberechnung</string>
             </property>
            </widget>
           </item>

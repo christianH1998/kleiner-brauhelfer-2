@@ -390,7 +390,7 @@ int Brauhelfer::sudTeilen(int sudId, const QString& name1, const QString &name2,
         if (modelHopfengaben()->data(row, ModelHopfengaben::ColSudID).toInt() == sudId2)
         {
             double ausbeute = modelHopfengaben()->data(row, ModelHopfengaben::ColAusbeute).toDouble();
-            if (berechnungsArtHopfen == BerechnungsartHopfen::Keine || (berechnungsArtHopfen == BerechnungsartHopfen::IBU && ausbeute == 0.0))
+            if (berechnungsArtHopfen == BerechnungsartHopfen::Keine || berechnungsArtHopfen == BerechnungsartHopfen::IBUBerechnet || (berechnungsArtHopfen == BerechnungsartHopfen::IBU && ausbeute == 0.0))
             {
                 QModelIndex idx = modelHopfengaben()->index(row, ModelHopfengaben::Colerg_Menge);
                 modelHopfengaben()->setData(idx, idx.data().toDouble() * factor);
@@ -415,7 +415,7 @@ int Brauhelfer::sudTeilen(int sudId, const QString& name1, const QString &name2,
         if (modelHopfengaben()->data(row, ModelHopfengaben::ColSudID).toInt() == sudId)
         {
             double ausbeute = modelHopfengaben()->data(row, ModelHopfengaben::ColAusbeute).toDouble();
-            if (berechnungsArtHopfen == BerechnungsartHopfen::Keine || (berechnungsArtHopfen == BerechnungsartHopfen::IBU && ausbeute == 0.0))
+            if (berechnungsArtHopfen == BerechnungsartHopfen::Keine || berechnungsArtHopfen == BerechnungsartHopfen::IBUBerechnet || (berechnungsArtHopfen == BerechnungsartHopfen::IBU && ausbeute == 0.0))
             {
                 QModelIndex idx = modelHopfengaben()->index(row, ModelHopfengaben::Colerg_Menge);
                 modelHopfengaben()->setData(idx, idx.data().toDouble() * factor);
