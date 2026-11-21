@@ -1,0 +1,140 @@
+● Phase 2 ist fertig: Ich habe den Code erneut geprüft, recherchiert und das Konzept dokumentiert. Geändert wurden nur Dokumentationsdateien, keine Programmdateien, nichts an Datenbank oder Build, kein Commit. Implementiert ist nichts. Die Formeln habe ich in einem
+  Skript außerhalb des Projekts nachgerechnet.
+
+  Wichtigste Lücke vorab: Das Buch von Kling konnte ich online nicht einsehen. Deine Richtwerte für Hauptguss/Nachguss sind deshalb als „nicht geprüft“ markiert. Die Ausbeute-Norm (MEBAK) war nicht erreichbar, und die Tinseth-Originalseite ist abgeschaltet; dafür gibt
+  es nur Sekundärquellen.
+
+  1. Wichtigste fachliche Erkenntnisse
+
+  - Das Programm nennt eine andere Größe „Sudhausausbeute“ als die Fachliteratur.
+    - Der Wert, mit dem das Rezept geplant wird, bezieht sich auf die Würzemenge beim Anstellen im Gärbehälter. Fachlich ist das die „effektive Ausbeute“.
+    - Die klassische Sudhausausbeute bezieht sich auf die heiße Würze am Kochende, mit Korrekturfaktor 0,96.
+    - Die vorhandene Mittelwertbildung in den Ausrüstungseinstellungen verwendet richtigerweise die effektive Ausbeute.
+    - Folge: Importierte Rezepte (z. B. aus MaischeMalzundMehr), die die klassische Sudhausausbeute angeben, ergeben eine zu niedrige Schüttung.
+  - Eingetragene Messwerte können überschrieben werden. Solange ein Sud noch im Status „Rezept“ ist, füllt das Programm die Ist-Felder mit Sollwerten. Wenn man danach z. B. die Stammwürze ändert, werden bereits eingetragene Messwerte ersetzt. Ob ein Wert gemessen oder
+    nur vorbelegt ist, lässt sich nicht erkennen.
+  - Das Extraktpotential der Malze wird gespeichert, aber nirgends verwendet.
+  - Alkohol wird an vier Stellen mit unterschiedlicher Bedeutung angezeigt.
+    - Der Wert „Alkohol nach der Gärung“ verwendet je nach Einstellung die Schnellgärprobe (also die Endvergärung) oder den Restextrakt des Jungbiers bei der Abfüllung.
+    - Das erklärt die widersprüchlichen Werte, die du beobachtet hast.
+  - Whirlpool-Hopfengaben bekommen vermutlich zu wenig Bittere. Die Formel zieht die Wartezeit nach Kochende vom bereits abgeschwächten Zeitwert ab, statt sie vorher abzuziehen.
+    - Beispiel: 10 Minuten nach Kochende ergibt die heutige Formel 2,2 IBU, eine fachlich plausiblere Variante 11,1 IBU.
+    - Das ist meine eigene Ableitung. Ändern würde ich das nur als neue, wählbare Option.
+  - Mehrere Konstanten im Code haben keine belegte Herkunft: die Hopfenzuschläge (×1,1), die Faktoren für Kohlensäure und Alkohol aus Zucker (0,468 bzw. 0,488) und der Faktor für die Nachisomerisierung.
+  - Geprüft und bestätigt:
+    - Die Dichteformel stimmt mit dem Hobbybrauer-Kompendium überein (1,04838 bei 12 °P).
+    - Die Tinseth-Formel ist korrekt umgesetzt.
+    - Die Umrechnung des Volumens auf 20 °C entspricht dem Faktor 0,96.
+    - Die Rückrechnung „Stammwürze aus Malzmengen“ funktioniert. Beispiel: 4,5 kg, 20 L, 65 % ergeben 13,85 °P; die Gegenprobe ergibt wieder genau 4,5 kg.
+
+  2.–3. Gesamtkonzept und Bedienung
+
+  - Getrennte Berechnungsmodi für Malz, Hopfen und Wasser, dazu eine optionale Schnellwahl „Rezept nachbauen (Mengen fest)“ bzw. „Rezept planen (Zielwerte)“.
+  - Die bisherige Berechnung bleibt jeweils die Voreinstellung. Bestehende Rezepte rechnen dadurch exakt wie heute.
+  - Jeder Wert wird als eingegeben, berechnet oder gemessen gekennzeichnet.
+  - Ein Moduswechsel übernimmt die aktuell berechneten Werte als neue Eingaben, sodass nichts verloren geht.
+
+  4. Berechnungsmodelle und Voraussetzungen
+
+  - Malz, feste Mengen: Die Stammwürze wird aus Schüttung, Ausbeute und Würzemenge zurückgerechnet. Technisches Risiko: Beim Ändern einer einzelnen Malzmenge können sich die Mengen schleichend verschieben, weil die Prozentanteile gegen die alte Gesamtschüttung
+    gerechnet werden.
+  - Hopfen: Die Gesamt-IBU ergibt sich als Summe der IBU-Anteile der einzelnen Gaben. Ein neuer Modus „Mengen fest, IBU berechnet“ lässt sich als zusätzlicher Wert in der vorhandenen Datenbankspalte speichern, ohne Schemaänderung.
+  - Wasser: Vorgeschlagen ist eine nachvollziehbare Verlustkette. Die vorhandenen Anlagenfelder decken das weitgehend ab: der Korrekturwert für Wasser entspricht etwa dem Totraum, der Korrekturwert für die Menge den Verlusten nach Kochende. Die Wasseraufnahme des
+    Trebers ist heute fest mit 0,96 L/kg eingebaut. Die Nachguss-Menge je kg dient nur zur Plausibilitätsprüfung, weil sie sich aus Gesamtwasser minus Hauptguss ergibt.
+
+  5. Brauprotokoll
+
+  - Eine neue Tabelle Messwerte, in der jede Messung eine eigene Zeile ist.
+    - Ein fehlender Messwert ist dann einfach keine Zeile, nie eine Null.
+    - Zu jeder Messung wird der Sollwert zum Zeitpunkt der Erfassung mitgespeichert, damit die Historie stabil bleibt.
+    - Mehrere Messungen und spätere Korrekturen sind möglich.
+  - Messwerte werden zusätzlich in die vorhandenen Ist-Felder des Suds geschrieben. So funktionieren alle bestehenden Berechnungen, Diagramme und Ausdrucke weiter.
+  - Ein Schutz verhindert, dass Rezeptänderungen solche gemessenen Werte überschreiben.
+  - Die Bedienung erfolgt über einen eigenen Dialog mit Checkliste (Soll, Ist, Abweichung).
+
+  6. Anlagenkalibrierung
+
+  - Aufbauend auf der vorhandenen Mittelwertbildung über die letzten Sude.
+  - Neu dazu:
+    - Gültigkeitsregeln: Pflichtmessungen vorhanden, Werte plausibel.
+    - Median statt einfachem Mittel und Kennzeichnung von Ausreißern.
+    - Übernahme in die Anlage nur per Knopf mit Vorschau, optional mit Verlauf.
+  - Ein Sud kopiert Ausbeute und Verdampfungsrate beim Anlegen. Eine Kalibrierung verändert deshalb keine bestehenden Rezepte.
+  - Die Korrekturwerte der Anlage werden dagegen bei jeder Anzeige frisch gelesen. Änderungen daran wirken auch auf alte Sude und sollten mit einem Hinweis verbunden sein.
+
+  7. Abfüllung und Alkohol
+
+  - Abfüllart auswählbar:
+    - Zucker für die gesamte Biermenge
+    - Zucker je Flasche
+    - Speise
+    - Spunden
+    - Zwangskarbonisierung im Fass (neu: nur Druckberechnung, kein Zucker, kein zusätzlicher Alkohol)
+  - Alkohol: Zwei zentrale, eindeutig beschriftete Werte, auf die alle Programmteile zugreifen: „Jungbier“ und „fertiges Bier (erwartet)“. Der bisher gespeicherte Alkoholwert bleibt für die Historie erhalten.
+  - Zuckerfaktor und Flaschengröße sind heute für das ganze Programm gleich, nicht je Sud. Das ist eine offene Entscheidung.
+
+  8. Statistiken und Diagramme
+
+  - Sofort mit vorhandenen Daten möglich, wenig Aufwand: Verlauf der Ausbeute, Soll/Ist-Vergleich von Stammwürze und Mengen, Verdampfungsrate. Dafür reicht es, die Auswahlliste der Brauübersicht zu ergänzen.
+  - Erst mit Brauprotokoll möglich: Verluste je Brauschritt, Wasseraufnahme des Trebers, Totraum.
+  - Kein Python empfohlen. Das vorhandene Diagramm-Paket (QCustomPlot 2.1.1) deckt alle Vorschläge ab. Python würde den Installer und den Build für Windows, Linux und macOS deutlich verkomplizieren. Für eigene Auswertungen schlage ich stattdessen optional einen
+    CSV-Export vor.
+
+  9. Risiken und Datenbankänderungen
+
+  - Eine gebündelte Migration auf Version 2010, ausschließlich mit neuen Spalten und neuen Tabellen: Berechnungsart Malz, Abfüllart, ggf. Zuckerart, Treberaufnahme der Anlage, Tabelle Messwerte, optional ein Kalibrierverlauf.
+  - Ältere Programmversionen können eine 2010-Datenbank nicht mehr öffnen. Beim Update legt das Programm automatisch ein Backup an.
+  - Exportierte Sude (kbh-Format) lassen sich weiterhin in ältere Versionen importieren. Die neuen Informationen gehen dabei verloren.
+  - Größte technische Risiken:
+    - die verketteten Neuberechnungen beim Setzen von Werten (Verschiebungen oder Endlosschleifen möglich)
+    - das Überschreiben von Messwerten durch Sollwerte
+    - es gibt keine automatisierten Tests
+
+  10.–11. MVP und Reihenfolge
+
+  MVP-1, ohne Datenbankänderung:
+  - Gesamt-IBU aus den Hopfengaben anzeigen
+  - Stammwürze aus Malzmengen berechnen, mit Knopf zum Übernehmen
+  - Alkoholwerte vereinheitlichen
+  - Werte als eingegeben/berechnet kennzeichnen
+  - Statistik-Reihen ergänzen
+
+  MVP-2, mit Migration 2010: Brauprotokoll sowie die festen Modi für Malz und Hopfen.
+
+  Danach: Kalibrierung, Abfüllart, Wasser-Verlustkette, dann weitere Diagramme.
+
+  Vorher: Build-Umgebung einrichten und eine Vergleichsbasis schaffen, d. h. die berechneten Ergebnisse einer Referenz-Datenbank vor und nach jeder Änderung vergleichen.
+
+  12. Dateien
+
+  In doc/claude/:
+  - neu konzept-erweiterung.md: Gesamtkonzept, Datenbank, Priorisierung, Risiken, offene Entscheidungen
+  - neu fachmodelle.md: Formeln mit Einheiten, Quellen mit Kennzeichnung, Rechenbeispiele, Prüfszenarien
+  - ergänzt berechnungen.md: verifizierte Befunde aus Phase 2
+  - ergänzt erweiterung-rezepteingabe.md: Hinweis, dass das Konzept sie ersetzt
+
+  Zusätzlich habe ich in CLAUDE.md (Projektordner, nicht in doc/claude/) die Liste der Dokumentationsdateien um die beiden neuen Dateien ergänzt. Das geht über die vereinbarten Grenzen hinaus; falls du das nicht möchtest, nehme ich es zurück.
+
+  13. Entscheidungen, die du treffen musst
+
+  1. Datenbank-Migration 2010: ja oder nein, und in welchem Umfang?
+  2. Zuerst MVP-1 ohne Datenbankänderung umsetzen?
+  3. Brauprotokoll als eigener Dialog (meine Empfehlung) oder im Reiter „Braudaten“?
+  4. Den Planungswert in der Oberfläche als „effektive Ausbeute“ beschriften?
+  5. Hopfen-Modus 2 als zusätzlicher Wert in der vorhandenen Spalte?
+  6. Whirlpool-Variante und Berücksichtigung des Malzpotentials gewünscht?
+  7. Zuckerart und Flaschengröße je Sud statt für das ganze Programm?
+  8. Kannst du das Kapitel Hauptguss/Nachguss von Kling (und ggf. eine Fachquelle zur Ausbeute) bereitstellen?
+  9. Kein Python in der App, stattdessen optional CSV-Export – einverstanden?
+
+  Quellen:
+  - Hobbybrauer-Kompendium: Sudhausausbeute
+  - MaischeMalzundMehr: Sudhausausbeute-Rechner
+  - BeerSmith: Hop Utilization Models Compared
+  - Grainfather: Calculation IBU
+  - alchemyoverlord: mIBU / SMPH
+  - Brewer's Friend: Priming Calculator
+  - MEBAK K-410.01.002
+  - Brewfather Issue 1371
+  - alleantworten.de: Wann Nachguss?
+  - eBay-Produktseite zu Kling, „Bier selbst gebraut“ (nur bibliografische Angaben)

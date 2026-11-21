@@ -1,0 +1,44 @@
+Ich habe die Analyse abgeschlossen und die Dokumentation erstellt. Geändert wurde nur Neues: CLAUDE.md und doc/claude/. Am Programmcode, an der Datenbank und am Build hat sich nichts geändert, und es gibt keinen Commit.
+
+  Architektur
+
+  - Zwei Teile: kleiner-brauhelfer-core enthält Datenbank, Datenmodelle, Berechnungen sowie Import und Export und hat keine Oberfläche. kleiner-brauhelfer ist die Qt-6-Oberfläche.
+  - Rezepte und Sude stehen in derselben Tabelle Sud. Ein Rezept ist einfach ein Sud mit Status = 0. Malz, Hopfen, Hefe und weitere Zutaten liegen in eigenen Tabellen und sind über SudID verknüpft.
+  - Rohstoffe werden nur über ihren Namen zugeordnet. Es gibt keine festen Verknüpfungen (Foreign Keys) in der SQLite-Datenbank. Die Datenbank-Version ist 2009.
+  - Fast alle Berechnungen laufen zentral in ModelSud::update(). Die eigentlichen Formeln stehen in BierCalc. Viele Werte werden nicht gespeichert, sondern beim Lesen berechnet (z. B. Alkohol, Restextrakt, pH, Karbonisierung).
+  - Änderungen bleiben im Speicher, bis gespeichert wird. Dann wird alles in einem Schritt in die Datenbank geschrieben.
+
+  Relevant für die geplante Rezepteingabe
+
+  - Das Programm rechnet vom Ziel aus: Man gibt Stammwürze, Bittere (IBU), Menge, Sudhausausbeute und Prozentanteile ein, daraus werden die Mengen berechnet. Ein fertiges Rezept liefert dagegen feste Mengen.
+  - Vorhandene Brücken:
+    - Hopfen-Berechnungsart „Keine“ hält Hopfenmengen fest. So machen es alle Importer.
+    - Malz lässt sich in kg eingeben; die Funktion „Sudhausausbeute anpassen“ rechnet dann passend zurück.
+  - Beste Vorlage: Die bestehenden Importer (ImportExport::importBeerXml / importMaischeMalzundMehr) legen ein komplettes Rezept per Programm an. Danach zeigen Rezept-Tab, Diagramme und Spickzettel alles automatisch an.
+  - Was fehlt:
+    - eine Gesamt-IBU aus festen Hopfenmengen (es gibt nur den Anteil je Hopfengabe)
+    - eine Stammwürze aus fester Schüttung und Sudhausausbeute
+
+  Besonderheiten und Risiken
+  - Bei gebrauten Suden wird nicht mehr neu gerechnet.
+  - Jede Änderung am Datenbankschema bringt viel Arbeit mit sich: Migration, Versionsnummer an zwei Stellen, Spaltenreihenfolge, Vorlage-Datenbank, Import/Export. Ältere Programmversionen können die Datenbank danach nicht mehr öffnen. Am besten vermeiden.
+  - Es gibt keine automatisierten Tests.
+  - Zwei Build-Systeme: qmake wird in der CI verwendet, neue Dateien müssen in der .pro eingetragen werden. CMake findet sie automatisch.
+  - Auf deinem Rechner habe ich keine Qt-Installation gefunden, nur Visual Studio 14.0. Ein lokaler Build ist deshalb vermutlich noch nicht möglich.
+  - Zwei Auffälligkeiten im bestehenden Code, nicht geändert:
+    - Beim Löschen eines Suds bleiben dessen Einträge zur Wasseraufbereitung zurück.
+    - Ein möglicher Faktor-1000-Fehler beim BeerXML-Import von Nicht-Malz-Zutaten (als unsicher markiert).
+
+  Erstellte Dateien
+
+  - CLAUDE.md: Einstieg mit Architektur, wichtigen Code-Stellen, Build, deinen Arbeitsregeln und Fallstricken.
+  - doc/claude/datenmodell.md: Tabellen und Modelle, Einheiten, wie Speichern funktioniert, Checkliste für Datenbank-Migrationen.
+  - doc/claude/berechnungen.md: Ablauf der Berechnungen, berechnete Felder, Logik der Zutatengaben, Übersicht der BierCalc-Funktionen.
+  - doc/claude/gui.md: Tabs, Bindung der Oberfläche an den Sud, Rückgängig-Funktion, Dialoge, Übersetzungen.
+  - doc/claude/erweiterung-rezepteingabe.md: was sich wiederverwenden lässt, Lücken, mögliche Einstiegspunkte, Risiken, offene Fragen.
+
+  Empfehlung für den nächsten Schritt
+
+  1. Build-Umgebung einrichten: Qt 6.5 oder neuer (inkl. WebEngine) und ein aktuelles Visual Studio 2022. Dann einmal unverändert bauen und mit einer Kopie deiner Datenbank starten.
+  2. Grundsatzfrage klären: Sollen feste Mengen führen (Rezept exakt nachbauen) oder die Zielwerte (auf deine Anlage umrechnen)?
+  3. Danach die Rezepteingabe planen. Mein Vorschlag ist ein eigener Dialog im Menü „Anlegen“ nach dem Vorbild der Importer. Das kommt ohne Datenbankänderung aus, und die bestehende Rechenlogik bleibt unangetastet.

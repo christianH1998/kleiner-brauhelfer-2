@@ -1,0 +1,2 @@
+Build Befehl: 	.\build_win64.cmd C:\Qt\6.11.0\msvc2022_64\bin
+Ort Exe: 	.\build-win64\bin\kleiner-brauhelfer-2.exe
