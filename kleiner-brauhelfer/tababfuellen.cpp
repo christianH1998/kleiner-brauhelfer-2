@@ -243,7 +243,7 @@ void TabAbfuellen::updateValues()
     ui->tbGruenschlauchzeitpunkt->setVisible(ui->cbSchnellgaerprobeAktiv->isChecked());
     ui->lblGruenschlauchzeitpunkt->setVisible(ui->cbSchnellgaerprobeAktiv->isChecked());
     ui->lblGruenschlauchzeitpunktEinheit->setVisible(ui->cbSchnellgaerprobeAktiv->isChecked());
-    ui->tbAlkoholGaerung->setValue(BierCalc::alkohol(mSud->getSWIst(), mSud->getSREIst()));
+    ui->tbAlkoholGaerung->setValue(mSud->getAlkoholJungbier());
 
     ui->cbSpunden->setChecked(mSud->getSpunden());
     ui->tbJungbierVerlust->setValue(mSud->getWuerzemengeAnstellen() - mSud->getJungbiermengeAbfuellen());

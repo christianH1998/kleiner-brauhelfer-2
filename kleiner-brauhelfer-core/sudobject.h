@@ -136,6 +136,7 @@ class LIB_EXPORT SudObject : public QObject
     Q_PROPERTY_SUD_READONLY(double, PhMaische, toDouble())
     Q_PROPERTY_SUD_READONLY(double, PhMaischeSoll, toDouble())
     Q_PROPERTY_SUD_READONLY(int, BewertungMittel, toInt())
+    Q_PROPERTY_SUD_READONLY(double, AlkoholJungbier, toDouble())
 
     // tables
     Q_PROPERTY(ProxyModel* modelMaischplan READ modelMaischplan CONSTANT)

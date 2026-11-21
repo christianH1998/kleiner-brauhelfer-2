@@ -127,6 +127,7 @@ public:
         ColPhMaische,
         ColPhMaischeSoll,
         ColBewertungMittel,
+        ColAlkoholJungbier,
         // number of columns
         NumCols
     };

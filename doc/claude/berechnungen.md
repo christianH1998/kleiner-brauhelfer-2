@@ -60,7 +60,7 @@ Kindmodelle reagieren auf `ModelSud::dataChanged`:
 - `update()` schreibt `erg_S_Gesamt`, Wasser, `erg_Farbe`, `erg_Sudhausausbeute`, `erg_EffektiveAusbeute` nur bei Status Rezept; `erg_Alkohol`, `erg_Preis` bis Status Gebraut. Virtuelle Felder sind immer live.
 - Live aus Ausrüstung gelesen: `KorrekturMenge`, `KorrekturWasser`, `KorrekturFarbe`, `Kosten`, `Typ`; kopiert beim Anlagenwechsel: `Sudhausausbeute`, `Verdampfungsrate`.
 - Ist-Felder (Würzemengen, SW Kochbeginn/-ende/Anstellen, SRE) werden im Status Rezept per Kaskade mit Sollwerten überschrieben.
-- Alkohol an 4 Stellen mit unterschiedlicher Bedeutung; `SREIst` hängt von `SchnellgaerprobeAktiv` ab (`konzept-erweiterung.md` §7.2).
+- Alkohol (ab ext-s03 vereinheitlicht): `AlkoholSoll` = Rezept (Soll); `AlkoholJungbier` (virtuell) = alkohol(SWIst, SWJungbier), vor Nachgärung; `erg_Alkohol` = fertiges Bier (erwartet) = alkohol(SWIst, SREIst, Zucker)/(1+Verdünnung/Menge), gespeichert bis Status Gebraut. `SREIst` = Schnellgärprobe falls aktiv, sonst SWJungbier. Gärverlauf-`Alc` = Stand je Messung. UI: alle drei in `TabAbfuellen` Gruppe „Vergärung“.
 - `VerschneidungAbfuellen` = „Wasser für Zuckerlösung“ (`TabAbfuellen::tbWassserZuckerloesung`); verdünnt Alkohol nur bei Zucker > 0.
 - `ZuckerFaktor`, `FlaschenGroesse` global in INI-Gruppe `TabAbfuellen`.
 - Whirlpool-Gaben (Zeit < 0): t_eff = 0,549·t_Nachiso + Zeit (`modelhopfengaben.cpp` `ColAusbeute`) – siehe `fachmodelle.md` §4.

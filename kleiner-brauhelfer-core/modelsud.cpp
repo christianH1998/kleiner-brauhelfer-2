@@ -59,6 +59,7 @@ ModelSud::ModelSud(Brauhelfer *bh, const QSqlDatabase &db) :
     mVirtualField.append(QStringLiteral("PhMaische"));
     mVirtualField.append(QStringLiteral("PhMaischeSoll"));
     mVirtualField.append(QStringLiteral("BewertungMittel"));
+    mVirtualField.append(QStringLiteral("AlkoholJungbier"));
     connect(this, &SqlTableModel::modelReset, this, &ModelSud::onModelReset);
     connect(this, &SqlTableModel::rowsInserted, this, &ModelSud::onModelReset);
     connect(this, &SqlTableModel::rowsRemoved, this, &ModelSud::onModelReset);
@@ -260,6 +261,14 @@ QVariant ModelSud::dataExt(const QModelIndex &idx) const
     case ColSWIst:
     {
         return data(idx.row(), ColSWAnstellen).toDouble() + swWzGaerungCurrent[idx.row()];
+    }
+    case ColAlkoholJungbier:
+    {
+        // Alkohol des Jungbiers beim Abfüllen (gemessener Restextrakt Jungbier), ohne
+        // Nachgärung. Erwarteter Wert des fertigen Biers = erg_Alkohol (ext-s03).
+        double sw = data(idx.row(), ColSWIst).toDouble();
+        double sre = data(idx.row(), ColSWJungbier).toDouble();
+        return BierCalc::alkohol(sw, sre);
     }
     case ColSREErwartet:
     {

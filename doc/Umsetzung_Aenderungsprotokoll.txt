@@ -149,3 +149,58 @@ Test:
   - Umkehrtest (kbh-dump --umkehrtest) für 12 Rezeptfelder x 5 Sude: alles exakt umkehrbar.
     Übrig bleiben nur die als "BEKANNT (S12)" markierten Fälle (Stammwürze/Menge überschreibt
     Braudaten) und die erwartete Angleichung bei der ersten Eingabe nach einem Moduswechsel.
+
+
+--------------------------------------------------------------------------------
+S02 – entfällt                                                       2026-11-21
+--------------------------------------------------------------------------------
+Die geplante Zwischenlösung "SW aus Malzmengen übernehmen" (Knopf) entfällt auf Wunsch. Der
+Malz-Modus "Malzmengen fest -> SW berechnen" kommt vollständig in S09, also nach der
+Datenbank-Migration S07, weil der Modus eine neue Spalte braucht.
+
+
+--------------------------------------------------------------------------------
+S03 – Alkohol eindeutig anzeigen (Tag ext-s03)                      Stand 2026-11-21
+--------------------------------------------------------------------------------
+Problem bisher: Im Reiter Abfüllen gab es zwei Felder "Alkoholgehalt" mit verschiedenen
+Werten. Eines stand in der Gruppe "Karbonisierung" und verschwand beim Spunden. Das obere
+bedeutete je nach Schnellgärprobe einmal "endvergoren" und einmal "Jungbier".
+
+Jetzt gibt es überall drei eindeutig benannte Werte:
+  - Alkohol Rezept (Soll)            geplanter Wert aus Stammwürze und Vergärungsgrad
+                                      (Reiter Rezept und Abfüllen)
+  - Alkohol Jungbier                 beim Abfüllen, VOR der Nachgärung (aus Stammwürze und
+                                      Restextrakt Jungbier)
+  - Alkohol fertiges Bier (erwartet) nach der Nachgärung: Restextrakt der Schnellgärprobe
+                                      (falls aktiv, sonst Jungbier), dazu Zucker für die
+                                      Karbonisierung und Verdünnung durch die Zuckerlösung.
+                                      Beim Spunden zählt kein Zucker.
+Im Reiter Abfüllen stehen alle drei untereinander in der Gruppe "Vergärung" und sind immer
+sichtbar. Die Tooltips erklären, was jeweils berücksichtigt wird.
+Zucker gesamt oder je Flasche: Für den Alkohol macht das keinen Unterschied (gleiche Menge je
+Liter). Den Wert "fertiges Bier" gibt es daher immer, auch bei Zucker je Flasche. Die Auswahl
+der Abfüllart folgt in S13.
+
+Weitere Stellen:
+  - Brauübersicht: Auswahl "Alkohol fertiges Bier" (bisher "Alkohol"), neu "Alkohol Jungbier",
+    Mittelwert heißt "Alkohol fertiges Bier (⌀)".
+  - Tabellen-Spaltenköpfe: "Alkohol fertig" bzw. "Alkohol Jungbier".
+  - Ausdrucke/Vorlagen: unverändert (Spalten Ist = fertiges Bier, Soll = Rezept). Neu verfügbar
+    ist der Platzhalter {{Sud.AlkoholJungbier}} für eigene Vorlagen.
+  - Der gespeicherte Wert (erg_Alkohol) bleibt unverändert und wird wie bisher bis zum Abfüllen
+    berechnet. Alte Sude behalten ihren Wert.
+
+Technik: kein Datenbank-Update. Neues berechnetes Feld ModelSud::AlkoholJungbier (nicht
+gespeichert). Geändert: modelsud, sudobject, tababfuellen (.ui/.cpp), tabrezept.ui,
+dlgbrauuebersicht, mainwindow (Spaltenköpfe), templatetags.
+
+Test: Regressionsvergleich ohne Abweichungen (nur neues Feld AlkoholJungbier), Rundlauftest
+Hopfen OK, Umkehrtest OK. Plausibilität Testsude: Export hell Jungbier 4,9 % -> fertig 5,2 %
+(Restextrakt 3,9 -> 3,3 °P + 44 g Zucker), Rezept 5,0 %.
+Hinweis: Bei Suden im Status Rezept zeigt "fertiges Bier" einen Wert aus den vorbelegten
+Braudaten. Aussagekräftig ist er erst nach dem Brauen.
+Rückmeldung aus dem Anwendertest: Es fehlt eine klare Auswahl der Karbonisierungsmethode, bei
+der nur die passenden Felder sichtbar sind. Das kommt in S13 (Abfüllart, braucht die
+Datenbank-Migration S07).
+Neuer Wunsch: eine leicht erreichbare Gesamtübersicht des fertigen Biers ("was ist wirklich
+in der Flasche", per Knopf). Eingeplant als S13b, direkt nach der Abfüllart.

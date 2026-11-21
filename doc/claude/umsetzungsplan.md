@@ -68,12 +68,12 @@ Phase 2 (Konzept, `doc/claude/konzept-erweiterung.md`) ist abgeschlossen. Der An
 - Anzeige-Rundung: Bittere mit 1 Nachkommastelle; `DoubleSpinBoxSud`/`SpinBoxSud` merken beim Fokuserhalt den exakten Wert und schreiben ihn zurück, wenn der Anzeigewert vom Fokusbeginn wieder erreicht wird (statt Tooltip-Lösung).
 - Ist-Feld-Überschreibung durch SW/Menge-Kaskade ⇒ bleibt S12.
 
-**S02 Stammwürze aus Malzmengen (ext-s02)**
+**S02 Stammwürze aus Malzmengen (ext-s02)** – *entfällt (Anwender 2026-11-21): Knopf-Zwischenlösung gestrichen, Malz-Modus vollständig in S09*
 - `BierCalc`: Umkehrfunktion Schüttung → SW (Fixpunkt, `fachmodelle.md` §2) plus Extrakt aus weiteren Zutaten.
 - Virtuelles Feld `SWAusMalzmengen` und Knopf „SW aus Malzmengen übernehmen“ (Muster `on_btnShaAnpassen_clicked`).
 
-**S03 Alkohol vereinheitlichen (ext-s03)**
-- Virtuelle Felder `AlkoholJungbier` und `AlkoholErwartet` (Konzept §7.3).
+**S03 Alkohol vereinheitlichen (ext-s03)** – *umgesetzt mit Abweichung: kein eigenes `AlkoholErwartet`, weil `erg_Alkohol` bereits exakt diese Formel ist (SREIst = Schnellgärprobe/Jungbier, Zucker außer bei Spunden, Verdünnung)*
+- Virtuelles Feld `AlkoholJungbier`; `erg_Alkohol` = „fertiges Bier (erwartet)“ (Konzept §7.3).
 - Beschriftungen „Rezept (Soll)“ / „Jungbier“ / „fertiges Bier (erwartet)“ in `tababfuellen`, `tabrezept`, `templatetags.cpp` + Templates, Brauübersicht. `erg_Alkohol` bleibt unverändert gespeichert.
 
 **S04 Kennzeichnung und Tooltips (ext-s04)**
@@ -121,7 +121,19 @@ Eine gebündelte, idempotente Migration in `database_update.cpp` mit `ALTER TABL
 **S13 Abfüllart + Zucker fest in g/L (ext-s13)**
 - Dropdown Abfüllart (Konzept §7.1 inkl. Zwangskarbonisierung).
 - Bei „Zucker je Flasche“: fester Wert `ZuckerProLiter` (vorbelegt aus dem Rechner aus S06) → g je 0,5 L / 0,33 L.
-- Zwei Alkoholwerte je Abfüllart (Jungbier / nach Nachgärung).
+- Zwei Alkoholwerte je Abfüllart (Jungbier / nach Nachgärung). *(Anzeige bereits in S03 vereinheitlicht.)*
+- **Anforderung Anwender (2026-11-21, nach Test S03):** Auswahl „Karbonisierung“/Abfüllart im Reiter Abfüllen; **je Variante nur die relevanten Felder sichtbar** (heute sind alle Eingabefelder gleichzeitig sichtbar). Entwurf:
+  - Flasche – Zucker in den ganzen Sud: Temperatur, Süßkraft, Wasser Zuckerlösung → Zucker gesamt + je Flasche
+  - Flasche – Zucker je Flasche: Ziel-CO2, Restextrakt, Temperatur → g/L fest (Rechner S06 als Vorschlag) → g je 0,5 L / 0,33 L
+  - Flasche – Speise: verfügbare Speise → Speise gesamt/je Flasche, ggf. Restzucker
+  - Spunden: Temperatur → Spundungsdruck, Grünschlauchzeitpunkt
+  - Fass – Zwangskarbonisierung: Temperatur → Druck für Ziel-CO2, kein Zucker
+  - Altsude: Abfüllart aus `Spunden`/`Speisemenge` ableiten (−1 = abgeleitet), Rechnung unverändert; Wechsel blendet nur um, ändert keine Werte. Offene Rückfrage an Anwender in S13: weitere Varianten (Fass mit Zucker, Speise + Zucker)?
+
+**S13b Gesamtübersicht fertiges Bier (ext-s13b)** – *neu, Anwender 2026-11-21*
+- Kompakte Übersicht „Was ist wirklich in der Flasche“: abgefüllte Menge (gemessen) und Anzahl Flaschen, Alkohol fertiges Bier, Stammwürze Ist, Restextrakt und Vergärungsgrad, Bittere und Farbe Ist, CO2 (Ziel/Ist), Abfüllart mit Zucker bzw. Speise je Flasche, Hefe, Brau-, Abfüll- und Reifedatum, Bewertung. Dazu je Wert die Herkunft (gemessen/berechnet) und der Sollwert zum Vergleich.
+- Leicht erreichbar: Knopf im Reiter Abfüllen, in der Toolbar bzw. Sudauswahl (ausgewählter Sud) und im Menü. Als Dialog mit Drucken/PDF über die vorhandene Mustache-Vorlagentechnik (`templatetags.cpp`, `data/Webview/`). Vorhandene `zusammenfassung.html` als Ausgangspunkt prüfen.
+- Platz nach S13, weil die Übersicht Abfüllart (S13) und gemessene Mengen (S12) braucht. Eine erste Version mit vorhandenen Daten wäre auch früher möglich.
 
 ### Stufe 2+
 - **S14 Kalibrierung (ext-s14)**: `DlgAusruestung` mit Gültigkeitsregeln, Median, Ausreißern, Vorschau und Historie, ergänzt um die Treberaufnahme aus Messwerten.

@@ -408,7 +408,7 @@
       <item row="8" column="3">
        <widget class="QLabel" name="label_16">
         <property name="text">
-         <string>Alkoholgehalt (⌀)</string>
+         <string>Alkohol fertiges Bier (⌀)</string>
         </property>
        </widget>
       </item>

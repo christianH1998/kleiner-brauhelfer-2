@@ -2546,7 +2546,7 @@ p, li { white-space: pre-wrap; }
            <item row="15" column="0">
             <widget class="QLabel" name="label_63">
              <property name="text">
-              <string>Alkoholgehalt</string>
+              <string>Alkohol Rezept (Soll)</string>
              </property>
             </widget>
            </item>

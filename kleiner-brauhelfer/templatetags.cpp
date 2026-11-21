@@ -176,6 +176,7 @@ void TemplateTags::erstelleTagListe(QVariantMap &ctx, int sudRow)
         ctxSud[QStringLiteral("Abfuelldatum")] = locale.toString(bh->modelSud()->data(sudRow, ModelSud::ColAbfuelldatum).toDate(), QLocale::ShortFormat);
         ctxSud[QStringLiteral("ReifungStart")] = locale.toString(bh->modelSud()->data(sudRow, ModelSud::ColReifungStart).toDate(), QLocale::ShortFormat);
         ctxSud[QStringLiteral("Alkohol")] = locale.toString(bh->modelSud()->data(sudRow, ModelSud::Colerg_Alkohol).toDouble(), 'f', 1);
+        ctxSud[QStringLiteral("AlkoholJungbier")] = locale.toString(bh->modelSud()->data(sudRow, ModelSud::ColAlkoholJungbier).toDouble(), 'f', 1);
         ctxSud[QStringLiteral("EVG")] = QString::number(bh->modelSud()->data(sudRow, ModelSud::ColsEVG).toInt());
         ctxSud[QStringLiteral("SHA")] = locale.toString(bh->modelSud()->data(sudRow, ModelSud::Colerg_Sudhausausbeute).toDouble(), 'f', 1);
         ctxSud[QStringLiteral("effSHA")] = locale.toString(bh->modelSud()->data(sudRow, ModelSud::Colerg_EffektiveAusbeute).toDouble(), 'f', 1);
