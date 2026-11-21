@@ -5,9 +5,20 @@
 SpinBoxSud::SpinBoxSud(QWidget *parent) :
     SpinBox(parent),
     mSud(nullptr),
-    mCol(-1)
+    mCol(-1),
+    mAnzeigeBeiFokus(0)
 {
     connect(this, &SpinBox::valueChanged, this, &SpinBoxSud::on_valueChanged);
+}
+
+void SpinBoxSud::focusInEvent(QFocusEvent *event)
+{
+    if (mSud && mCol >= 0)
+    {
+        mWertBeiFokus = mSud->getValue(mCol);
+        mAnzeigeBeiFokus = value();
+    }
+    SpinBox::focusInEvent(event);
 }
 
 void SpinBoxSud::setColumn(SudObject *sud, int col)
@@ -29,5 +40,12 @@ void SpinBoxSud::updateValue()
 void SpinBoxSud::on_valueChanged(int val)
 {
     if (hasFocus())
-        gUndoStack->push(new SetModelDataCommand(mSud->bh()->modelSud(), mSud->row(), mCol, val));
+    {
+        // Zurueck auf den beim Fokuserhalt angezeigten (gerundeten) Wert -> exakten Wert
+        // wiederherstellen, sonst ginge die nicht angezeigte Genauigkeit verloren.
+        if (val == mAnzeigeBeiFokus && mWertBeiFokus.isValid())
+            gUndoStack->push(new SetModelDataCommand(mSud->bh()->modelSud(), mSud->row(), mCol, mWertBeiFokus));
+        else
+            gUndoStack->push(new SetModelDataCommand(mSud->bh()->modelSud(), mSud->row(), mCol, val));
+    }
 }

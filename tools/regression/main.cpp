@@ -181,8 +181,13 @@ static QStringList snapshotDiff(const QMap<QString, QVariant>& a, const QMap<QSt
         const QVariant vb = b.value(it.key());
         bool okA, okB;
         const double x = it.value().toDouble(&okA), y = vb.toDouble(&okB);
-        bool gleich = (okA && okB) ? std::fabs(x - y) <= 1e-9 * std::max(1.0, std::max(std::fabs(x), std::fabs(y)))
-                                   : it.value() == vb;
+        bool gleich;
+        if (okA && okB && (!std::isfinite(x) || !std::isfinite(y)))
+            gleich = (std::isnan(x) && std::isnan(y)) || x == y;
+        else if (okA && okB)
+            gleich = std::fabs(x - y) <= 1e-9 * std::max(1.0, std::max(std::fabs(x), std::fabs(y)));
+        else
+            gleich = it.value() == vb;
         if (!gleich)
             d << QStringLiteral("%1: %2 -> %3").arg(it.key(), it.value().toString(), vb.toString());
     }
@@ -215,11 +220,25 @@ static int umkehrTest(Brauhelfer& bh, QTextStream& out)
         {
             if (f.hopfenArt != -2)
                 sud->setData(row, ModelSud::ColberechnungsArtHopfen, f.hopfenArt);
-            const QMap<QString, QVariant> vorher = sudSnapshot(bh, row);
             const double v0 = sud->data(row, f.col).toDouble();
+            // 1. Durchgang: "erste Eingabe gleicht an" (inkonsistente Vorlage wird stimmig) - erwartet
+            const QMap<QString, QVariant> start = sudSnapshot(bh, row);
+            sud->setData(row, f.col, v0 + f.delta);
+            sud->setData(row, f.col, v0);
+            const QMap<QString, QVariant> vorher = sudSnapshot(bh, row);
+            const int angeglichen = snapshotDiff(start, vorher).size();
+            // 2. Durchgang: jetzt muss das Aendern/Zuruecksetzen exakt umkehrbar sein
             sud->setData(row, f.col, v0 + f.delta);
             sud->setData(row, f.col, v0);
             const QStringList exakt = snapshotDiff(vorher, sudSnapshot(bh, row));
+            if (angeglichen > 0 && exakt.isEmpty())
+            {
+                if (f.col == ModelSud::ColSW || f.col == ModelSud::ColMenge)
+                    out << "BEKANNT (S12): Braudaten mit Sollwerten ueberschrieben  ";
+                else
+                    out << "erste Eingabe glich an (erwartet), danach umkehrbar  ";
+                out << name << " / " << f.name << ": " << angeglichen << " Feld(er)\n";
+            }
             // wie in der GUI: Ruecksetzen auf den angezeigten (gerundeten) Wert
             const int dez = (f.col == ModelSud::ColIBU || f.col == ModelSud::ColKochdauer || f.col == ModelSud::ColNachisomerisierungszeit
                              || f.col == ModelSud::ColhighGravityFaktor || f.col == ModelSud::ColVergaerungsgrad) ? 0 : 1;

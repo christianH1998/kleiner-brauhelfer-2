@@ -65,7 +65,7 @@ Phase 2 (Konzept, `doc/claude/konzept-erweiterung.md`) ist abgeschlossen. Der An
 
 **S01b Bugfix Umkehrbarkeit (ext-s01b)** – *neu nach Anwendertest S01*
 - Hopfen-Prozent nur bei Benutzereingabe auf 0–100 % begrenzen, nicht bei internen Neuberechnungen (`ModelHopfengaben::setDataExt` ColProzent).
-- Anzeige-Rundung: Bittere mit 1 Nachkommastelle; exakter Wert im Tooltip; Eingabe des unveränderten (gerundeten) Anzeigewerts schreibt nicht.
+- Anzeige-Rundung: Bittere mit 1 Nachkommastelle; `DoubleSpinBoxSud`/`SpinBoxSud` merken beim Fokuserhalt den exakten Wert und schreiben ihn zurück, wenn der Anzeigewert vom Fokusbeginn wieder erreicht wird (statt Tooltip-Lösung).
 - Ist-Feld-Überschreibung durch SW/Menge-Kaskade ⇒ bleibt S12.
 
 **S02 Stammwürze aus Malzmengen (ext-s02)**

@@ -20,7 +20,7 @@ Optionen:
 - `kbh-dump … --no-recalc` (ohne `update()`)
 - `kbh-dump … --save`: **nur für Testdaten**. Arbeitet direkt auf der Datenbank ohne Kopie und speichert die Neuberechnung. Damit lässt die App-Logik roh eingefügte Testsude selbst durchrechnen.
 - `kbh-dump <db> x --rundlauf-hopfen`: Statt eines Dumps läuft der Rundlauftest der Hopfen-Berechnungsarten (ab ext-s01). Jeder Sud wird dafür im Speicher in den Status Rezept gesetzt. Dann wird geprüft, ob „Mengen fest → IBU berechnet“ ↔ Gewicht/IBU (inkl. Neuberechnung im Zielmodus) Mengen und IBU exakt erhält. Außerdem muss bei Menge +10 % die IBU steigen. Exit-Code 0 bedeutet OK.
-- `kbh-dump <db> x --umkehrtest`: Diagnose (ab ext-s01). Jedes wichtige Rezeptfeld wird geändert und exakt zurückgesetzt, danach werden alle Sud- und Zutatenwerte verglichen. Zusätzlich meldet der Test, wo die Anzeige rundet. Befunde stehen in `doc/Umsetzung_Aenderungsprotokoll.txt` (S01). Ein Exit-Code ≠ 0 ist bis S01b/S12 zu erwarten.
+- `kbh-dump <db> x --umkehrtest`: Diagnose (ab ext-s01). Jedes wichtige Rezeptfeld wird geändert und exakt zurückgesetzt, danach werden alle Sud- und Zutatenwerte verglichen. Zusätzlich meldet der Test, wo die Anzeige rundet. Jedes Feld wird zweimal geändert: Der erste Durchgang darf angleichen, der zweite muss exakt umkehrbar sein. Die Meldung „BEKANNT (S12)“ steht für das Überschreiben von Braudaten durch SW/Menge. Seit ext-s01b ist der Exit-Code 0.
 - `compare.py --tol 1e-9 --ignore Feld1,Feld2`. `Gespeichert` wird immer ignoriert, weil `update()` das Feld bei jedem Lauf auf „jetzt“ setzt.
 
 ## Hinweise

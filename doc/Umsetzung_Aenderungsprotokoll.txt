@@ -117,3 +117,35 @@ vor S01 im Programm vorhanden:
      Braudaten (SW Kochbeginn/-ende/Anstellen, Würzemengen, Jungbier) mit Sollwerten.
                                                                       -> Lösung in S12
      Bis dahin: Braudaten erst eintragen, wenn Stammwürze und Menge feststehen.
+
+
+--------------------------------------------------------------------------------
+S01b – Bugfix: Werte gehen beim Hin- und Zurückstellen verloren (Tag ext-s01b)  2026-11-21
+--------------------------------------------------------------------------------
+Behoben:
+  1. Zurück auf den alten Wert stellt wieder exakt den alten Zustand her.
+     Beispiel: Die Bittere ist mit 19,39 gespeichert und wird angezeigt. Wer auf 20 und wieder
+     zurück auf 19,4 stellt, bekommt wieder exakt 19,39 und dieselben Hopfenmengen. Bisher
+     wurde der gerundete Anzeigewert gespeichert, und die Mengen änderten sich.
+     Gilt für alle Zahlenfelder des Suds (Stammwürze, Menge, Ausbeute, Hauptgussfaktor,
+     Bittere, Kochzeit ...), solange man im Feld bleibt (Pfeiltasten, Mausrad, Tippen).
+     Wer das Feld zwischendurch verlässt, stellt den exakten Wert mit Rückgängig (Strg+Z) wieder her.
+  2. Die Bittere wird mit einer Nachkommastelle angezeigt und eingegeben (bisher ganzzahlig).
+  3. Hopfenmengen gingen verloren, wenn Soll-Bittere und Hopfenmengen nicht zusammenpassten
+     (Anteil > 100 %, z. B. nach Umstellen von "Mengen fest" auf "Ziel-Bittere"). Die nächste
+     Bittere-Eingabe kappte den Anteil auf 100 % und reduzierte die Menge dauerhaft (Hefeweizen:
+     25 g -> 16,9 g). Die Begrenzung auf 0–100 % gilt jetzt nur noch für direkt eingegebene
+     Prozentwerte.
+
+Nicht in dieser Stufe (bewusst): Eine Änderung von Stammwürze oder Menge im Status Rezept
+überschreibt eingetragene Braudaten mit Sollwerten. Die Lösung kommt in S12 (Brauprotokoll).
+
+Technik: keine Datenbankänderung. Geändert: modelhopfengaben.cpp (Begrenzung),
+widgets/doublespinboxsud, widgets/spinboxsud (exakter Wert beim Zurückstellen), tabrezept.ui
+(Bittere-Feld mit Nachkommastelle).
+
+Test:
+  - Regressionsvergleich: keine Abweichungen. Rundlauftest Hopfen: alle OK.
+  - Umkehrtest (kbh-dump --umkehrtest) für 12 Rezeptfelder x 5 Sude: alles exakt umkehrbar.
+    Übrig bleiben nur die als "BEKANNT (S12)" markierten Fälle (Stammwürze/Menge überschreibt
+    Braudaten) und die erwartete Angleichung bei der ersten Eingabe nach einem Moduswechsel.

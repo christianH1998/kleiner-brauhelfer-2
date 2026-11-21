@@ -76,10 +76,16 @@ bool ModelHopfengaben::setDataExt(const QModelIndex &idx, const QVariant &value)
     case ColProzent:
     {
         double fVal = value.toDouble();
-        if (fVal < 0.0)
-            fVal = 0.0;
-        if (fVal > 100.0)
-            fVal = 100.0;
+        // Begrenzung nur fuer neue Eingaben. Interne Neuberechnungen setzen den vorhandenen
+        // Wert erneut (z. B. bei Aenderung der Soll-IBU); ein Anteil > 100 % aus einem
+        // Moduswechsel darf dabei nicht gekappt werden, sonst gehen Hopfenmengen verloren (ext-s01b).
+        if (fVal != data(idx).toDouble())
+        {
+            if (fVal < 0.0)
+                fVal = 0.0;
+            if (fVal > 100.0)
+                fVal = 100.0;
+        }
         if (QSqlTableModel::setData(idx, fVal))
         {
             QVariant sudId = data(idx.row(), ColSudID);
