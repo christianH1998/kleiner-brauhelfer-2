@@ -278,3 +278,33 @@ Wichtig: Die Brauübersicht zeigt grundsätzlich nur abgefüllte und verbrauchte
 schon immer). Gebraute Sude in Gärung erscheinen dort und in der Hefe-Auswertung nicht.
 Testdaten ergänzt: "Hefeweizen (Kling) Nachbrau", abgefüllt, obergärig. Die Hefe-Auswertung
 zeigt damit 2 Hefen. Neue Vergleichsbasis: baseline-ext-s05.json.
+
+
+--------------------------------------------------------------------------------
+S06 – Zuckerrechner je Flasche (Tag ext-s06)                         Stand 2026-11-21
+--------------------------------------------------------------------------------
+Neu im Reiter Abfüllen, Gruppe "Karbonisierung", unter dem benötigten Zucker:
+  - Zucker je Liter Jungbier   (g/L, 2 Nachkommastellen)
+  - je 0,5-L-Flasche           (g, 2 Nachkommastellen)
+  - je 0,33-L-Flasche          (g, 2 Nachkommastellen)
+  Das bisherige Feld "pro Flasche" (eingestellte Flaschengröße) zeigt jetzt ebenfalls
+  2 Nachkommastellen und rechnet exakt. Bisher kam es aus der auf ganze Gramm gerundeten
+  Gesamtmenge.
+So ist auf einen Blick zu sehen, wie viel Zucker in welche Flasche muss. Die Felder erscheinen,
+sobald Zucker nötig ist (nicht beim Spunden und nicht, wenn Speise oder Restextrakt reichen).
+
+Berechnung wie die bestehende Zuckermenge des Programms, nur ohne Rundung: Ziel-CO2 (Reiter
+Rezept), noch vergärbarer Restextrakt (Restextrakt Jungbier gegenüber Schnellgärprobe), das
+bei der "Temperatur für Karbonisierung" bereits gelöste CO2, Süßkraft des Zuckers, abzüglich
+verfügbarer Speise. Dann geteilt durch die Jungbiermenge.
+Eingaben dafür wie bisher: Restextrakt Jungbier (Gruppe Vergärung), Temperatur für
+Karbonisierung und Süßkraft (Gruppe Karbonisierung), Jungbiermenge.
+Noch nicht in dieser Stufe (kommt in S13): Auswahl der Karbonisierungsart (z. B. Zucker in den
+ganzen Sud, Zucker je Flasche mit festem g/L-Wert, Speise, Spunden, Zwangskarbonisierung im Fass).
+Je nach Auswahl sind dann nur die passenden Felder sichtbar. Dafür ist die Datenbank-Migration
+S07 nötig (Anforderung erneut bestätigt am 2026-11-21).
+
+Technik: keine Datenbank- und keine Rechenänderung, nur Anzeige (tababfuellen .ui/.cpp).
+Test: Regressionsvergleich ohne Abweichungen. Plausibilität Testsude: Hefeweizen Nachbrau
+(Ziel 6,5 g/L CO2, 20 °C) 8,7 g/L -> 4,4 g / 2,9 g je Flasche. Export hell nur 2,2 g/L, weil
+noch 0,6 °P Restextrakt nachgären.

@@ -85,7 +85,7 @@ Phase 2 (Konzept, `doc/claude/konzept-erweiterung.md`) ist abgeschlossen. Der An
 - Neue Einträge in `DlgBrauUebersicht::mAuswahlListe`: Ausbeute (eff./klassisch), Soll/Ist SW Anstellen, Soll/Ist Menge, Verdampfungsrate.
 - Hefe-Statistik (nur lesend): je Hefe aus `Hefegaben` die Anzahl Sude, mittlerer scheinbarer EVG, SRE, Gärtemperatur (vorhandene Felder `SWJungbier`, `TemperaturJungbier`, Schnellgärprobe). Als Tabelle oder Chart in der Brauübersicht.
 
-**S06 Zuckerrechner je Flasche (ext-s06)**
+**S06 Zuckerrechner je Flasche (ext-s06)** – *umgesetzt als Anzeige (g/L exakt aus `ZuckerAnteil`/Süßkraft/Jungbiermenge, ×0,5, ×0,33) in Gruppe Karbonisierung; fester g/L-Wert je Sud folgt in S13*
 - In `TabAbfuellen`: Block „Zucker je Flasche“ mit g/L sowie g je 0,5 L und g je 0,33 L.
 - Berechnet aus Ziel-CO2 (`Sud.CO2`), Temperatur vor Abfüllung (`TemperaturJungbier`) und Restextrakt (`SWJungbier` gegen erwarteten Endvergärungsgrad), wiederverwendet aus der bestehenden `ZuckerAnteil`-Rechnung bzw. `BierCalc`. Noch ohne festen g/L-Wert je Sud (folgt in S13).
 
@@ -122,7 +122,7 @@ Eine gebündelte, idempotente Migration in `database_update.cpp` mit `ALTER TABL
 - Dropdown Abfüllart (Konzept §7.1 inkl. Zwangskarbonisierung).
 - Bei „Zucker je Flasche“: fester Wert `ZuckerProLiter` (vorbelegt aus dem Rechner aus S06) → g je 0,5 L / 0,33 L.
 - Zwei Alkoholwerte je Abfüllart (Jungbier / nach Nachgärung). *(Anzeige bereits in S03 vereinheitlicht.)*
-- **Anforderung Anwender (2026-11-21, nach Test S03):** Auswahl „Karbonisierung“/Abfüllart im Reiter Abfüllen; **je Variante nur die relevanten Felder sichtbar** (heute sind alle Eingabefelder gleichzeitig sichtbar). Entwurf:
+- **Anforderung Anwender (2026-11-21, nach Test S03, erneut bestätigt bei S06):** Auswahl „Karbonisierungsart“/Abfüllart im Reiter Abfüllen; **je Variante nur die relevanten Felder sichtbar** (heute sind alle Eingabefelder gleichzeitig sichtbar). Entwurf:
   - Flasche – Zucker in den ganzen Sud: Temperatur, Süßkraft, Wasser Zuckerlösung → Zucker gesamt + je Flasche
   - Flasche – Zucker je Flasche: Ziel-CO2, Restextrakt, Temperatur → g/L fest (Rechner S06 als Vorschlag) → g je 0,5 L / 0,33 L
   - Flasche – Speise: verfügbare Speise → Speise gesamt/je Flasche, ggf. Restzucker

@@ -280,6 +280,20 @@ void TabAbfuellen::updateValues()
     ui->lblWassserZuckerloesung->setVisible(hasZucker);
     ui->tbWassserZuckerloesung->setVisible(hasZucker);
     ui->tbWassserZuckerloesungEinheit->setVisible(hasZucker);
+    // Zucker je Liter und je Standardflasche (ext-s06): exakter Wert statt gerundeter Gesamtmenge
+    double jungbiermenge = mSud->getJungbiermengeAbfuellen();
+    double zuckerProLiter = jungbiermenge > 0.0 ? mSud->getZuckerAnteil() / ui->tbZuckerFaktor->value() / jungbiermenge : 0.0;
+    if (zuckerProLiter < 0.0 || !std::isfinite(zuckerProLiter))
+        zuckerProLiter = 0.0;
+    ui->tbZuckerProLiter->setValue(zuckerProLiter);
+    ui->tbZucker05->setValue(zuckerProLiter * 0.5);
+    ui->tbZucker033->setValue(zuckerProLiter * 0.33);
+    // "pro Flasche" (Flaschengröße) ebenfalls exakt statt aus der gerundeten Gesamtmenge
+    ui->tbZuckerFlasche->setValue(zuckerProLiter * ui->tbFlaschengroesse->value());
+    for (QWidget* wdg : {static_cast<QWidget*>(ui->lblZuckerProLiter), static_cast<QWidget*>(ui->tbZuckerProLiter), static_cast<QWidget*>(ui->lblZuckerProLiterEinheit),
+                         static_cast<QWidget*>(ui->lblZucker05), static_cast<QWidget*>(ui->tbZucker05), static_cast<QWidget*>(ui->lblZucker05Einheit),
+                         static_cast<QWidget*>(ui->lblZucker033), static_cast<QWidget*>(ui->tbZucker033), static_cast<QWidget*>(ui->lblZucker033Einheit)})
+        wdg->setVisible(hasZucker);
     bool hasZuckerLoesung = ui->tbWassserZuckerloesung->value() > 0.0 && hasZucker;
     ui->lblKonzentrationZuckerloesung->setVisible(hasZuckerLoesung);
     ui->tbKonzentrationZuckerloesung->setVisible(hasZuckerLoesung);

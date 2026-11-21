@@ -1423,10 +1423,124 @@
               <bool>true</bool>
              </property>
              <property name="decimals">
-              <number>1</number>
+              <number>2</number>
              </property>
              <property name="maximum">
               <double>99999.899999999994179</double>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="5">
+            <widget class="QLabel" name="lblZuckerProLiter">
+             <property name="text">
+              <string>Zucker je Liter Jungbier</string>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="6">
+            <widget class="DoubleSpinBox" name="tbZuckerProLiter">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Zuckermenge je Liter Jungbier&lt;/span&gt; für die gewünschte Karbonisierung (Zucker je Flasche: Wert × Flascheninhalt in Litern).&lt;/p&gt;&lt;p&gt;Berechnet aus der Ziel-Karbonisierung (CO&lt;sub&gt;2&lt;/sub&gt;, Reiter Rezept), dem noch vergärbaren Restextrakt (Restextrakt Jungbier gegenüber Schnellgärprobe), dem bereits gelösten CO&lt;sub&gt;2&lt;/sub&gt; bei der &lt;span style=&quot; font-weight:600;&quot;&gt;Temperatur für Karbonisierung&lt;/span&gt; und der Süßkraft des Zuckers. Eine verfügbare Speise wird abgezogen.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
+             </property>
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum>
+             </property>
+             <property name="decimals">
+              <number>2</number>
+             </property>
+             <property name="maximum">
+              <double>9999.989999999999782</double>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="7">
+            <widget class="QLabel" name="lblZuckerProLiterEinheit">
+             <property name="text">
+              <string notr="true">g/L</string>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="5">
+            <widget class="QLabel" name="lblZucker05">
+             <property name="text">
+              <string>je 0,5-L-Flasche</string>
+             </property>
+             <property name="indent">
+              <number>9</number>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="6">
+            <widget class="DoubleSpinBox" name="tbZucker05">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Zuckermenge für eine &lt;span style=&quot; font-weight:600;&quot;&gt;0,5-L-Flasche&lt;/span&gt; (Zucker je Liter × 0,5).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
+             </property>
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum>
+             </property>
+             <property name="decimals">
+              <number>2</number>
+             </property>
+             <property name="maximum">
+              <double>9999.899999999999636</double>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="7">
+            <widget class="QLabel" name="lblZucker05Einheit">
+             <property name="text">
+              <string notr="true">g</string>
+             </property>
+            </widget>
+           </item>
+           <item row="8" column="5">
+            <widget class="QLabel" name="lblZucker033">
+             <property name="text">
+              <string>je 0,33-L-Flasche</string>
+             </property>
+             <property name="indent">
+              <number>9</number>
+             </property>
+            </widget>
+           </item>
+           <item row="8" column="6">
+            <widget class="DoubleSpinBox" name="tbZucker033">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Zuckermenge für eine &lt;span style=&quot; font-weight:600;&quot;&gt;0,33-L-Flasche&lt;/span&gt; (Zucker je Liter × 0,33).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
+             </property>
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum>
+             </property>
+             <property name="decimals">
+              <number>2</number>
+             </property>
+             <property name="maximum">
+              <double>9999.899999999999636</double>
+             </property>
+            </widget>
+           </item>
+           <item row="8" column="7">
+            <widget class="QLabel" name="lblZucker033Einheit">
+             <property name="text">
+              <string notr="true">g</string>
              </property>
             </widget>
            </item>
