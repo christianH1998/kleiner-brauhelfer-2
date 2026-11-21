@@ -21,6 +21,8 @@ Desktop-App für Hobbybrauer (Rezepte, Sude, Rohstofflager, Gärverlauf, Bewertu
 - `erweiterung-rezepteingabe.md` – Phase-1-Kurzbewertung Rezepteingabe (ersetzt durch Konzept).
 - `konzept-erweiterung.md` – Phase-2-Konzept: Berechnungsmodi, Brauprotokoll, Kalibrierung, Abfüllung/Alkohol, Statistik, DB-Migration 2010, Priorisierung, offene Entscheidungen.
 - `fachmodelle.md` – Formeln mit Einheiten, Quellen (mit Kennzeichnung geprüft/sekundär/abgeleitet/ungeklärt), Rechenbeispiele, Prüfszenarien.
+- `../Umsetzung_Aenderungsprotokoll.txt` – Anwender-Protokoll je Stufe (Änderungen, neue Features, Bedienung); **nach jeder Stufe ergänzen**.
+- `umsetzungsplan.md` – freigegebener Stufenplan S00–S15 (Entscheidungen des Anwenders, Invarianten, Git-Tags `ext-sNN`).
 
 Nur bei Bedarf lesen; Detailwissen immer im Quellcode verifizieren.
 
@@ -36,8 +38,9 @@ Nur bei Bedarf lesen; Detailwissen immer im Quellcode verifizieren.
 - Kanonisch: **qmake** (`kleiner-brauhelfer-2.pro`, CI `.github/workflows/*.yml`, `build_win64.cmd <qt-bin>`). Alternativ CMake (Glob).
 - Qt ≥ 6.5 (CI: 6.11) inkl. WebEngine, WebChannel, Positioning, Svg, PrintSupport, Network.
 - Neue Dateien: in `.pro` (`SOURCES/HEADERS/FORMS`) **eintragen**; CMake findet sie per Glob automatisch.
-- **Keine automatisierten Tests vorhanden.** Verifikation = Build + manueller Test in der App mit einer **Kopie** der Datenbank.
-- Lokale Umgebung (Stand Analyse): keine Qt-Installation unter `C:\Qt` gefunden, nur VS 14.0 → Build lokal vermutlich noch nicht möglich (**unverifiziert**, vor erstem Build klären).
+- **Keine automatisierten Unit-Tests.** Verifikation = Build + Regressionsvergleich (`tools/regression/`, siehe README dort: `kbh-dump` + `compare.py`, Referenz `build-win64/regression/baseline-*.json`) + manueller Test in der App mit einer **Kopie** der Datenbank (`Testdatenbank/`, nicht committen).
+- Lokale Umgebung (verifiziert 2026-11-21): Qt 6.11 `C:\Qt\6.11.0\msvc2022_64` + VS 2022 Build Tools; `build_win64.cmd C:\Qt\6.11.0\msvc2022_64\bin` baut erfolgreich. Das Skript meldet immer Exit 0 ⇒ Log auf `error` prüfen. Laufende App sperrt die exe (LNK1104).
+- Versionierung: Fork `origin` (christianH1998), Original `upstream`. Je Umsetzungsstufe ein Commit + Tag `ext-sNN` auf `feature-rezept-eingabe` (Plan: `doc/claude/umsetzungsplan.md`).
 
 ## Regeln für zukünftige Arbeit
 - Das bestehende Projekt erweitern, nicht neu entwickeln.

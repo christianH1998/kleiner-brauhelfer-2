@@ -1,0 +1,56 @@
+ÄNDERUNGSPROTOKOLL – Erweiterung kleiner-brauhelfer-2
+==================================================
+
+Kurzübersicht, was je Stufe geändert wurde, welche Funktionen neu sind und wie man sie
+benutzt. Wird mit jeder abgeschlossenen Stufe ergänzt.
+Detailplan: doc/claude/umsetzungsplan.md
+Git: Branch feature-rezept-eingabe, je Stufe ein Tag ext-sNN (Fork: origin, Original: upstream).
+
+Grundregel für alle Stufen: Der bisherige Standardmodus rechnet unverändert. Neue Funktionen
+werden über Modus-Auswahlen mit Erklärung (Tooltip) zugeschaltet. Ein Umschalten des Modus
+verändert keine Werte.
+
+
+--------------------------------------------------------------------------------
+S00 – Grundlage (Tag ext-s00)                                       Stand 2026-11-21
+--------------------------------------------------------------------------------
+Für Anwender sichtbare Änderungen: keine. Das Programm rechnet und sieht aus wie vorher.
+
+Geändert / neu:
+- Build-Umgebung eingerichtet und geprüft: Qt 6.11 (C:\Qt\6.11.0\msvc2022_64) und
+  Visual Studio 2022 Build Tools. Aufruf: build_win64.cmd C:\Qt\6.11.0\msvc2022_64\bin
+  Hinweis: Das Skript meldet immer Erfolg, deshalb im Log nach "error" suchen. Während der
+  Build läuft, muss der kleine-brauhelfer geschlossen sein, weil die exe sonst gesperrt ist.
+- Git: Der eigene Fork ist "origin", das Original ist "upstream". Updates des Originals:
+  git fetch upstream  ->  git merge upstream/master (zuerst in einem eigenen Branch testen).
+- Neues Entwicklerwerkzeug tools/regression/ (gehört nicht zum Programm/Installer):
+    kbh-dump.exe  liest eine Kopie der Datenbank, rechnet alle Sude neu durch und schreibt
+                  alle gespeicherten und berechneten Werte in eine JSON-Datei.
+    compare.py    vergleicht zwei solche Dateien und listet jede Abweichung auf.
+  Damit wird nach jeder Stufe geprüft, dass bestehende Rezepte gleich weiterrechnen.
+- Testdatenbank (Testdatenbank/, wird nicht committet) mit realistischen Daten ergänzt:
+    * Hefen: Braupartners Trockenhefe obergärig/untergärig (Daten von braupartner.de)
+    * Hefegaben für alle Sude
+    * Sud "Export hell (Kling)": untergärig, abgefüllt, mit Gärverlauf, Schnellgärprobe,
+      Nachgärung und Bewertung
+    * Sud "Hefeweizen (Kling)": obergärig, gebraut, Gärung läuft, 10 min Whirlpool
+    * Sud "Weinachtsbier": Gärverlauf, Schnellgärprobe, Nachgärung und Bewertung ergänzt
+  Rezepte nach Klaus Kling, "Bier selbst gebraut" (hobbybrauer.de-Archiv). Messwerte sind
+  plausibel angenommen. Stand vor der Ergänzung: Testdatenbank/kb_daten_vor_testdaten.sqlite
+- Aufgeräumt: aqtinstall.log aus Git entfernt, .gitignore ergänzt (Testdatenbank/, aqtinstall.log).
+- Dokumentation: doc/claude/umsetzungsplan.md (Stufenplan), CLAUDE.md (Build/Test), dieses Protokoll.
+
+Benutzung Regressionsvergleich (Entwickler):
+  1. build_win64.cmd C:\Qt\6.11.0\msvc2022_64\bin
+  2. tools\regression\build.cmd C:\Qt\6.11.0\msvc2022_64\bin
+  3. build-win64\bin\kbh-dump.exe Testdatenbank\kb_daten.sqlite build-win64\regression\nachher.json
+  4. py -3.10 tools\regression\compare.py build-win64\regression\baseline-ext-s00.json build-win64\regression\nachher.json
+     -> "Keine Abweichungen." bedeutet, dass bestehende Rezepte unverändert rechnen.
+
+Test: Zwei Läufe kurz nacheinander liefern identische Ergebnisse, die Originaldatenbank bleibt
+unverändert. Die Abweichungen bei Sud 3, 6 und 7 nach der Testdatenergänzung kommen nur von
+den neu eingetragenen Daten (Hefe/Preis, Schnellgärprobe, Nachgärung, Bewertung).
+
+Erkenntnis für spätere Stufen: Für "Export hell" rechnet das Programm bei 62 % Ausbeute eine
+Schüttung von 4,31 kg, Kling gibt 4,64 kg an. Genau diesen Fall behandelt später der
+Malz-Modus "Malzmengen fest -> SW berechnen" (S09).
