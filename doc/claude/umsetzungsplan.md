@@ -37,6 +37,7 @@ Phase 2 (Konzept, `doc/claude/konzept-erweiterung.md`) ist abgeschlossen. Der An
 | Weitere Statistiken, ggf. Python | S05, S15 |
 | **Neu:** Zucker je Flasche + Rechner, Hefe-Statistik | S06, S13, S05/S15 |
 | **Neu:** Whirlpool/Hopfenseihen-Modell | S11 |
+| **Neu:** Benötigte Topfgröße + Hinweis Brauanlage | S10b |
 | **Neu:** Tooltips/Erklärungen | in jeder UI-Stufe, Basis S04 |
 
 ## Versionierung / GitHub
@@ -109,6 +110,15 @@ Eine gebündelte, idempotente Migration in `database_update.cpp` mit `ALTER TABL
 **S10 Wasser-Modus + Presets (ext-s10)** – *umgesetzt: Modus 1 ohne Korrektur im NG (Korrektur nur in der erwarteten Würzemenge, virtuelles Feld `WuerzemengeKochbeginnErwartet`), Wechsel 0→1 übernimmt NG als `FaktorNachguss`, Warnung ab 0,1 L Abweichung, Preset/NG-Faktor nur im Modus 1 sichtbar, Wasser-Auswahl bei Grainfather/Brauheld ausgeblendet; **Erweiterung (Anwender 2026-11-22):** Auswahl „Berechnung: Planen / Rezept nachbrauen“ links im Rezept, Faktoren HG/NG links (keine Liter-Eingabe), `berechnungsArtWasser = 2` Nachbrauen ⇒ Menge aus Malzmengen + Faktoren (`ModelSud::mengeAusWasser`, lineare Rückwärtskette), SW/IBU berechnet; Menge-Eingabe skaliert Malz (exakt auf die Menge) und Hopfen (Mengenverhältnis); Treberaufnahme (Fallback 0,96) mit Eingabefeld in `DlgAusruestung`; Rundlauftest `--rundlauf-wasser`*
 - `ModelSud::updateWasser`: Modus 1 „Faktoren HG+NG“ ⇒ HG = S·f_HG, NG = S·f_NG; erwartete Würzemenge rückgerechnet (Treberaufnahme aus Anlage, Korrektur) + Warnung bei Abweichung von der Sollmenge. Modus 0 bleibt exakt wie heute. Sondertypen Grainfather/Brauheld bleiben unverändert.
 - UI `TabRezept`: Dropdown Modus, Dropdown Preset (Helles 4,0/3,0, Dunkles 3,0/4,0, Benutzerdefiniert 3,5/3,5), beide Faktoren editierbar. Ein Preset setzt nur die Faktoren; manuelles Ändern behält das Preset bei. Tooltip mit Richtwerten (Kling, ungeprüft).
+
+**S10b Benötigte Topfgröße + Hinweis Brauanlage (ext-s10b)** – *neu, Anwender 2026-11-22; umgesetzt: Felder `tbMaxFluessigkeit`, `tbTopfgroesse` (= max/0,95), `lblWarnungAnlage` in `groupAnlage`; Markierung „Benötigtes Volumen“ jetzt ab 95 %, kein Hinweis bei Volumen 0*
+- **Anforderung:** Im Reiter Rezept rechts (Übersicht, Gruppe „Anlage“) direkt sichtbar die voraussichtlich benötigte Topfgröße anzeigen:
+  - **Maischen:** Hauptguss + Volumen des Malzes (Malzverdrängung `BierCalc::MalzVerdraengung` × Schüttung) – heute schon als „Volumen Maische“ berechnet.
+  - **Kochbeginn:** Würzemenge zu Kochbeginn aus Hauptguss + Nachguss (abzüglich Treberaufnahme bzw. die Soll-Würzemenge zu Kochbeginn, heiß auf 100 °C umgerechnet wie heute `tbVolumenKochen`).
+  - **Angezeigt wird die erwartete maximale Flüssigkeitsmenge** (Entscheidung Anwender 2026-11-22): je Gefäß der größte zu erwartende Wert (Maischebottich: Maische; Sudpfanne: Würze Kochbeginn heiß), bei Ein-Topf-Anlagen der größere der beiden.
+- **Hinweis**, wenn die maximale Flüssigkeitsmenge mehr als **95 % des maximalen Füllvolumens** der Brauanlage beträgt (**5 % Luft** eingeplant, Entscheidung Anwender 2026-11-22; `Ausruestung.Maischebottich_MaxFuellvolumen` / `Sudpfanne_MaxFuellvolumen`): klarer Hinweistext (rot) mit Überschreitung in Litern und Abhilfe (Menge/Faktoren reduzieren, andere Anlage) – heute nur rote Markierung des Zahlenfelds bei > 100 %.
+- Gilt in allen Modi; besonders relevant beim Nachbrauen/Skalieren (S10), wo die Menge aus Malz und Faktoren entsteht. Reine Anzeige: keine DB-Änderung, keine Wertänderung (Invariante).
+- Kochbeginn: im Faktoren-Modus der größere Wert aus Soll (`MengeSollKochbeginn`) und erwarteter Würzemenge (`WuerzemengeKochbeginnErwartet`), sonst Soll.
 
 **S11 Whirlpool/Hopfenseihen-Modell (ext-s11)**
 - Dropdown im Hopfenbereich: „Nachisomerisierung Bestand“ / „Whirlpool (Wartezeit vor Abschwächung)“, umgesetzt als `BierCalc`-Variante (Befund `fachmodelle.md` §4). Wirkt auf `IBUAnteil` und im Ziel-IBU-Modus auf die Mengen.

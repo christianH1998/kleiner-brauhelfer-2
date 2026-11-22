@@ -4084,6 +4084,101 @@ p, li { white-space: pre-wrap; }
              </layout>
             </widget>
            </item>
+           <item row="10" column="0" colspan="5">
+            <widget class="Line" name="lineTopfgroesse">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="11" column="0">
+            <widget class="QLabel" name="lblMaxFluessigkeit">
+             <property name="text">
+              <string>Max. Flüssigkeitsmenge ca.</string>
+             </property>
+            </widget>
+           </item>
+           <item row="11" column="3">
+            <widget class="DoubleSpinBox" name="tbMaxFluessigkeit">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;b&gt;Berechnet:&lt;/b&gt; erwartete &lt;b&gt;maximale Flüssigkeitsmenge&lt;/b&gt; im Topf, der größere Wert aus Maische (Hauptguss + Malzvolumen) und heißer Würze zu Kochbeginn (Haupt- und Nachguss abzüglich Treberaufnahme).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
+             </property>
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum>
+             </property>
+             <property name="showGroupSeparator" stdset="0">
+              <bool>true</bool>
+             </property>
+             <property name="decimals">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <double>99999.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="11" column="4">
+            <widget class="QLabel" name="lblMaxFluessigkeitEinheit">
+             <property name="text">
+              <string notr="true">L</string>
+             </property>
+            </widget>
+           </item>
+           <item row="12" column="0">
+            <widget class="QLabel" name="lblTopfgroesse">
+             <property name="text">
+              <string>Benötigte Topfgröße (5 % Luft)</string>
+             </property>
+            </widget>
+           </item>
+           <item row="12" column="3">
+            <widget class="DoubleSpinBox" name="tbTopfgroesse">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;b&gt;Berechnet:&lt;/b&gt; mindestens benötigte Topfgröße = maximale Flüssigkeitsmenge mit &lt;b&gt;5 % Luft&lt;/b&gt; (Flüssigkeit / 0,95).&lt;/p&gt;&lt;p&gt;Liegt eine Menge über 95 % des nutzbaren Volumens der Brauanlage, erscheint ein Hinweis.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
+             </property>
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum>
+             </property>
+             <property name="showGroupSeparator" stdset="0">
+              <bool>true</bool>
+             </property>
+             <property name="decimals">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <double>99999.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="12" column="4">
+            <widget class="QLabel" name="lblTopfgroesseEinheit">
+             <property name="text">
+              <string notr="true">L</string>
+             </property>
+            </widget>
+           </item>
+           <item row="13" column="0" colspan="5">
+            <widget class="QLabel" name="lblWarnungAnlage">
+             <property name="text">
+              <string notr="true"/>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
           </layout>
          </widget>
         </item>

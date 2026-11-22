@@ -287,6 +287,7 @@ void TabRezept::themeChanged(Qt::ColorScheme theme)
     ui->lblWarnungMaischplanMalz->setPalette(gSettings->paletteErrorLabel);
     ui->lblWarnungPh->setPalette(gSettings->paletteErrorLabel);
     ui->lblWarnungWasser->setPalette(gSettings->paletteErrorLabel);
+    ui->lblWarnungAnlage->setPalette(gSettings->paletteErrorLabel);
 
     while (ui->layoutMalzGaben->count())
         delete ui->layoutMalzGaben->itemAt(0)->widget();
@@ -722,12 +723,40 @@ void TabRezept::updateValues()
         ui->wdgAnlageKorrekturSollmenge->setVisible(ui->tbAnlageKorrekturSollmenge->value() > 0);
         ui->tbAnlageSudhausausbeute->setValue(mSud->getAnlageData(ModelAusruestung::ColSudhausausbeute).toDouble());
         ui->tbAnlageVerdampfung->setValue(mSud->getAnlageData(ModelAusruestung::ColVerdampfungsrate).toDouble());
-        ui->tbAnlageVolumenMaische->setValue(mSud->getAnlageData(ModelAusruestung::ColMaischebottich_MaxFuellvolumen).toDouble());
-        ui->tbVolumenMaische->setValue(mSud->geterg_WHauptguss() + BierCalc::MalzVerdraengung * mSud->geterg_S_Gesamt());
-        ui->tbVolumenMaische->setError(ui->tbVolumenMaische->value() > ui->tbAnlageVolumenMaische->value());
-        ui->tbAnlageVolumenKochen->setValue(mSud->getAnlageData(ModelAusruestung::ColSudpfanne_MaxFuellvolumen).toDouble());
-        ui->tbVolumenKochen->setValue(BierCalc::volumenWasser(20.0, 100.0, mSud->getMengeSollKochbeginn()));
-        ui->tbVolumenKochen->setError(ui->tbVolumenKochen->value() > ui->tbAnlageVolumenKochen->value());
+        // Volumen und benoetigte Topfgroesse (ext-s10b): Hinweis ab 95 % des nutzbaren Volumens (5 % Luft)
+        const double luft = 0.95;
+        double kapMaische = mSud->getAnlageData(ModelAusruestung::ColMaischebottich_MaxFuellvolumen).toDouble();
+        double kapKochen = mSud->getAnlageData(ModelAusruestung::ColSudpfanne_MaxFuellvolumen).toDouble();
+        double volMaische = mSud->geterg_WHauptguss() + BierCalc::MalzVerdraengung * mSud->geterg_S_Gesamt();
+        double wuerzeKochbeginn = mSud->getMengeSollKochbeginn();
+        if (static_cast<Brauhelfer::BerechnungsartWasser>(mSud->getberechnungsArtWasser()) == Brauhelfer::BerechnungsartWasser::Faktoren)
+            wuerzeKochbeginn = qMax(wuerzeKochbeginn, mSud->getWuerzemengeKochbeginnErwartet());
+        double volKochen = BierCalc::volumenWasser(20.0, 100.0, wuerzeKochbeginn);
+        double volMax = qMax(volMaische, volKochen);
+        ui->tbAnlageVolumenMaische->setValue(kapMaische);
+        ui->tbVolumenMaische->setValue(volMaische);
+        bool zuVollMaische = kapMaische > 0.0 && volMaische > kapMaische * luft;
+        ui->tbVolumenMaische->setError(zuVollMaische);
+        ui->tbAnlageVolumenKochen->setValue(kapKochen);
+        ui->tbVolumenKochen->setValue(volKochen);
+        bool zuVollKochen = kapKochen > 0.0 && volKochen > kapKochen * luft;
+        ui->tbVolumenKochen->setError(zuVollKochen);
+        ui->tbMaxFluessigkeit->setValue(volMax);
+        ui->tbTopfgroesse->setValue(volMax / luft);
+        ui->tbTopfgroesse->setError(zuVollMaische || zuVollKochen);
+        QStringList hinweise;
+        if (zuVollMaische)
+            hinweise << tr("Maischekessel: %1 L Maische, mit 5 % Luft passen höchstens %2 L (nutzbar %3 L), %4 L zu viel.")
+                        .arg(QLocale().toString(volMaische, 'f', 1), QLocale().toString(kapMaische * luft, 'f', 1),
+                             QLocale().toString(kapMaische, 'f', 1), QLocale().toString(volMaische - kapMaische * luft, 'f', 1));
+        if (zuVollKochen)
+            hinweise << tr("Sudpfanne: %1 L heiße Würze zu Kochbeginn, mit 5 % Luft passen höchstens %2 L (nutzbar %3 L), %4 L zu viel.")
+                        .arg(QLocale().toString(volKochen, 'f', 1), QLocale().toString(kapKochen * luft, 'f', 1),
+                             QLocale().toString(kapKochen, 'f', 1), QLocale().toString(volKochen - kapKochen * luft, 'f', 1));
+        if (!hinweise.isEmpty())
+            hinweise << tr("Abhilfe: Menge, Schüttung oder Haupt-/Nachgussfaktor verringern oder eine größere Brauanlage wählen.");
+        ui->lblWarnungAnlage->setText(hinweise.join(QStringLiteral("\n")));
+        ui->lblWarnungAnlage->setVisible(!hinweise.isEmpty());
     }
 
     // ModuleWasseraufbereitung

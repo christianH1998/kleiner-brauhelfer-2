@@ -485,3 +485,36 @@ Test:
     +0,5 erhöht Menge und senkt Stammwürze, zurück exakt, Skalieren auf Menge x1,5 trifft
     die Menge exakt und zurück: alle 6 Sude OK.
   - Rundlauftests Hopfen/Malz und Umkehrtest: unverändert OK.
+
+--------------------------------------------------------------------------------
+S10b – Benötigte Topfgröße + Hinweis Brauanlage (Tag ext-s10b)  2026-11-22
+--------------------------------------------------------------------------------
+Neu (Reiter Rezept, rechts in der Gruppe "Anlage", unter den Volumen von Maischekessel und
+Sudpfanne):
+  - "Max. Flüssigkeitsmenge ca.": die erwartete größte Flüssigkeitsmenge im Topf, der
+    größere Wert aus
+      Maische      = Hauptguss + Malzvolumen (0,75 L/kg x Schüttung)
+      Kochbeginn   = Würzemenge zu Kochbeginn (Haupt- und Nachguss abzüglich
+                     Treberaufnahme), heiß auf 100 °C umgerechnet.
+    Bei Wasserberechnung "Faktoren" zählt für den Kochbeginn der größere Wert aus
+    Sollmenge und erwarteter Würzemenge.
+  - "Benötigte Topfgröße (5 % Luft)" = maximale Flüssigkeitsmenge / 0,95.
+  - Roter Hinweis, wenn die Maische mehr als 95 % des nutzbaren Volumens des
+    Maischekessels oder die heiße Würze mehr als 95 % der Sudpfanne braucht (5 % Luft).
+    Der Hinweis nennt Menge, höchstens passende Menge, nutzbares Volumen, Überschreitung
+    in Litern und die Abhilfe (Menge, Schüttung oder Faktoren verringern bzw. größere
+    Anlage wählen).
+Geändert: Die rote Markierung der Felder "Benötigtes Volumen ca." greift jetzt schon ab
+95 % des nutzbaren Volumens (bisher erst bei 100 %). Ist in der Ausrüstung kein Volumen
+eingetragen (0), erscheint kein Hinweis.
+Reine Anzeige: keine Datenbankänderung, keine Wertänderung am Rezept.
+
+Nachtrag S10 (im Commit ext-s10 enthalten): Beim Eintippen der Menge im Modus "Rezept
+nachbrauen" sprangen die Werte (Rückschreiben des fokussierten Mengenfelds, Neuberechnung
+mit halb skalierten Malzmengen). Behoben: erst Menge setzen, dann ohne Zwischen-
+berechnung skalieren. Der Rundlauftest Wasser bildet das Tippen jetzt nach.
+
+Technik: nur Oberfläche, TabRezept::updateValues und tabrezept.ui (tbMaxFluessigkeit,
+tbTopfgroesse, lblWarnungAnlage).
+Test: Build ohne Fehler; Rechenkern unverändert (Regressions- und Rundlauftests aus S10
+gelten weiter).
