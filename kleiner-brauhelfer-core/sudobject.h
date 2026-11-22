@@ -153,6 +153,7 @@ class LIB_EXPORT SudObject : public QObject
     Q_PROPERTY_SUD_READONLY(double, WuerzemengeKochbeginnErwartet, toDouble())
     Q_PROPERTY_SUD_READONLY(double, WhirlpoolEndtemperatur, toDouble())
     Q_PROPERTY_SUD_READONLY(double, WhirlpoolWirksameZeit, toDouble())
+    Q_PROPERTY_SUD_READONLY(double, SWErwartet, toDouble())
 
     // tables
     Q_PROPERTY(ProxyModel* modelMaischplan READ modelMaischplan CONSTANT)

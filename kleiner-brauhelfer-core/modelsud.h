@@ -145,6 +145,7 @@ public:
         ColWuerzemengeKochbeginnErwartet,
         ColWhirlpoolEndtemperatur,
         ColWhirlpoolWirksameZeit,
+        ColSWErwartet,
         // number of columns
         NumCols
     };

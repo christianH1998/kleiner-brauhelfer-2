@@ -348,6 +348,10 @@ static int rundlaufWasser(Brauhelfer& bh, QTextStream& out)
         const QMap<QString, QVariant> b = sudSnapshot(bh, row);
         QStringList d = diffOhne(a, b, modusFelder);
         pruefe(d.isEmpty(), QStringLiteral("Wechsel ->Faktoren aendert: ") + d.mid(0, 3).join(QStringLiteral("; ")));
+        // ext-s11b: ohne Abweichung der Wuerzemenge ist die erwartete SW = SW des Rezepts
+        if (!sonder && ng0 > 0.0)
+            pruefe(std::fabs(sud->data(row, ModelSud::ColSWErwartet).toDouble() - sud->data(row, ModelSud::ColSW).toDouble()) < 1e-6,
+                   QStringLiteral("Faktoren ohne Abweichung: erwartete SW %1 != SW %2").arg(sud->data(row, ModelSud::ColSWErwartet).toDouble()).arg(sud->data(row, ModelSud::ColSW).toDouble()));
 
         if (!sonder)
         {
@@ -358,6 +362,9 @@ static int rundlaufWasser(Brauhelfer& bh, QTextStream& out)
             sud->setData(row, ModelSud::ColFaktorNachguss, fng + 0.5);
             pruefe(std::fabs(sud->data(row, ModelSud::ColWuerzemengeKochbeginnErwartet).toDouble() - (erw0 + 0.5 * schuet)) < 1e-6,
                    QStringLiteral("NG-Faktor +0,5 wirkt nicht auf erwartete Menge"));
+            // ext-s11b: mehr Nachguss -> erwartete SW sinkt, Rezept-SW bleibt
+            pruefe(sud->data(row, ModelSud::ColSWErwartet).toDouble() < sud->data(row, ModelSud::ColSW).toDouble() - 1e-6,
+                   QStringLiteral("NG-Faktor +0,5: erwartete SW nicht gesunken"));
             pruefe(nahe(sud->data(row, ModelSud::ColMengeSollKochbeginn).toDouble(), soll0), QStringLiteral("Sollmenge veraendert"));
             sud->setData(row, ModelSud::ColFaktorNachguss, fng);
             d = diffOhne(b, sudSnapshot(bh, row), {});
@@ -463,6 +470,8 @@ static int rundlaufWasser(Brauhelfer& bh, QTextStream& out)
             pruefe(mengeNG > menge0 && sud->data(row, ModelSud::ColSW).toDouble() < sw0, QStringLiteral("NG-Faktor +0,5: Menge/SW falsch"));
             pruefe(std::fabs(sud->data(row, ModelSud::ColWuerzemengeKochbeginnErwartet).toDouble() - sud->data(row, ModelSud::ColMengeSollKochbeginn).toDouble()) < 1e-6,
                    QStringLiteral("Nachbrauen: erwartete Menge != Soll"));
+            pruefe(std::fabs(sud->data(row, ModelSud::ColSWErwartet).toDouble() - sud->data(row, ModelSud::ColSW).toDouble()) < 1e-6,
+                   QStringLiteral("Nachbrauen: erwartete SW != SW"));
             sud->setData(row, ModelSud::ColFaktorNachguss, fng);
             d = snapshotDiff(n0, kern());
             pruefe(d.isEmpty(), QStringLiteral("NG-Faktor zurueck (Nachbrauen) nicht exakt: ") + d.mid(0, 3).join(QStringLiteral("; ")));

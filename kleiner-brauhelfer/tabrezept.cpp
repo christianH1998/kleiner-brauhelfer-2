@@ -90,6 +90,7 @@ void TabRezept::setup(SudObject *sud)
     ui->tbKochzeit->setColumn(mSud, ModelSud::ColKochdauer);
     ui->tbNachisomerisierungszeit->setColumn(mSud, ModelSud::ColNachisomerisierungszeit);
     ui->tbAussentemperatur->setColumn(mSud, ModelSud::ColAussentemperatur);
+    ui->tbSWErwartet->setColumn(mSud, ModelSud::ColSWErwartet);
     ui->tbWhirlpoolEndtemperatur->setColumn(mSud, ModelSud::ColWhirlpoolEndtemperatur);
     ui->tbWhirlpoolWirksameZeit->setColumn(mSud, ModelSud::ColWhirlpoolWirksameZeit);
     ui->tbKosten->setColumn(mSud, ModelSud::Colerg_Preis);
@@ -861,10 +862,13 @@ void TabRezept::updateValues()
     diff = mSud->getWuerzemengeKochbeginnErwartet() - mSud->getMengeSollKochbeginn();
     bool wasserAbweichung = zeigeErwartet && qAbs(diff) >= 0.1;
     ui->tbWuerzemengeErwartet->setError(enabled && wasserAbweichung);
+    double swDiff = mSud->getSWErwartet() - mSud->getSW();
+    ui->tbSWErwartet->setError(enabled && wasserAbweichung && qAbs(swDiff) >= 0.05);
     ui->lblWarnungWasser->setVisible(wasserAbweichung);
     if (wasserAbweichung)
-        ui->lblWarnungWasser->setText(tr("Die erwartete Würzemenge zu Kochbeginn weicht um %1 L von der Sollmenge (%2 L) ab. Nachgussfaktor anpassen, Wasserberechnung „Nachguss folgt Würzemenge“ oder Berechnung „Rezept nachbrauen“ wählen.")
-                                      .arg(QLocale().toString(diff, 'f', 1), QLocale().toString(mSud->getMengeSollKochbeginn(), 'f', 1)));
+        ui->lblWarnungWasser->setText(tr("Würzemenge Kochbeginn weicht um %1 L vom Soll (%2 L) ab.\nStammwürze damit voraussichtlich %3 °P statt %4 °P.\nAbhilfe: Nachgussfaktor anpassen, „Nachguss folgt Würzemenge“ oder „Rezept nachbrauen“ wählen.")
+                                      .arg((diff > 0 ? QStringLiteral("+") : QString()) + QLocale().toString(diff, 'f', 1), QLocale().toString(mSud->getMengeSollKochbeginn(), 'f', 1),
+                                           QLocale().toString(mSud->getSWErwartet(), 'f', 1), QLocale().toString(mSud->getSW(), 'f', 1)));
     // Beim Nachbrauen sind Malz- und Hopfenberechnung fest vorgegeben
     bool nachbrauenAktiv = nachbrauen && !anlageSonderformel;
     ui->cbBerechnungsartMalz->setEnabled(enabled && !nachbrauenAktiv);

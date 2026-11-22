@@ -66,6 +66,7 @@ ModelSud::ModelSud(Brauhelfer *bh, const QSqlDatabase &db) :
     mVirtualField.append(QStringLiteral("WuerzemengeKochbeginnErwartet"));
     mVirtualField.append(QStringLiteral("WhirlpoolEndtemperatur"));
     mVirtualField.append(QStringLiteral("WhirlpoolWirksameZeit"));
+    mVirtualField.append(QStringLiteral("SWErwartet"));
     connect(this, &SqlTableModel::modelReset, this, &ModelSud::onModelReset);
     connect(this, &SqlTableModel::rowsInserted, this, &ModelSud::onModelReset);
     connect(this, &SqlTableModel::rowsRemoved, this, &ModelSud::onModelReset);
@@ -317,6 +318,31 @@ QVariant ModelSud::dataExt(const QModelIndex &idx) const
         // leer (Altsude, neue Zeilen) = 20 °C (ext-s11)
         QVariant v = QSqlTableModel::data(idx);
         return v.isNull() ? QVariant(20.0) : v;
+    }
+    case ColSWErwartet:
+    {
+        // Stammwuerze, die sich mit dem Wasser aus den Faktoren ergibt (ext-s11b): gleiche Kette
+        // wie "Rezept nachbrauen" (Menge aus Schuettung + Faktoren, SW aus Schuettung, Menge und
+        // Sudhausausbeute). Extrakt der Zutaten/Hefestarter verduennt sich mit der Menge.
+        // Ausser bei Wasser "Faktoren" gleich der Stammwuerze des Rezepts.
+        const int row = idx.row();
+        double sw = data(row, ColSW).toDouble();
+        Brauhelfer::AnlageTyp anlageTyp = static_cast<Brauhelfer::AnlageTyp>(dataAnlage(row, ModelAusruestung::ColTyp).toInt());
+        if (!istWasserFaktoren(row) || anlageTyp == Brauhelfer::AnlageTyp::GrainfatherG30 || anlageTyp == Brauhelfer::AnlageTyp::BrauheldPro30)
+            return sw;
+        double schuet = data(row, Colerg_S_Gesamt).toDouble();
+        double msa = data(row, ColMengeSollAnstellen).toDouble();
+        double msaErw = mengeAusWasser(row, schuet) + dataAnlage(row, ModelAusruestung::ColKorrekturMenge).toDouble();
+        double ausb = data(row, ColSudhausausbeute).toDouble();
+        if (schuet <= 0.0 || msa <= 0.0 || msaErw <= 0.0 || ausb <= 0.0 || row >= swWzMaischenRecipe.size())
+            return sw;
+        double k = msa / msaErw;
+        double wzMaischen = swWzMaischenRecipe[row] * k;
+        double wzKochen = swWzKochenRecipe[row] * k;
+        double wzGaerung = swWzGaerungRecipe[row] * k;
+        double swMalz = BierCalc::swAusSchuettung(schuet, wzMaischen + wzKochen, msaErw, ausb);
+        double swErw = swMalz + wzMaischen + wzKochen + wzGaerung + data(row, ColSWAnteilHefestarter).toDouble() * k;
+        return std::isfinite(swErw) ? swErw : sw;
     }
     case ColWhirlpoolEndtemperatur:
     {

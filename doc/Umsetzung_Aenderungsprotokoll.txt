@@ -592,3 +592,28 @@ Test:
     Testsuden in allen vier Hopfen-Berechnungsarten: Mengen unverändert, Bittere je Gabe
     exakt nach Modell, Außentemperatur +10 K und Deckel erhöhen die Bittere, Rückweg exakt.
   - Rundlauftests Wasser/Hopfen/Malz und Umkehrtest: unverändert OK.
+
+--------------------------------------------------------------------------------
+S11b – Erwartete Stammwürze bei Wasser über Faktoren (Tag ext-s11b)  2026-11-22
+--------------------------------------------------------------------------------
+Befund (Prüfung auf Anwenderfrage): Bei "Planen" mit Wasserberechnung "Faktoren Haupt- und
+Nachguss" folgt die Stammwürze NICHT dem Wasser. Sie bleibt der Zielwert (Malz Ziel-SW)
+bzw. wird aus kg und Soll-Menge berechnet (Malz Mengen fest). Ergaben die Faktoren mehr
+oder weniger Würze, zeigte das Programm nur die Abweichung in Litern. Nur bei "Rezept
+nachbrauen" folgt die Stammwürze dem Wasser. Der Maischplan geht nicht in die Stammwürze
+ein (nur Schüttung, Sudhausausbeute, Menge und Extrakt weiterer Zutaten).
+
+Neu (Reiter Rezept, Gruppe "Wasser", unter "Erwartete Würzemenge Kochbeginn", nur bei
+"Planen" + "Faktoren"): "Erwartete Stammwürze" (berechnet) = Stammwürze, die sich mit dem
+Wasser aus den Faktoren voraussichtlich ergibt. Gleiche Rechnung wie "Rezept nachbrauen":
+Menge aus Schüttung und Faktoren, Stammwürze aus Schüttung, dieser Menge und
+Sudhausausbeute; der Extrakt weiterer Zutaten und des Hefestarters verdünnt sich mit.
+Der rote Hinweis nennt jetzt zusätzlich die erwartete Stammwürze, z. B. "... weicht um
+2,1 L ab, die Stammwürze wird damit voraussichtlich 11,4 °P statt 12,0 °P".
+Reine Anzeige: Rezept (Stammwürze, Menge, Schüttung) bleibt unverändert, keine
+Datenbankänderung. Soll die Stammwürze dem Wasser folgen: "Rezept nachbrauen".
+
+Technik: virtuelles Feld Sud.SWErwartet (ModelSud::dataExt), SudObject, tabrezept (.ui/.cpp).
+Test: Rundlauftest Wasser erweitert (ohne Abweichung erwartete SW = SW; Nachgussfaktor
++0,5 senkt die erwartete SW, Rezept-SW bleibt; beim Nachbrauen erwartete SW = SW): alle
+OK. Übrige Rundlauftests, Umkehrtest und Regressionsvergleich unverändert.
