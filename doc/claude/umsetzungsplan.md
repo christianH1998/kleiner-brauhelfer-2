@@ -106,7 +106,7 @@ Eine gebündelte, idempotente Migration in `database_update.cpp` mit `ALTER TABL
 - Dropdown „Ziel-SW → Schüttung berechnen“ (Bestand) / „Malzmengen fest → SW berechnen“.
 - Drift-Fix in `modelmalzschuettung.cpp` (`setDataExt`, `onSudDataChanged`) und `ModelSud::update` (Konzept §3).
 
-**S10 Wasser-Modus + Presets (ext-s10)**
+**S10 Wasser-Modus + Presets (ext-s10)** – *umgesetzt: Modus 1 ohne Korrektur im NG (Korrektur nur in der erwarteten Würzemenge, virtuelles Feld `WuerzemengeKochbeginnErwartet`), Wechsel 0→1 übernimmt NG als `FaktorNachguss`, Warnung ab 0,1 L Abweichung, Preset/NG-Faktor nur im Modus 1 sichtbar, Wasser-Auswahl bei Grainfather/Brauheld ausgeblendet; **Erweiterung (Anwender 2026-11-22):** Auswahl „Berechnung: Planen / Rezept nachbrauen“ links im Rezept, Faktoren HG/NG links (keine Liter-Eingabe), `berechnungsArtWasser = 2` Nachbrauen ⇒ Menge aus Malzmengen + Faktoren (`ModelSud::mengeAusWasser`, lineare Rückwärtskette), SW/IBU berechnet; Menge-Eingabe skaliert Malz (exakt auf die Menge) und Hopfen (Mengenverhältnis); Treberaufnahme (Fallback 0,96) mit Eingabefeld in `DlgAusruestung`; Rundlauftest `--rundlauf-wasser`*
 - `ModelSud::updateWasser`: Modus 1 „Faktoren HG+NG“ ⇒ HG = S·f_HG, NG = S·f_NG; erwartete Würzemenge rückgerechnet (Treberaufnahme aus Anlage, Korrektur) + Warnung bei Abweichung von der Sollmenge. Modus 0 bleibt exakt wie heute. Sondertypen Grainfather/Brauheld bleiben unverändert.
 - UI `TabRezept`: Dropdown Modus, Dropdown Preset (Helles 4,0/3,0, Dunkles 3,0/4,0, Benutzerdefiniert 3,5/3,5), beide Faktoren editierbar. Ein Preset setzt nur die Faktoren; manuelles Ändern behält das Preset bei. Tooltip mit Richtwerten (Kling, ungeprüft).
 
@@ -117,6 +117,7 @@ Eine gebündelte, idempotente Migration in `database_update.cpp` mit `ALTER TABL
 **S12 Brauprotokoll (ext-s12)**
 - `ModelMesswerte` (Core) + Dialog `dialogs/dlgbrauprotokoll.*` (Checkliste Soll | Ist | Abweichung | Zeit | Methode, Volumen- und Extrakthilfen).
 - Schutz der Ist-Felder in `ModelSud::setDataExt_impl`. Effektive Biermenge = letzter gemessener Volumenwert, sonst Soll mit Kennzeichnung „geschätzt“.
+- **Anforderung Anwender (2026-11-22):** Reale Zeiten je Maischschritt dokumentieren: Aufheizdauer und Rastdauer, vorbelegt mit den Rezeptwerten aus dem Maischplan, im Protokoll änderbar. Die Aufheizzeit hängt u. a. von der Außentemperatur ab, deshalb optional die Außentemperatur mit erfassen (Grundlage für spätere Auswertung/Kalibrierung der Aufheizrate in S14/S15).
 
 **S13 Abfüllart + Zucker fest in g/L (ext-s13)**
 - Dropdown Abfüllart (Konzept §7.1 inkl. Zwangskarbonisierung).

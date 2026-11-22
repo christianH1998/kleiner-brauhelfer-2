@@ -680,6 +680,42 @@
              </property>
             </spacer>
            </item>
+           <item row="4" column="0">
+            <widget class="QLabel" name="lblTreberaufnahme">
+             <property name="text">
+              <string>Treberaufnahme</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="2">
+            <widget class="DoubleSpinBox" name="tbTreberaufnahme">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Wassermenge in &lt;span style=&quot; font-weight:600;&quot;&gt;Liter je kg Schüttung&lt;/span&gt;, die nach dem Läutern im Treber zurückbleibt.&lt;/p&gt;&lt;p&gt;Sie geht in die Berechnung des &lt;span style=&quot; font-weight:600;&quot;&gt;Nachgusses&lt;/span&gt; ein (Wasserberechnung „Nachguss folgt Würzemenge“) bzw. in die &lt;span style=&quot; font-weight:600;&quot;&gt;erwartete Würzemenge&lt;/span&gt; (Wasserberechnung „Faktoren Haupt- und Nachguss“).&lt;/p&gt;&lt;p&gt;Standard ist 0,96 L/kg (bisher fest im Programm). Übliche Werte liegen etwa zwischen 0,8 und 1,0 L/kg (Richtwert, nicht belegt). Gilt nicht für die Anlagentypen Grainfather und Brauheld Pro, die eigene Formeln verwenden.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
+             </property>
+             <property name="decimals">
+              <number>2</number>
+             </property>
+             <property name="minimum">
+              <double>0.100000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>5.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.010000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="3">
+            <widget class="QLabel" name="lblTreberaufnahmeEinheit">
+             <property name="text">
+              <string notr="true">L/kg</string>
+             </property>
+            </widget>
+           </item>
            <item row="3" column="0">
             <widget class="QLabel" name="lblKosten">
              <property name="text">
@@ -1359,6 +1395,7 @@
   <tabstop>tbKorrekturNachguss</tabstop>
   <tabstop>tbKorrekturFarbe</tabstop>
   <tabstop>tbKorrekturSollmenge</tabstop>
+  <tabstop>tbTreberaufnahme</tabstop>
   <tabstop>tbKosten</tabstop>
   <tabstop>tbMaischebottichDurchmesser</tabstop>
   <tabstop>tbMaischebottichHoehe</tabstop>

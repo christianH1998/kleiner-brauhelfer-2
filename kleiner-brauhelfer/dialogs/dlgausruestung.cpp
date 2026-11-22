@@ -292,6 +292,9 @@ void DlgAusruestung::updateValues()
         ui->tbVerdampfung->setValue(data(ModelAusruestung::ColVerdampfungsrate).toDouble());
     if (!ui->tbKorrekturNachguss->hasFocus())
         ui->tbKorrekturNachguss->setValue(data(ModelAusruestung::ColKorrekturWasser).toDouble());
+    if (!ui->tbTreberaufnahme->hasFocus())
+        ui->tbTreberaufnahme->setValue(data(ModelAusruestung::ColTreberaufnahme).isNull() ? 0.96 : data(ModelAusruestung::ColTreberaufnahme).toDouble());
+    ui->tbTreberaufnahme->setEnabled(typ != Brauhelfer::AnlageTyp::GrainfatherG30 && typ != Brauhelfer::AnlageTyp::BrauheldPro30);
     if (!ui->tbKorrekturFarbe->hasFocus())
         ui->tbKorrekturFarbe->setValue(data(ModelAusruestung::ColKorrekturFarbe).toInt());
     if (!ui->tbKorrekturSollmenge->hasFocus())
@@ -449,6 +452,18 @@ void DlgAusruestung::on_tbKorrekturNachguss_editingFinished()
     {
         QGuiApplication::setOverrideCursor(Qt::WaitCursor);
         setData(ModelAusruestung::ColKorrekturWasser, ui->tbKorrekturNachguss->value());
+        QGuiApplication::restoreOverrideCursor();
+    }
+}
+
+void DlgAusruestung::on_tbTreberaufnahme_editingFinished()
+{
+    // ext-s10: Treberaufnahme der Anlage (bisher fest 0,96 L/kg)
+    double prevValue = data(ModelAusruestung::ColTreberaufnahme).toDouble();
+    if (prevValue != ui->tbTreberaufnahme->value())
+    {
+        QGuiApplication::setOverrideCursor(Qt::WaitCursor);
+        setData(ModelAusruestung::ColTreberaufnahme, ui->tbTreberaufnahme->value());
         QGuiApplication::restoreOverrideCursor();
     }
 }

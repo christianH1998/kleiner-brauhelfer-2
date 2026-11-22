@@ -63,6 +63,7 @@ ModelSud::ModelSud(Brauhelfer *bh, const QSqlDatabase &db) :
     mVirtualField.append(QStringLiteral("Hefe"));
     mVirtualField.append(QStringLiteral("DauerHauptgaerung"));
     mVirtualField.append(QStringLiteral("TemperaturHauptgaerung"));
+    mVirtualField.append(QStringLiteral("WuerzemengeKochbeginnErwartet"));
     connect(this, &SqlTableModel::modelReset, this, &ModelSud::onModelReset);
     connect(this, &SqlTableModel::rowsInserted, this, &ModelSud::onModelReset);
     connect(this, &SqlTableModel::rowsRemoved, this, &ModelSud::onModelReset);
@@ -111,7 +112,8 @@ void ModelSud::onAnlageRowChanged(const QModelIndex &idx)
                                    ModelAusruestung::ColKorrekturWasser,
                                    ModelAusruestung::ColKorrekturFarbe,
                                    ModelAusruestung::ColKorrekturMenge,
-                                   ModelAusruestung::ColKosten};
+                                   ModelAusruestung::ColKosten,
+                                   ModelAusruestung::ColTreberaufnahme};
     if (!updateList.contains(idx.column()))
         return;
     QVariant name = bh->modelAusruestung()->data(idx.row(), ModelAusruestung::ColName);
@@ -305,6 +307,20 @@ QVariant ModelSud::dataExt(const QModelIndex &idx) const
         for (int r = 0; r < n; ++r)
             summe += modelHauptgaerverlauf.data(r, ModelHauptgaerverlauf::ColTemp).toDouble();
         return summe / n;
+    }
+    case ColWuerzemengeKochbeginnErwartet:
+    {
+        // Wuerzemenge zu Kochbeginn, die sich aus Haupt- und Nachguss ergibt (ext-s10):
+        // HG + NG - Treberaufnahme * Schuettung - Korrektur Nachguss der Anlage.
+        // Im Modus "Nachguss folgt Wuerzemenge" gleich der Sollmenge (ausser NG < 0 gekappt).
+        Brauhelfer::AnlageTyp anlageTyp = static_cast<Brauhelfer::AnlageTyp>(dataAnlage(idx.row(), ModelAusruestung::ColTyp).toInt());
+        if (anlageTyp == Brauhelfer::AnlageTyp::GrainfatherG30 || anlageTyp == Brauhelfer::AnlageTyp::BrauheldPro30)
+            return data(idx.row(), ColMengeSollKochbeginn);
+        double schuet = data(idx.row(), Colerg_S_Gesamt).toDouble();
+        double hg = data(idx.row(), Colerg_WHauptguss).toDouble();
+        double ng = data(idx.row(), Colerg_WNachguss).toDouble();
+        double korrektur = dataAnlage(idx.row(), ModelAusruestung::ColKorrekturWasser).toDouble();
+        return hg + ng - schuet * treberaufnahme(idx.row()) - korrektur;
     }
     case ColAlkoholJungbier:
     {
@@ -613,11 +629,26 @@ bool ModelSud::setDataExt_impl(const QModelIndex &idx, const QVariant &value)
     }
     case ColMenge:
     {
+        // ext-s10: Eingabe der Menge im Modus "Rezept nachbrauen" skaliert Malz- und Hopfenmengen
+        // (nicht waehrend update(), das die Menge selbst aus dem Wasser setzt).
+        // Erst die Menge setzen, dann skalieren: Jede Malz-/Hopfenaenderung meldet "modified",
+        // die GUI liest dann bereits die neue Menge (sonst schreibt das fokussierte Mengenfeld
+        // den alten Wert zurueck -> Rekursion beim Tippen).
+        bool skalieren = !mUpdating && istNachbrauen(idx.row())
+                && static_cast<Brauhelfer::SudStatus>(data(idx.row(), ColStatus).toInt()) == Brauhelfer::SudStatus::Rezept;
+        double mengeAlt = data(idx.row(), ColMenge).toDouble();
         if (QSqlTableModel::setData(idx, value))
         {
             Brauhelfer::SudStatus status = static_cast<Brauhelfer::SudStatus>(data(idx.row(), ColStatus).toInt());
             if (status == Brauhelfer::SudStatus::Rezept)
                 setData(idx.row(), ColWuerzemengeKochbeginn, data(idx.row(), ColMengeSollKochbeginn));
+            if (skalieren)
+            {
+                // Die Kaskade oben (verschachteltes setDataExt) setzt den Merker bereits zurueck;
+                // ohne ihn rechnete update() mit halb skalierten Malzmengen eine Zwischenmenge.
+                mSkipUpdateOnOtherModelChanged = true;
+                skaliereMengen(idx.row(), mengeAlt, value.toDouble());
+            }
             return true;
         }
         return false;
@@ -788,6 +819,44 @@ bool ModelSud::setDataExt_impl(const QModelIndex &idx, const QVariant &value)
         }
         return false;
     }
+    case ColberechnungsArtWasser:
+    {
+        // ext-s10: Wechsel auf "Faktoren HG+NG" uebernimmt den aktuellen Nachguss als Faktor,
+        // damit sich beim Umschalten keine Werte aendern (Invariante Moduswechsel).
+        // Gilt auch fuer "Rezept nachbrauen" (2): dort folgt die Menge dann aus dem Wasser und
+        // ist beim Umschalten unveraendert.
+        bool warFaktoren = istWasserFaktoren(idx.row());
+        if (QSqlTableModel::setData(idx, value))
+        {
+            Brauhelfer::SudStatus status = static_cast<Brauhelfer::SudStatus>(data(idx.row(), ColStatus).toInt());
+            bool istFaktoren = istWasserFaktoren(idx.row());
+            if (status == Brauhelfer::SudStatus::Rezept && istFaktoren && !warFaktoren)
+            {
+                double schuet = data(idx.row(), Colerg_S_Gesamt).toDouble();
+                if (schuet > 0.0)
+                    QSqlTableModel::setData(index(idx.row(), ColFaktorNachguss), data(idx.row(), Colerg_WNachguss).toDouble() / schuet);
+            }
+            return true;
+        }
+        return false;
+    }
+    case ColWasserPreset:
+    {
+        // ext-s10: Voreinstellung setzt nur die beiden Faktoren; spaeteres Aendern der Faktoren
+        // laesst die gewaehlte Voreinstellung stehen.
+        if (QSqlTableModel::setData(idx, value))
+        {
+            Brauhelfer::SudStatus status = static_cast<Brauhelfer::SudStatus>(data(idx.row(), ColStatus).toInt());
+            double fhg, fng;
+            if (status == Brauhelfer::SudStatus::Rezept && wasserPresetFaktoren(value.toInt(), fhg, fng))
+            {
+                QSqlTableModel::setData(index(idx.row(), ColFaktorHauptguss), fhg);
+                QSqlTableModel::setData(index(idx.row(), ColFaktorNachguss), fng);
+            }
+            return true;
+        }
+        return false;
+    }
     case ColPhMaischeSoll:
     {
         double phMalz = data(idx.row(), ColPhMalz).toDouble();
@@ -860,6 +929,10 @@ void ModelSud::update(int row, int colChanged)
     Brauhelfer::SudStatus status = static_cast<Brauhelfer::SudStatus>(data(row, ColStatus).toInt());
     if (status == Brauhelfer::SudStatus::Rezept)
     {
+        // ext-s10: Rezept nachbrauen -> Menge aus Malzmengen und Wasserfaktoren
+        if (istNachbrauen(row))
+            updateMengeAusWasser(row);
+
         // MengeSoll
         if (colChanged == ColMengeSollAnstellen)
         {
@@ -977,9 +1050,131 @@ void ModelSud::updateSwWeitereZutaten(int row)
     }
 }
 
+double ModelSud::treberaufnahme(int row) const
+{
+    // Treberaufnahme der Anlage in L/kg Schuettung (ext-s10, bisher fest 0,96 im Code).
+    // Fehlender oder ungueltiger Wert (z. B. neue, noch ungespeicherte Anlage) -> 0,96.
+    QVariant v = dataAnlage(row, ModelAusruestung::ColTreberaufnahme);
+    bool ok = false;
+    double t = v.toDouble(&ok);
+    if (v.isNull() || !ok || t <= 0.0)
+        return 0.96;
+    return t;
+}
+
+bool ModelSud::istWasserFaktoren(int row) const
+{
+    // Haupt- und Nachguss ueber Faktoren (ext-s10), nur Standardanlagen
+    Brauhelfer::BerechnungsartWasser art = static_cast<Brauhelfer::BerechnungsartWasser>(data(row, ColberechnungsArtWasser).toInt());
+    return art == Brauhelfer::BerechnungsartWasser::Faktoren || art == Brauhelfer::BerechnungsartWasser::Nachbrauen;
+}
+
+bool ModelSud::istNachbrauen(int row) const
+{
+    // "Rezept nachbrauen" (ext-s10): Wasser Nachbrauen + Malz Mengen fest + Standardanlage
+    if (static_cast<Brauhelfer::BerechnungsartWasser>(data(row, ColberechnungsArtWasser).toInt()) != Brauhelfer::BerechnungsartWasser::Nachbrauen)
+        return false;
+    if (static_cast<Brauhelfer::BerechnungsartMalz>(data(row, ColberechnungsArtMalz).toInt()) != Brauhelfer::BerechnungsartMalz::MengenFest)
+        return false;
+    Brauhelfer::AnlageTyp anlageTyp = static_cast<Brauhelfer::AnlageTyp>(dataAnlage(row, ModelAusruestung::ColTyp).toInt());
+    return anlageTyp != Brauhelfer::AnlageTyp::GrainfatherG30 && anlageTyp != Brauhelfer::AnlageTyp::BrauheldPro30;
+}
+
+double ModelSud::mengeAusWasser(int row, double schuettung) const
+{
+    // Rueckwaertsrechnung der Mengenkette (ext-s10), Umkehrung von MengeSollKochbeginn:
+    //   Kochbeginn = S*(fHG + fNG - Treberaufnahme) - KorrekturWasser
+    //   Kochende   = Kochbeginn - Verdampfung
+    //   MengeSollAnstellen = Kochende * (100 + HGF) / 100 + Hefestarter
+    //   Menge      = MengeSollAnstellen - KorrekturMenge
+    // Linear in der Schuettung.
+    double fhg = data(row, ColFaktorHauptguss).toDouble();
+    double fng = data(row, ColFaktorNachguss).toDouble();
+    double kochbeginn = schuettung * (fhg + fng - treberaufnahme(row)) - dataAnlage(row, ModelAusruestung::ColKorrekturWasser).toDouble();
+    double kochende = kochbeginn - data(row, ColMengeSollVerdampfung).toDouble();
+    double hgf = data(row, ColhighGravityFaktor).toInt();
+    double mengeSollAnstellen = kochende * (100 + hgf) / 100 + data(row, ColMengeHefestarter).toDouble();
+    return mengeSollAnstellen - dataAnlage(row, ModelAusruestung::ColKorrekturMenge).toDouble();
+}
+
+double ModelSud::summeMalzmengen(int row) const
+{
+    QRegularExpression sudReg(QStringLiteral("^%1$").arg(data(row, ColID).toInt()));
+    ProxyModel modelMalzschuettung;
+    modelMalzschuettung.setSourceModel(bh->modelMalzschuettung());
+    modelMalzschuettung.setFilterKeyColumn(ModelMalzschuettung::ColSudID);
+    modelMalzschuettung.setFilterRegularExpression(sudReg);
+    double schuet = 0.0;
+    for (int r = 0; r < modelMalzschuettung.rowCount(); ++r)
+        schuet += modelMalzschuettung.data(r, ModelMalzschuettung::Colerg_Menge).toDouble();
+    return schuet;
+}
+
+void ModelSud::updateMengeAusWasser(int row)
+{
+    // Menge nur bei echter Aenderung setzen: setData(Menge) belegt im Rezeptstatus die Braudaten vor
+    double menge = mengeAusWasser(row, summeMalzmengen(row));
+    if (std::isfinite(menge) && menge > 0.0 && std::fabs(menge - data(row, ColMenge).toDouble()) > 1e-9)
+        setData(row, ColMenge, menge);
+}
+
+void ModelSud::skaliereMengen(int row, double mengeAlt, double mengeNeu)
+{
+    // Rezept skalieren (ext-s10): Schuettung so waehlen, dass die Menge aus dem Wasser genau
+    // mengeNeu ergibt (lineare Kette, siehe mengeAusWasser, unabhaengig von der Menge),
+    // Malz kg anteilig; Hopfen g im Verhaeltnis der Mengen (Bittere bleibt etwa gleich).
+    // Faktoren bleiben unveraendert. mengeAlt = Menge vor der Eingabe.
+    double schuetAlt = summeMalzmengen(row);
+    double b = mengeAusWasser(row, 0.0);
+    double a = mengeAusWasser(row, 1.0) - b;
+    if (mengeNeu <= 0.0 || mengeAlt <= 0.0 || schuetAlt <= 0.0 || a <= 0.0)
+        return;
+    double schuetNeu = (mengeNeu - b) / a;
+    if (!std::isfinite(schuetNeu) || schuetNeu <= 0.0)
+        return;
+    QRegularExpression sudReg(QStringLiteral("^%1$").arg(data(row, ColID).toInt()));
+    double fMalz = schuetNeu / schuetAlt;
+    ProxyModel modelMalzschuettung;
+    modelMalzschuettung.setSourceModel(bh->modelMalzschuettung());
+    modelMalzschuettung.setFilterKeyColumn(ModelMalzschuettung::ColSudID);
+    modelMalzschuettung.setFilterRegularExpression(sudReg);
+    for (int r = 0; r < modelMalzschuettung.rowCount(); ++r)
+        modelMalzschuettung.setData(r, ModelMalzschuettung::Colerg_Menge, modelMalzschuettung.data(r, ModelMalzschuettung::Colerg_Menge).toDouble() * fMalz);
+    double fHopfen = mengeNeu / mengeAlt;
+    ProxyModel modelHopfengaben;
+    modelHopfengaben.setSourceModel(bh->modelHopfengaben());
+    modelHopfengaben.setFilterKeyColumn(ModelHopfengaben::ColSudID);
+    modelHopfengaben.setFilterRegularExpression(sudReg);
+    for (int r = 0; r < modelHopfengaben.rowCount(); ++r)
+        modelHopfengaben.setData(r, ModelHopfengaben::Colerg_Menge, modelHopfengaben.data(r, ModelHopfengaben::Colerg_Menge).toDouble() * fHopfen);
+}
+
+bool ModelSud::wasserPresetFaktoren(int preset, double &faktorHauptguss, double &faktorNachguss)
+{
+    // Richtwerte L/kg (Anwendervorgabe, Quelle Kling noch ungeprueft) (ext-s10)
+    switch (static_cast<Brauhelfer::WasserPreset>(preset))
+    {
+    case Brauhelfer::WasserPreset::Helles:
+        faktorHauptguss = 4.0;
+        faktorNachguss = 3.0;
+        return true;
+    case Brauhelfer::WasserPreset::Dunkles:
+        faktorHauptguss = 3.0;
+        faktorNachguss = 4.0;
+        return true;
+    case Brauhelfer::WasserPreset::Benutzerdefiniert:
+        faktorHauptguss = 3.5;
+        faktorNachguss = 3.5;
+        return true;
+    default:
+        return false;
+    }
+}
+
 void ModelSud::updateWasser(int row)
 {
     double hg = 0.0, ng = 0.0, hgf = 0.0;
+    bool korrigieren = true;
     double schuet = data(row, Colerg_S_Gesamt).toDouble();
     double menge = data(row, ColMengeSollKochbeginn).toDouble();
 
@@ -999,10 +1194,21 @@ void ModelSud::updateWasser(int row)
         break;
     default:
         hg = schuet * data(row, ColFaktorHauptguss).toDouble();
-        ng = menge - hg + schuet * 0.96;
+        if (istWasserFaktoren(row))
+        {
+            // ext-s10: Nachguss fest ueber Faktor, die Wuerzemenge zu Kochbeginn folgt daraus
+            // (ColWuerzemengeKochbeginnErwartet); Korrektur der Anlage steckt dort.
+            ng = schuet * data(row, ColFaktorNachguss).toDouble();
+            korrigieren = false;
+        }
+        else
+        {
+            ng = menge - hg + schuet * treberaufnahme(row);
+        }
         break;
     }
-    ng += dataAnlage(row, ModelAusruestung::ColKorrekturWasser).toDouble();
+    if (korrigieren)
+        ng += dataAnlage(row, ModelAusruestung::ColKorrekturWasser).toDouble();
     if (ng < 0)
         ng = 0;
 
@@ -1070,14 +1276,7 @@ double ModelSud::updateSwAusMalzmengen(int row)
     // Berechnungsart Malz "Mengen fest" (ext-s09): Schuettung = Summe der kg je Malz,
     // Stammwuerze = Umkehrung der Schuettungsformel (gleiche Formel wie Modus Ziel-SW, daher
     // liefert ein Moduswechsel in beide Richtungen dieselben Werte).
-    QRegularExpression sudReg(QStringLiteral("^%1$").arg(data(row, ColID).toInt()));
-    ProxyModel modelMalzschuettung;
-    modelMalzschuettung.setSourceModel(bh->modelMalzschuettung());
-    modelMalzschuettung.setFilterKeyColumn(ModelMalzschuettung::ColSudID);
-    modelMalzschuettung.setFilterRegularExpression(sudReg);
-    double schuet = 0.0;
-    for (int r = 0; r < modelMalzschuettung.rowCount(); ++r)
-        schuet += modelMalzschuettung.data(r, ModelMalzschuettung::Colerg_Menge).toDouble();
+    double schuet = summeMalzmengen(row);
 
     double menge = data(row, ColMengeSollAnstellen).toDouble();
     double ausb = data(row, ColSudhausausbeute).toDouble();

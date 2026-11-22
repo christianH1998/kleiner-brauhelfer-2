@@ -104,6 +104,25 @@ public:
     };
     Q_ENUM(BerechnungsartMalz)
 
+    // Sud.berechnungsArtWasser (ab DB 2010, ext-s10)
+    enum class BerechnungsartWasser
+    {
+        NachgussFolgtMenge = 0, // HG = Schuettung * Faktor HG, NG ergibt sich aus der Wuerzemenge (bisher)
+        Faktoren = 1,           // HG und NG aus Faktoren L/kg, Wuerzemenge zu Kochbeginn wird daraus erwartet (Hinweis)
+        Nachbrauen = 2          // wie Faktoren, zusammen mit Malz "Mengen fest": Menge wird aus dem Wasser berechnet
+    };
+    Q_ENUM(BerechnungsartWasser)
+
+    // Sud.WasserPreset (ab DB 2010, ext-s10); setzt nur die Faktoren HG/NG
+    enum class WasserPreset
+    {
+        Keins = 0,
+        Helles = 1,             // 4,0 / 3,0 L/kg
+        Dunkles = 2,            // 3,0 / 4,0 L/kg
+        Benutzerdefiniert = 3   // 3,5 / 3,5 L/kg
+    };
+    Q_ENUM(WasserPreset)
+
     enum class HopfenZeitpunkt
     {
         KochenAlt = 0,

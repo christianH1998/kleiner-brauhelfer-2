@@ -139,6 +139,7 @@ public:
         ColHefe,
         ColDauerHauptgaerung,
         ColTemperaturHauptgaerung,
+        ColWuerzemengeKochbeginnErwartet,
         // number of columns
         NumCols
     };
@@ -160,6 +161,11 @@ public:
     QVariant dataWasser(int row, int col) const;
     void setDataWasser(int row, int col, const QVariant& value);
     void update(int row, int colChanged = -1);
+    double treberaufnahme(int row) const;
+    bool istWasserFaktoren(int row) const;
+    bool istNachbrauen(int row) const;
+    double mengeAusWasser(int row, double schuettung) const;
+    static bool wasserPresetFaktoren(int preset, double &faktorHauptguss, double &faktorNachguss);
 
 private slots:
 
@@ -176,6 +182,9 @@ private:
     void updateFarbe(int row);
     void updateIbuBerechnet(int row);
     double updateSwAusMalzmengen(int row);
+    double summeMalzmengen(int row) const;
+    void updateMengeAusWasser(int row);
+    void skaliereMengen(int row, double mengeAlt, double mengeNeu);
     void updatePreis(int row);
     void removeRowsFrom(SqlTableModel* model, int colId, const QList<int>& sudIds);
 

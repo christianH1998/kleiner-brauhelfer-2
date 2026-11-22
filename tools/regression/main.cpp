@@ -10,6 +10,7 @@
 //   --rundlauf-hopfen: statt Dump Rundlauftest der Hopfen-Berechnungsarten (Exit 0 = OK).
 //   --umkehrtest: Werte aendern und zuruecksetzen, Umkehrbarkeit pruefen (Exit 0 = OK).
 //   --rundlauf-malz: Rundlauftest Malz-Berechnungsart Ziel-SW <-> Mengen fest (Exit 0 = OK).
+//   --rundlauf-wasser: Rundlauftest Wasserberechnung, Presets, Treberaufnahme (Exit 0 = OK).
 //   --migrate: aeltere Datenbank vorher aktualisieren (auf der Kopie; mit --save auf der Datei).
 
 #include <QCoreApplication>
@@ -210,8 +211,12 @@ static int rundlaufMalz(Brauhelfer& bh, QTextStream& out)
             if (m->data(r, ModelMalzschuettung::ColSudID) == sudId)
                 r0 = r;
         const double kg0 = m->data(r0, ModelMalzschuettung::Colerg_Menge).toDouble();
+        // ext-s10: Im Modus "Rezept nachbrauen" waechst mit dem Malz die Menge (SW darf sinken)
+        const bool nachbrauen = sud->istNachbrauen(row);
+        const double mengeVor = sud->data(row, ModelSud::ColMenge).toDouble();
         m->setData(r0, ModelMalzschuettung::Colerg_Menge, kg0 * 1.1);      // Menge +10 %
         const MalzStand mehr = malzStand(bh, row);
+        const bool mengeGestiegen = sud->data(row, ModelSud::ColMenge).toDouble() > mengeVor;
         m->setData(r0, ModelMalzschuettung::Colerg_Menge, kg0);            // zurueck
         const MalzStand c = malzStand(bh, row);
         sud->setData(row, ModelSud::ColberechnungsArtMalz, ziel);           // fest -> Ziel
@@ -225,7 +230,7 @@ static int rundlaufMalz(Brauhelfer& bh, QTextStream& out)
 
         const double dWechsel = std::max({malzDiff(a, b), malzDiff(b, d), malzDiff(e, f)});
         const double dZurueck = std::max(malzDiff(b, c), malzDiff(d, e));
-        const bool swGestiegen = mehr.sw > b.sw;
+        const bool swGestiegen = nachbrauen ? mengeGestiegen : mehr.sw > b.sw;
         const bool ok = dWechsel <= tol && dZurueck <= tol && swGestiegen;
         if (!ok)
             ++fehler;
@@ -233,7 +238,8 @@ static int rundlaufMalz(Brauhelfer& bh, QTextStream& out)
             << " Schuettung " << QString::number(a.schuettung, 'f', 3) << " kg"
             << " | Moduswechsel max. rel. " << QString::number(dWechsel, 'g', 3)
             << " | Aendern+Zurueck " << QString::number(dZurueck, 'g', 3)
-            << " | Malz+10% -> SW " << QString::number(mehr.sw, 'f', 2) << (swGestiegen ? "" : " (nicht gestiegen!)") << "\n";
+            << " | Malz+10% -> SW " << QString::number(mehr.sw, 'f', 2) << (nachbrauen ? " (Nachbrauen: Menge gestiegen)" : "")
+            << (swGestiegen ? "" : " (nicht gestiegen!)") << "\n";
     }
     out << (fehler == 0 ? QStringLiteral("Rundlauftest Malz: alle OK\n") : QStringLiteral("Rundlauftest Malz: %1 Fehler\n").arg(fehler));
     return fehler;
@@ -293,6 +299,239 @@ static QStringList snapshotDiff(const QMap<QString, QVariant>& a, const QMap<QSt
             d << QStringLiteral("%1: %2 -> %3").arg(it.key(), it.value().toString(), vb.toString());
     }
     return d;
+}
+
+// ---- Rundlauftest Wasserberechnung (ext-s10) ----
+static QStringList diffOhne(const QMap<QString, QVariant>& a, const QMap<QString, QVariant>& b, const QStringList& ohne)
+{
+    QMap<QString, QVariant> x = a, y = b;
+    for (const QString& k : ohne)
+    {
+        x.remove(k);
+        y.remove(k);
+    }
+    return snapshotDiff(x, y);
+}
+
+static int rundlaufWasser(Brauhelfer& bh, QTextStream& out)
+{
+    const int bestand = static_cast<int>(Brauhelfer::BerechnungsartWasser::NachgussFolgtMenge);
+    const int faktoren = static_cast<int>(Brauhelfer::BerechnungsartWasser::Faktoren);
+    const QStringList modusFelder = {QStringLiteral("Sud.berechnungsArtWasser"), QStringLiteral("Sud.FaktorNachguss"), QStringLiteral("Sud.WasserPreset")};
+    int fehler = 0;
+    ModelSud* sud = bh.modelSud();
+    for (int row = 0; row < sud->rowCount(); ++row)
+    {
+        const QString name = sud->data(row, ModelSud::ColSudname).toString();
+        sud->setData(row, ModelSud::ColStatus, static_cast<int>(Brauhelfer::SudStatus::Rezept));
+        sud->setData(row, ModelSud::ColberechnungsArtWasser, bestand);
+        const double schuet = sud->data(row, ModelSud::Colerg_S_Gesamt).toDouble();
+        if (schuet <= 0.0)
+            continue;
+        Brauhelfer::AnlageTyp typ = static_cast<Brauhelfer::AnlageTyp>(sud->dataAnlage(row, ModelAusruestung::ColTyp).toInt());
+        const bool sonder = typ == Brauhelfer::AnlageTyp::GrainfatherG30 || typ == Brauhelfer::AnlageTyp::BrauheldPro30;
+        QStringList probleme;
+        auto pruefe = [&](bool bedingung, const QString& text) { if (!bedingung) probleme << text; };
+        auto nahe = [](double x, double y) { return std::fabs(x - y) <= 1e-9 * std::max(1.0, std::max(std::fabs(x), std::fabs(y))); };
+
+        // Bestand: erwartete Wuerzemenge = Sollmenge (sofern NG nicht auf 0 gekappt)
+        const QMap<QString, QVariant> a = sudSnapshot(bh, row);
+        const double ng0 = sud->data(row, ModelSud::Colerg_WNachguss).toDouble();
+        if (ng0 > 0.0)
+            pruefe(nahe(sud->data(row, ModelSud::ColWuerzemengeKochbeginnErwartet).toDouble(), sud->data(row, ModelSud::ColMengeSollKochbeginn).toDouble()),
+                   QStringLiteral("Bestand: erwartete Menge != Soll"));
+
+        // 1. Wechsel Bestand -> Faktoren: keine Wertaenderung
+        sud->setData(row, ModelSud::ColberechnungsArtWasser, faktoren);
+        const QMap<QString, QVariant> b = sudSnapshot(bh, row);
+        QStringList d = diffOhne(a, b, modusFelder);
+        pruefe(d.isEmpty(), QStringLiteral("Wechsel ->Faktoren aendert: ") + d.mid(0, 3).join(QStringLiteral("; ")));
+
+        if (!sonder)
+        {
+            // 2. Nachgussfaktor +0,5 -> NG und erwartete Menge steigen um 0,5*S, Sollmenge bleibt; zurueck exakt
+            const double fng = sud->data(row, ModelSud::ColFaktorNachguss).toDouble();
+            const double erw0 = sud->data(row, ModelSud::ColWuerzemengeKochbeginnErwartet).toDouble();
+            const double soll0 = sud->data(row, ModelSud::ColMengeSollKochbeginn).toDouble();
+            sud->setData(row, ModelSud::ColFaktorNachguss, fng + 0.5);
+            pruefe(std::fabs(sud->data(row, ModelSud::ColWuerzemengeKochbeginnErwartet).toDouble() - (erw0 + 0.5 * schuet)) < 1e-6,
+                   QStringLiteral("NG-Faktor +0,5 wirkt nicht auf erwartete Menge"));
+            pruefe(nahe(sud->data(row, ModelSud::ColMengeSollKochbeginn).toDouble(), soll0), QStringLiteral("Sollmenge veraendert"));
+            sud->setData(row, ModelSud::ColFaktorNachguss, fng);
+            d = diffOhne(b, sudSnapshot(bh, row), {});
+            pruefe(d.isEmpty(), QStringLiteral("NG-Faktor zurueck nicht exakt: ") + d.mid(0, 3).join(QStringLiteral("; ")));
+
+            // 3. Presets setzen die Faktoren
+            const double fhg = sud->data(row, ModelSud::ColFaktorHauptguss).toDouble();
+            const QList<QPair<int, QPair<double, double>>> presets = {{1, {4.0, 3.0}}, {2, {3.0, 4.0}}, {3, {3.5, 3.5}}};
+            for (const auto& p : presets)
+            {
+                sud->setData(row, ModelSud::ColWasserPreset, p.first);
+                pruefe(sud->data(row, ModelSud::ColFaktorHauptguss).toDouble() == p.second.first && sud->data(row, ModelSud::ColFaktorNachguss).toDouble() == p.second.second,
+                       QStringLiteral("Preset %1 setzt Faktoren falsch").arg(p.first));
+                pruefe(nahe(sud->data(row, ModelSud::Colerg_WHauptguss).toDouble(), schuet * p.second.first)
+                       && nahe(sud->data(row, ModelSud::Colerg_WNachguss).toDouble(), schuet * p.second.second),
+                       QStringLiteral("Preset %1: HG/NG nicht S*Faktor").arg(p.first));
+            }
+            // Preset "keins" laesst Faktoren stehen
+            sud->setData(row, ModelSud::ColWasserPreset, 0);
+            pruefe(sud->data(row, ModelSud::ColFaktorHauptguss).toDouble() == 3.5, QStringLiteral("Preset keins aendert Faktoren"));
+            sud->setData(row, ModelSud::ColFaktorHauptguss, fhg);
+            sud->setData(row, ModelSud::ColFaktorNachguss, fng);
+            d = diffOhne(b, sudSnapshot(bh, row), {QStringLiteral("Sud.WasserPreset")});
+            pruefe(d.isEmpty(), QStringLiteral("nach Presets nicht zurueck: ") + d.mid(0, 3).join(QStringLiteral("; ")));
+        }
+
+        // 4. Wechsel Faktoren -> Bestand: wieder Ausgangszustand
+        sud->setData(row, ModelSud::ColberechnungsArtWasser, bestand);
+        d = diffOhne(a, sudSnapshot(bh, row), modusFelder);
+        pruefe(d.isEmpty(), QStringLiteral("Wechsel ->Bestand aendert: ") + d.mid(0, 3).join(QStringLiteral("; ")));
+
+        // 5. Treberaufnahme der Anlage +0,1 -> NG steigt um 0,1*S (nur Standardanlage); zurueck exakt
+        if (!sonder && ng0 > 0.0)
+        {
+            const QVariant t0 = sud->dataAnlage(row, ModelAusruestung::ColTreberaufnahme);
+            sud->setDataAnlage(row, ModelAusruestung::ColTreberaufnahme, sud->treberaufnahme(row) + 0.1);
+            pruefe(std::fabs(sud->data(row, ModelSud::Colerg_WNachguss).toDouble() - (ng0 + 0.1 * schuet)) < 1e-6, QStringLiteral("Treberaufnahme wirkt nicht auf NG"));
+            sud->setDataAnlage(row, ModelAusruestung::ColTreberaufnahme, t0);
+            d = diffOhne(a, sudSnapshot(bh, row), modusFelder);
+            pruefe(d.isEmpty(), QStringLiteral("Treberaufnahme zurueck nicht exakt: ") + d.mid(0, 3).join(QStringLiteral("; ")));
+        }
+
+        // 6. Rezept nachbrauen (Malz fest + Hopfen fest + Wasser Nachbrauen): Umschalten ohne
+        //    Wertaenderung, Menge folgt dem Wasser, Skalieren ueber die Menge, zurueck auf Planen
+        double mengeSkaliert = 0.0;
+        if (!sonder)
+        {
+            ModelMalzschuettung* m = bh.modelMalzschuettung();
+            const QVariant sudId = sud->data(row, ModelSud::ColID);
+            const int colDel = m->fieldIndex(QStringLiteral("deleted"));
+            // Ausgangslage stimmig machen (Prozentsumme 100 %), wie in --rundlauf-malz
+            double summe = 0.0;
+            for (int r = 0; r < m->rowCount(); ++r)
+                if (m->data(r, ModelMalzschuettung::ColSudID) == sudId && !m->data(r, colDel).toBool())
+                    summe += m->data(r, ModelMalzschuettung::ColProzent).toDouble();
+            if (summe > 0.0 && std::fabs(summe - 100.0) > 1e-9)
+                for (int r = 0; r < m->rowCount(); ++r)
+                    if (m->data(r, ModelMalzschuettung::ColSudID) == sudId && !m->data(r, colDel).toBool())
+                        m->setData(r, ModelMalzschuettung::ColProzent, m->data(r, ModelMalzschuettung::ColProzent).toDouble() * 100.0 / summe);
+            auto kern = [&]() {
+                QMap<QString, QVariant> k;
+                for (int c : {ModelSud::ColMenge, ModelSud::ColSW, ModelSud::ColIBU, ModelSud::Colerg_S_Gesamt, ModelSud::Colerg_WHauptguss,
+                              ModelSud::Colerg_WNachguss, ModelSud::Colerg_W_Gesamt, ModelSud::Colerg_Farbe, ModelSud::ColFaktorHauptguss})
+                    k.insert(sud->fieldName(c), sud->data(row, c));
+                const QList<QPair<QString, SqlTableModel*>> kinder = {{QStringLiteral("Malz"), bh.modelMalzschuettung()}, {QStringLiteral("Hopfen"), bh.modelHopfengaben()}};
+                for (const auto& kd : kinder)
+                {
+                    const int cs = kd.second->fieldIndex(QStringLiteral("SudID")), cd = kd.second->fieldIndex(QStringLiteral("deleted")), cm = kd.second->fieldIndex(QStringLiteral("erg_Menge"));
+                    int i = 0;
+                    for (int r = 0; r < kd.second->rowCount(); ++r)
+                        if (kd.second->data(r, cs) == sudId && !kd.second->data(r, cd).toBool())
+                            k.insert(QStringLiteral("%1[%2]").arg(kd.first).arg(i++), kd.second->data(r, cm));
+                }
+                return k;
+            };
+            auto summeMalz = [&]() {
+                double s = 0.0;
+                for (int r = 0; r < m->rowCount(); ++r)
+                    if (m->data(r, ModelMalzschuettung::ColSudID) == sudId && !m->data(r, colDel).toBool())
+                        s += m->data(r, ModelMalzschuettung::Colerg_Menge).toDouble();
+                return s;
+            };
+            // Hopfen "Keine" (Testdaten) hat keine berechnete IBU -> vorher auf Ziel-IBU stellen (wertneutral)
+            if (sud->data(row, ModelSud::ColberechnungsArtHopfen).toInt() < 0)
+            {
+                sud->setData(row, ModelSud::ColberechnungsArtHopfen, static_cast<int>(Brauhelfer::BerechnungsartHopfen::IBUBerechnet));
+                sud->setData(row, ModelSud::ColberechnungsArtHopfen, static_cast<int>(Brauhelfer::BerechnungsartHopfen::IBU));
+            }
+            const QMap<QString, QVariant> p0 = kern();
+            sud->setData(row, ModelSud::ColberechnungsArtMalz, static_cast<int>(Brauhelfer::BerechnungsartMalz::MengenFest));
+            sud->setData(row, ModelSud::ColberechnungsArtHopfen, static_cast<int>(Brauhelfer::BerechnungsartHopfen::IBUBerechnet));
+            sud->setData(row, ModelSud::ColberechnungsArtWasser, static_cast<int>(Brauhelfer::BerechnungsartWasser::Nachbrauen));
+            pruefe(sud->istNachbrauen(row), QStringLiteral("Nachbrauen nicht aktiv"));
+            const QMap<QString, QVariant> n0 = kern();
+            d = snapshotDiff(p0, n0);
+            pruefe(d.isEmpty(), QStringLiteral("Wechsel ->Nachbrauen aendert: ") + d.mid(0, 3).join(QStringLiteral("; ")));
+
+            // Nachgussfaktor +0,5 -> Menge steigt, SW sinkt; zurueck exakt
+            const double fng = sud->data(row, ModelSud::ColFaktorNachguss).toDouble();
+            const double menge0 = sud->data(row, ModelSud::ColMenge).toDouble(), sw0 = sud->data(row, ModelSud::ColSW).toDouble();
+            sud->setData(row, ModelSud::ColFaktorNachguss, fng + 0.5);
+            const double mengeNG = sud->data(row, ModelSud::ColMenge).toDouble();
+            pruefe(mengeNG > menge0 && sud->data(row, ModelSud::ColSW).toDouble() < sw0, QStringLiteral("NG-Faktor +0,5: Menge/SW falsch"));
+            pruefe(std::fabs(sud->data(row, ModelSud::ColWuerzemengeKochbeginnErwartet).toDouble() - sud->data(row, ModelSud::ColMengeSollKochbeginn).toDouble()) < 1e-6,
+                   QStringLiteral("Nachbrauen: erwartete Menge != Soll"));
+            sud->setData(row, ModelSud::ColFaktorNachguss, fng);
+            d = snapshotDiff(n0, kern());
+            pruefe(d.isEmpty(), QStringLiteral("NG-Faktor zurueck (Nachbrauen) nicht exakt: ") + d.mid(0, 3).join(QStringLiteral("; ")));
+
+            // Rezept skalieren: Menge x1,5 -> Menge exakt wie eingegeben, Faktoren unveraendert; zurueck
+            sud->setData(row, ModelSud::ColMenge, menge0 * 1.5);
+            mengeSkaliert = sud->data(row, ModelSud::ColMenge).toDouble();
+            pruefe(std::fabs(mengeSkaliert - menge0 * 1.5) < 1e-6, QStringLiteral("Skalieren: Menge %1 statt %2").arg(mengeSkaliert).arg(menge0 * 1.5));
+            pruefe(sud->data(row, ModelSud::ColFaktorNachguss).toDouble() == fng, QStringLiteral("Skalieren aendert Faktor"));
+            pruefe(sud->data(row, ModelSud::Colerg_S_Gesamt).toDouble() > n0.value(QStringLiteral("erg_S_Gesamt")).toDouble(), QStringLiteral("Skalieren: Schuettung nicht gestiegen"));
+            sud->setData(row, ModelSud::ColMenge, menge0);
+            d = snapshotDiff(n0, kern());
+            pruefe(d.isEmpty(), QStringLiteral("Skalieren zurueck nicht exakt: ") + d.mid(0, 3).join(QStringLiteral("; ")));
+
+            // Tippen im Mengenfeld (jede Taste schreibt): Zwischenwerte duerfen das Ziel nicht verfaelschen.
+            // Nachbildung der GUI: TabRezept::updateValues setzt bei jedem "modified" auch das
+            // fokussierte Mengenfeld; weicht der Modellwert sichtbar ab (Spinbox rundet), schreibt das Feld ihn zurueck.
+            // Ausgabe der Abweichung mit KBH_TRACE.
+            double anzeige = 0.0;
+            int zurueckgeschrieben = 0;
+            const QMetaObject::Connection verb = QObject::connect(&bh, &Brauhelfer::modified, [&]() {
+                const double mm = sud->data(row, ModelSud::ColMenge).toDouble();
+                if (anzeige > 0.0 && std::fabs(mm - anzeige) > 1e-6 && zurueckgeschrieben < 20)
+                {
+                    if (std::getenv("KBH_TRACE"))
+                        out << "  zurueck: Anzeige " << anzeige << " Modell " << QString::number(mm, 'f', 9) << "\n";
+                    ++zurueckgeschrieben;
+                    anzeige = mm;
+                    sud->setData(row, ModelSud::ColMenge, mm);
+                }
+            });
+            for (double v : {3.0, 30.0, 0.0, 3.0, 30.0, 300.0, 30.0, 30.5})
+            {
+                anzeige = v;
+                sud->setData(row, ModelSud::ColMenge, v);
+                if (std::getenv("KBH_TRACE"))
+                    out << "  tippe " << v << " -> Menge " << QString::number(sud->data(row, ModelSud::ColMenge).toDouble(), 'f', 6)
+                        << " S " << QString::number(summeMalz(), 'f', 6) << "\n";
+            }
+            pruefe(std::fabs(sud->data(row, ModelSud::ColMenge).toDouble() - 30.5) < 1e-6,
+                   QStringLiteral("Tippen 30,5: Menge %1").arg(sud->data(row, ModelSud::ColMenge).toDouble()));
+            QObject::disconnect(verb);
+            anzeige = 0.0;
+            pruefe(zurueckgeschrieben == 0, QStringLiteral("Tippen: Mengenfeld schreibt %1x zurueck (Rekursion)").arg(zurueckgeschrieben));
+            sud->setData(row, ModelSud::ColMenge, menge0);
+            d = snapshotDiff(n0, kern());
+            pruefe(d.isEmpty(), QStringLiteral("Tippen zurueck nicht exakt: ") + d.mid(0, 3).join(QStringLiteral("; ")));
+
+            // zurueck auf Planen
+            sud->setData(row, ModelSud::ColberechnungsArtWasser, bestand);
+            sud->setData(row, ModelSud::ColberechnungsArtMalz, static_cast<int>(Brauhelfer::BerechnungsartMalz::ZielSW));
+            sud->setData(row, ModelSud::ColberechnungsArtHopfen, static_cast<int>(Brauhelfer::BerechnungsartHopfen::IBU));
+            d = snapshotDiff(n0, kern());
+            pruefe(d.isEmpty(), QStringLiteral("Wechsel ->Planen aendert: ") + d.mid(0, 3).join(QStringLiteral("; ")));
+        }
+
+        const bool ok = probleme.isEmpty();
+        if (!ok)
+            ++fehler;
+        if (mengeSkaliert > 0.0)
+            out << "[Nachbrauen ok, skaliert auf " << QString::number(mengeSkaliert, 'f', 2) << " L] ";
+        out << (ok ? "OK    " : "FEHLER") << " Sud '" << name << "'" << (sonder ? " (Sonderanlage)" : "")
+            << " S " << QString::number(schuet, 'f', 3) << " kg HG " << QString::number(sud->data(row, ModelSud::Colerg_WHauptguss).toDouble(), 'f', 2)
+            << " NG " << QString::number(sud->data(row, ModelSud::Colerg_WNachguss).toDouble(), 'f', 2)
+            << " -> NG-Faktor " << QString::number(b.value(QStringLiteral("Sud.FaktorNachguss")).toDouble(), 'f', 3);
+        if (!ok)
+            out << "\n      " << probleme.join(QStringLiteral("\n      "));
+        out << "\n";
+    }
+    out << (fehler == 0 ? QStringLiteral("Rundlauftest Wasser: alle OK\n") : QStringLiteral("Rundlauftest Wasser: %1 Fehler\n").arg(fehler));
+    return fehler;
 }
 
 static int umkehrTest(Brauhelfer& bh, QTextStream& out)
@@ -461,6 +700,16 @@ int main(int argc, char *argv[])
         {
             QTextStream out(stdout);
             int fehler = rundlaufMalz(bh, out);
+            out.flush();
+            bh.discard();
+            bh.disconnectDatabase();
+            return fehler == 0 ? 0 : 3;
+        }
+
+        if (args.contains(QStringLiteral("--rundlauf-wasser")) && !save)
+        {
+            QTextStream out(stdout);
+            int fehler = rundlaufWasser(bh, out);
             out.flush();
             bh.discard();
             bh.disconnectDatabase();

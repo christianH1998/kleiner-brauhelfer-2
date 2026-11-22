@@ -62,6 +62,10 @@ void TabRezept::setup(SudObject *sud)
     ui->tbBittere->setColumn(mSud, ModelSud::ColIBU);
     mTooltipBittere = ui->tbBittere->toolTip();
     mTooltipSW = ui->tbSW->toolTip();
+    mTooltipMenge = ui->tbMenge->toolTip();
+    // Berechnungsmodus (ext-s10)
+    ui->cbBerechnungsmodus->setItemData(0, tr("Menge, Stammwürze und Bittere vorgeben, Malz- und Hopfenmengen und Wasser werden berechnet (bisheriges Verhalten)."), Qt::ToolTipRole);
+    ui->cbBerechnungsmodus->setItemData(1, tr("kg je Malz, g je Hopfengabe sowie Haupt- und Nachgussfaktor eingeben. Würzemenge, Stammwürze und Bittere werden berechnet. Eingabe einer Menge skaliert das Rezept."), Qt::ToolTipRole);
     // Erklaerung je Eintrag (Index = Brauhelfer::BerechnungsartMalz) (ext-s09)
     ui->cbBerechnungsartMalz->setItemData(0, tr("Stammwürze vorgeben. Je Malz wird der Anteil in % angegeben, Gesamtschüttung und kg je Malz werden berechnet (bisheriges Verhalten)."), Qt::ToolTipRole);
     ui->cbBerechnungsartMalz->setItemData(1, tr("kg je Malz fest eingeben, z. B. beim Nachbrauen. Die Gesamtschüttung ist die Summe, die Stammwürze wird aus Schüttung, Menge und Sudhausausbeute berechnet. Ein Wechsel zurück ergibt wieder dieselben Mengen."), Qt::ToolTipRole);
@@ -88,6 +92,11 @@ void TabRezept::setup(SudObject *sud)
     ui->tbWasserGesamt->setColumn(mSud, ModelSud::Colerg_W_Gesamt);
     ui->tbHauptguss->setColumn(mSud, ModelSud::Colerg_WHauptguss);
     ui->tbNachguss->setColumn(mSud, ModelSud::Colerg_WNachguss);
+    // Wasserberechnung (ext-s10)
+    ui->tbFaktorNachguss->setColumn(mSud, ModelSud::ColFaktorNachguss);
+    ui->tbWuerzemengeErwartet->setColumn(mSud, ModelSud::ColWuerzemengeKochbeginnErwartet);
+    ui->cbBerechnungsartWasser->setItemData(0, tr("Hauptguss aus dem Hauptgussfaktor, der Nachguss wird so berechnet, dass die Würzemenge zu Kochbeginn erreicht wird (bisheriges Verhalten)."), Qt::ToolTipRole);
+    ui->cbBerechnungsartWasser->setItemData(1, tr("Hauptguss und Nachguss über Faktoren in L/kg Schüttung. Die erwartete Würzemenge wird angezeigt, bei Abweichung von der Sollmenge erscheint ein Hinweis."), Qt::ToolTipRole);
     ui->tbWasserHGF->setColumn(mSud, ModelSud::ColMengeSollHgf);
     ui->tbRestextrakt->setColumn(mSud, ModelSud::ColSRESoll);
     ui->tbAlkohol->setColumn(mSud, ModelSud::ColAlkoholSoll);
@@ -277,6 +286,7 @@ void TabRezept::themeChanged(Qt::ColorScheme theme)
     ui->lblWarnungMaischplanWasser->setPalette(gSettings->paletteErrorLabel);
     ui->lblWarnungMaischplanMalz->setPalette(gSettings->paletteErrorLabel);
     ui->lblWarnungPh->setPalette(gSettings->paletteErrorLabel);
+    ui->lblWarnungWasser->setPalette(gSettings->paletteErrorLabel);
 
     while (ui->layoutMalzGaben->count())
         delete ui->layoutMalzGaben->itemAt(0)->widget();
@@ -469,6 +479,10 @@ void TabRezept::checkEnabled()
     ui->wdgAddKochen->setVisible(!gebraut);
     ui->cbBerechnungsartHopfen->setEnabled(!gebraut);
     ui->cbBerechnungsartMalz->setEnabled(!gebraut);
+    ui->cbBerechnungsartWasser->setEnabled(!gebraut);
+    ui->cbBerechnungsmodus->setEnabled(!gebraut);
+    ui->cbWasserPreset->setEnabled(!gebraut);
+    ui->tbFaktorNachguss->setDisabled(gebraut);
     ui->tbMengeHefestarter->setDisabled(gebraut);
     ui->tbSWHefestarter->setDisabled(gebraut);
     ui->wdgAddGaerung->setVisible(!abgefuellt);
@@ -755,6 +769,47 @@ void TabRezept::updateValues()
     ui->tbFaktorHauptgussEmpfehlung->setValue(BierCalc::hauptgussFaktor(mSud->geterg_Farbe()));
     ui->wdgFaktorHauptguss->setVisible(anlageTyp != Brauhelfer::AnlageTyp::GrainfatherG30 && anlageTyp != Brauhelfer::AnlageTyp::BrauheldPro30);
     ui->wdgWasserHGF->setVisible(mSud->gethighGravityFaktor() != 0.0);
+
+    // Berechnungsmodus und Wasserberechnung (ext-s10)
+    bool anlageSonderformel = anlageTyp == Brauhelfer::AnlageTyp::GrainfatherG30 || anlageTyp == Brauhelfer::AnlageTyp::BrauheldPro30;
+    Brauhelfer::BerechnungsartWasser artWasser = static_cast<Brauhelfer::BerechnungsartWasser>(mSud->getberechnungsArtWasser());
+    bool nachbrauen = artWasser == Brauhelfer::BerechnungsartWasser::Nachbrauen;
+    bool wasserFaktoren = !anlageSonderformel && (nachbrauen || artWasser == Brauhelfer::BerechnungsartWasser::Faktoren);
+    if (!ui->cbBerechnungsmodus->hasFocus())
+        ui->cbBerechnungsmodus->setCurrentIndex(nachbrauen ? 1 : 0);
+    ui->lblBerechnungsmodus->setVisible(!anlageSonderformel);
+    ui->cbBerechnungsmodus->setVisible(!anlageSonderformel);
+    ui->lblBerechnungsartWasser->setVisible(!anlageSonderformel && !nachbrauen);
+    ui->cbBerechnungsartWasser->setVisible(!anlageSonderformel && !nachbrauen);
+    if (!ui->cbBerechnungsartWasser->hasFocus())
+        ui->cbBerechnungsartWasser->setCurrentIndex(artWasser == Brauhelfer::BerechnungsartWasser::Faktoren ? 1 : 0);
+    if (!ui->cbWasserPreset->hasFocus())
+    {
+        int preset = mSud->getWasserPreset();
+        ui->cbWasserPreset->setCurrentIndex(preset >= 0 && preset < ui->cbWasserPreset->count() ? preset : 0);
+    }
+    ui->lblWasserPreset->setVisible(wasserFaktoren);
+    ui->cbWasserPreset->setVisible(wasserFaktoren);
+    ui->lblFaktorNachguss->setVisible(wasserFaktoren);
+    ui->tbFaktorNachguss->setVisible(wasserFaktoren);
+    ui->lblFaktorNachgussEinheit->setVisible(wasserFaktoren);
+    // Erwartete Wuerzemenge + Hinweis nur im Modus Faktoren (beim Nachbrauen ist sie die Sollmenge)
+    bool zeigeErwartet = wasserFaktoren && !nachbrauen;
+    ui->wdgWasserberechnung->setVisible(zeigeErwartet);
+    diff = mSud->getWuerzemengeKochbeginnErwartet() - mSud->getMengeSollKochbeginn();
+    bool wasserAbweichung = zeigeErwartet && qAbs(diff) >= 0.1;
+    ui->tbWuerzemengeErwartet->setError(enabled && wasserAbweichung);
+    ui->lblWarnungWasser->setVisible(wasserAbweichung);
+    if (wasserAbweichung)
+        ui->lblWarnungWasser->setText(tr("Die erwartete Würzemenge zu Kochbeginn weicht um %1 L von der Sollmenge (%2 L) ab. Nachgussfaktor anpassen, Wasserberechnung „Nachguss folgt Würzemenge“ oder Berechnung „Rezept nachbrauen“ wählen.")
+                                      .arg(QLocale().toString(diff, 'f', 1), QLocale().toString(mSud->getMengeSollKochbeginn(), 'f', 1)));
+    // Beim Nachbrauen sind Malz- und Hopfenberechnung fest vorgegeben
+    bool nachbrauenAktiv = nachbrauen && !anlageSonderformel;
+    ui->cbBerechnungsartMalz->setEnabled(enabled && !nachbrauenAktiv);
+    ui->cbBerechnungsartHopfen->setEnabled(enabled && !nachbrauenAktiv);
+    ui->tbMenge->setToolTip(nachbrauenAktiv ? tr("<p><b>Berechnet</b> aus Malzmengen, Haupt- und Nachgussfaktor (Berechnung „Rezept nachbrauen“). "
+                                                 "Eine Eingabe skaliert das Rezept: Malz- und Hopfenmengen werden anteilig umgerechnet, die Faktoren bleiben.</p>") + mTooltipMenge
+                                            : mTooltipMenge);
 
     ui->tbKochzeit->setError(ui->tbKochzeit->value() == 0.0);
     Brauhelfer::BerechnungsartHopfen berechnungsArtHopfen = static_cast<Brauhelfer::BerechnungsartHopfen>(mSud->getberechnungsArtHopfen());
@@ -1337,6 +1392,44 @@ void TabRezept::on_cbBerechnungsartMalz_currentIndexChanged(int index)
         mSud->setberechnungsArtMalz(index);
         malzGaben_modified();
     }
+}
+
+void TabRezept::on_cbBerechnungsartWasser_currentIndexChanged(int index)
+{
+    // ext-s10: Wechsel uebernimmt die aktuellen Werte (Logik in ModelSud::setDataExt_impl)
+    if (ui->cbBerechnungsartWasser->hasFocus())
+        mSud->setberechnungsArtWasser(index);
+}
+
+void TabRezept::on_cbBerechnungsmodus_currentIndexChanged(int index)
+{
+    // ext-s10: Gesamtmodus. Jeder Einzelschritt erhaelt die Werte (Invariante Moduswechsel).
+    if (!ui->cbBerechnungsmodus->hasFocus())
+        return;
+    if (index == 1)
+    {
+        // Rezept nachbrauen: Malz fest, Hopfen fest -> Bittere, Wasser Faktoren -> Menge
+        mSud->setberechnungsArtMalz(static_cast<int>(Brauhelfer::BerechnungsartMalz::MengenFest));
+        mSud->setberechnungsArtHopfen(static_cast<int>(Brauhelfer::BerechnungsartHopfen::IBUBerechnet));
+        mSud->setberechnungsArtWasser(static_cast<int>(Brauhelfer::BerechnungsartWasser::Nachbrauen));
+    }
+    else
+    {
+        // Planen: Nachguss folgt Wuerzemenge, Ziel-SW, Ziel-IBU (Anteil Bittere)
+        mSud->setberechnungsArtWasser(static_cast<int>(Brauhelfer::BerechnungsartWasser::NachgussFolgtMenge));
+        mSud->setberechnungsArtMalz(static_cast<int>(Brauhelfer::BerechnungsartMalz::ZielSW));
+        if (static_cast<Brauhelfer::BerechnungsartHopfen>(mSud->getberechnungsArtHopfen()) == Brauhelfer::BerechnungsartHopfen::IBUBerechnet)
+            mSud->setberechnungsArtHopfen(static_cast<int>(Brauhelfer::BerechnungsartHopfen::IBU));
+    }
+    malzGaben_modified();
+    updateHopfenGaben();
+}
+
+void TabRezept::on_cbWasserPreset_currentIndexChanged(int index)
+{
+    // ext-s10: Voreinstellung setzt Haupt- und Nachgussfaktor
+    if (ui->cbWasserPreset->hasFocus())
+        mSud->setWasserPreset(index);
 }
 
 void TabRezept::on_cbBerechnungsartHopfen_currentIndexChanged(int index)

@@ -398,3 +398,90 @@ Test:
     Stammwürze bleiben bis auf Rechengenauigkeit (1e-16) gleich, und Malz +10 % erhöht die
     Stammwürze.
   - Umkehrtest erweitert (Menge und Sudhausausbeute im Modus "Mengen fest"): umkehrbar.
+
+
+
+--------------------------------------------------------------------------------
+S10 – Wasserberechnung "Faktoren Haupt- und Nachguss" + Voreinstellungen (Tag ext-s10)  2026-11-22
+--------------------------------------------------------------------------------
+Neue Funktion: Haupt- und Nachguss lassen sich wahlweise über zwei Faktoren in L/kg Schüttung
+festlegen. Voreinstellungen für Helles, Dunkles und Benutzerdefiniert setzen beide Faktoren
+auf einmal. Die Treberaufnahme ist jetzt ein Wert der Ausrüstung (bisher fest 0,96 L/kg).
+
+Bedienung (Reiter Rezept, linke Gruppe oben, unter "Anlage"):
+  Auswahl "Berechnung":
+  - Planen: Zielwerte -> Mengen berechnen                (bisheriges Verhalten)
+  - Rezept nachbrauen: Mengen fest -> Bierdaten berechnen  (NEU, siehe unten)
+  Auswahl "Wasserberechnung" (nur bei "Planen"):
+  - Nachguss folgt Würzemenge          (bisheriges Verhalten)
+  - Faktoren Haupt- und Nachguss       (NEU)
+  Bei Faktoren bzw. beim Nachbrauen erscheinen zusätzlich:
+    - "Voreinstellung Wasser": keine / Helles (4,0 / 3,0 L/kg) / Dunkles (3,0 / 4,0 L/kg) /
+      Benutzerdefiniert (3,5 / 3,5 L/kg). Setzt nur die beiden Faktoren. Danach sind die
+      Faktoren frei änderbar, die Voreinstellung bleibt als Merker stehen.
+    - "Nachgussfaktor" (L/kg) direkt unter dem Hauptgussfaktor.
+  Nur bei "Planen" + "Faktoren", rechts in der Gruppe "Wasser":
+    - "Erwartete Würzemenge Kochbeginn" (berechnet) =
+      Hauptguss + Nachguss - Treberaufnahme x Schüttung - Korrektur Nachguss (Ausrüstung).
+    - Hinweis in Rot, wenn die erwartete Würzemenge um 0,1 L oder mehr von der Sollmenge
+      abweicht. Das Rezept (Menge, Schüttung, Stammwürze) wird dadurch NICHT verändert.
+
+Rezept nachbrauen (Berechnung "Rezept nachbrauen: Mengen fest -> Bierdaten berechnen"):
+  Für fertige Rezepte: kg je Malz, g je Hopfengabe, Hauptgussfaktor und Nachgussfaktor
+  eingeben. Das Programm berechnet:
+    Würze Kochbeginn = Schüttung x (Faktor HG + Faktor NG - Treberaufnahme) - Korrektur
+    Würze Kochende   = Kochbeginn - Verdampfung
+    Menge            = rückwärts über High-Gravity, Hefestarter und Korrektur Sollmenge
+    Stammwürze       = aus Schüttung, Menge und Sudhausausbeute (wie S09)
+    Bittere          = aus den Hopfenmengen (wie S01), Farbe/Alkohol wie bisher
+  Die Auswahl stellt Malz auf "Mengen fest" und Hopfen auf "Mengen fest -> Bittere
+  berechnen" um; diese Einzelauswahlen sind im Nachbrau-Modus gesperrt.
+  Mehr Malz bei gleichen Faktoren = größerer Sud. Die Stammwürze ändert sich dabei nur
+  wenig (die Verdampfung in L/h ist absolut, ein größerer Sud wird etwas dünner). Die
+  Stammwürze steuert man über das Wasser: mehr Nachguss = mehr, aber dünnere Würze.
+  Weicht die berechnete Stammwürze vom Buchrezept ab, liegt das an der Sudhausausbeute
+  (Knopf "SHA anpassen" im Reiter Schüttung) oder am Nachgussfaktor.
+  Rezept skalieren: Im Nachbrau-Modus kann die Menge trotzdem eingegeben werden. Dann
+  werden alle Malzmengen so umgerechnet, dass genau diese Menge herauskommt, die
+  Hopfenmengen im Verhältnis der Mengen (Bittere bleibt etwa gleich). Die Faktoren
+  bleiben. Weitere Zutaten sind je Liter gespeichert und wachsen automatisch mit.
+  Zurück auf "Planen": Wasser "Nachguss folgt Würzemenge", Malz "Ziel-Stammwürze",
+  Hopfen "Ziel-IBU (Anteil Bittere)". Dabei ändert sich kein Wert.
+  Bekannte Wechselwirkung (bis S12): Ändert sich die berechnete Menge, werden im Status
+  Rezept die Braudaten mit den Sollwerten neu vorbelegt (wie bei der Stammwürze in S09).
+  Die Richtwerte der Voreinstellungen stehen im Tooltip und sind als "vorläufig, Quelle
+  (Kling) ungeprüft" gekennzeichnet.
+  Für die Anlagentypen Grainfather G30 und Brauheld Pro 30 bleibt alles wie bisher (eigene
+  Formeln), die Auswahl wird dort ausgeblendet.
+
+Umschalten: Der Wechsel auf "Faktoren" oder "Rezept nachbrauen" übernimmt den aktuellen
+Nachguss als Nachgussfaktor.
+Dadurch ändert sich kein Wert, und die erwartete Würzemenge ist gleich der Sollmenge. Beim
+Wechsel zurück folgt der Nachguss wieder der Würzemenge. Hatte man im Faktor-Modus eine
+Abweichung (Hinweis), ändert sich dabei der Nachguss entsprechend.
+
+Ausrüstung (Dialog Ausrüstung -> Sonstiges): neues Feld "Treberaufnahme" in L/kg, Standard
+0,96 (= bisheriger fester Wert, bestehende Rezepte rechnen unverändert). Wirkt auf den
+Nachguss (Modus "Nachguss folgt Würzemenge") bzw. auf die erwartete Würzemenge (Modus
+"Faktoren"). Bei Grainfather/Brauheld gesperrt (eigene Formeln). Die Kalibrierung aus
+Messwerten folgt in S14.
+
+Technik: nutzt die Spalten Sud.berechnungsArtWasser, Sud.WasserPreset, Sud.FaktorNachguss
+und Ausruestung.Treberaufnahme aus S07 (keine neue Migration; berechnungsArtWasser
+2 = Rezept nachbrauen). Neu: ModelSud::istNachbrauen/mengeAusWasser/updateMengeAusWasser/
+skaliereMengen,
+Brauhelfer::BerechnungsartWasser / WasserPreset, ModelSud::treberaufnahme(),
+ModelSud::wasserPresetFaktoren(), virtuelles Feld Sud.WuerzemengeKochbeginnErwartet,
+Umschalt- und Preset-Logik in ModelSud::setDataExt_impl. Oberfläche: tabrezept (.ui/.cpp),
+dlgausruestung (.ui/.cpp).
+Test:
+  - Regressionsvergleich gegen baseline-ext-s07: keine Abweichungen (nur datumsabhängige
+    Felder ReifezeitDelta/Woche wegen des heutigen Datums; neues Feld
+    WuerzemengeKochbeginnErwartet).
+  - Neuer Rundlauftest (kbh-dump --rundlauf-wasser) an allen 6 Testsuden: Bestand -> Faktoren
+    ohne Wertänderung, Nachgussfaktor +0,5 und zurück, alle drei Voreinstellungen, zurück auf
+    Bestand ohne Wertänderung, Treberaufnahme +0,1 wirkt auf den Nachguss und zurück.
+    Nachbrauen: Umschalten Planen -> Nachbrauen -> Planen ohne Wertänderung, Nachgussfaktor
+    +0,5 erhöht Menge und senkt Stammwürze, zurück exakt, Skalieren auf Menge x1,5 trifft
+    die Menge exakt und zurück: alle 6 Sude OK.
+  - Rundlauftests Hopfen/Malz und Umkehrtest: unverändert OK.
