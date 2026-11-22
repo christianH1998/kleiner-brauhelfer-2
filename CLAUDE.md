@@ -1,6 +1,6 @@
 # CLAUDE.md – kleiner-brauhelfer-2
 
-Desktop-App für Hobbybrauer (Rezepte, Sude, Rohstofflager, Gärverlauf, Bewertung). C++/Qt 6 Widgets, SQLite. Version 2.6.5, DB-Version **2010** (Fork, ab ext-s07; Original: 2009 – Original-Programm öffnet 2010er DB nicht). Sprache in Code/UI: Deutsch (Bezeichner, `tr()`-Quelltexte).
+Desktop-App für Hobbybrauer (Rezepte, Sude, Rohstofflager, Gärverlauf, Bewertung). C++/Qt 6 Widgets, SQLite. Version 2.6.5, DB-Version **2011** (Fork: 2010 ab ext-s07, 2011 ab ext-s11; Original: 2009 – Original-Programm öffnet die neueren DBs nicht). Sprache in Code/UI: Deutsch (Bezeichner, `tr()`-Quelltexte).
 
 ## Architektur (Kurzfassung)
 - `kleiner-brauhelfer-core/` – statische Lib, **ohne GUI** (Qt Core/Sql/Xml): DB, Modelle, Berechnungen, Import/Export.

@@ -193,14 +193,14 @@
              </property>
             </widget>
            </item>
-           <item row="19" column="0">
+           <item row="24" column="0">
             <widget class="QLabel" name="label_53">
              <property name="text">
               <string>Vergärungsgrad</string>
              </property>
             </widget>
            </item>
-           <item row="20" column="0" colspan="2">
+           <item row="25" column="0" colspan="2">
             <widget class="QLabel" name="label_6">
              <property name="text">
               <string>Karbonisierung (CO₂)</string>
@@ -221,7 +221,7 @@
              </property>
             </widget>
            </item>
-           <item row="18" column="0" colspan="4">
+           <item row="23" column="0" colspan="4">
             <widget class="Line" name="line_12">
              <property name="orientation">
               <enum>Qt::Orientation::Horizontal</enum>
@@ -357,7 +357,7 @@
              </layout>
             </widget>
            </item>
-           <item row="23" column="3">
+           <item row="28" column="3">
             <widget class="QLabel" name="label_25">
              <property name="text">
               <string>Wochen</string>
@@ -392,7 +392,7 @@
              </property>
             </widget>
            </item>
-           <item row="20" column="2">
+           <item row="25" column="2">
             <widget class="DoubleSpinBoxSud" name="tbCO2">
              <property name="toolTip">
               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Hier wird der erwünschte &lt;span style=&quot; font-weight:600;&quot;&gt;CO₂-Gehalt&lt;/span&gt; definiert.&lt;/p&gt;&lt;p&gt;Kohlendioxid im Bier garantiert das prickelnde Geschmackserlebnis, auch Rezens genannt. Ziel ist es, das CO₂ gut im Bier einzubinden.&lt;/p&gt;&lt;p&gt;Um Kohlendioxid ins Bier einzutragen, sind Verfahren wie das Karbonisieren mit Speise oder Zucker, das Grünschlauchen oder der Ausbau im Fass (Spunden) gebräuchlich. Der Kohlensäuregehalt schwankt je nach Biertyp und ist Teil eines jeden Bierstils.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Typische Werte&lt;/span&gt; für einzelne Bierstile sind: &lt;/p&gt;&lt;table border=&quot;0&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;&quot; cellspacing=&quot;2&quot; cellpadding=&quot;0&quot;&gt;&lt;tr&gt;&lt;td&gt;&lt;p&gt;Lager, Pilsner &lt;/p&gt;&lt;/td&gt;&lt;td&gt;&lt;p&gt;4,00 - 5,50&lt;/p&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;p&gt;Weizenbier &lt;/p&gt;&lt;/td&gt;&lt;td&gt;&lt;p&gt;6,50 - 9,00&lt;/p&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;p&gt;Britische Ales &lt;/p&gt;&lt;/td&gt;&lt;td&gt;&lt;p&gt;3,00 - 4,00&lt;/p&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;p&gt;Porter Stout &lt;/p&gt;&lt;/td&gt;&lt;td&gt;&lt;p&gt;3,40 - 4,50&lt;/p&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;p&gt;Belgische Ales &lt;/p&gt;&lt;/td&gt;&lt;td&gt;&lt;p&gt;3,80 - 4,80&lt;/p&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;p&gt;Lambic &lt;/p&gt;&lt;/td&gt;&lt;td&gt;&lt;p&gt;4,80 - 5,50&lt;/p&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;p&gt;Frucht-Lambic &lt;/p&gt;&lt;/td&gt;&lt;td&gt;&lt;p&gt;6,00 - 9,00&lt;/p&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -414,7 +414,7 @@
              </property>
             </widget>
            </item>
-           <item row="23" column="0" colspan="2">
+           <item row="28" column="0" colspan="2">
             <widget class="QLabel" name="label_15">
              <property name="text">
               <string>Reifezeit</string>
@@ -501,14 +501,14 @@
              </property>
             </widget>
            </item>
-           <item row="19" column="3">
+           <item row="24" column="3">
             <widget class="QLabel" name="label_54">
              <property name="text">
               <string notr="true">%</string>
              </property>
             </widget>
            </item>
-           <item row="20" column="3">
+           <item row="25" column="3">
             <widget class="QLabel" name="label_21">
              <property name="text">
               <string notr="true">g/L</string>
@@ -535,7 +535,7 @@
              </property>
             </widget>
            </item>
-           <item row="23" column="2">
+           <item row="28" column="2">
             <widget class="SpinBoxSud" name="tbReifezeit">
              <property name="toolTip">
               <string>&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
@@ -579,7 +579,7 @@ p, li { white-space: pre-wrap; }
              </property>
             </widget>
            </item>
-           <item row="22" column="0" colspan="4">
+           <item row="27" column="0" colspan="4">
             <widget class="Line" name="line_14">
              <property name="orientation">
               <enum>Qt::Orientation::Horizontal</enum>
@@ -627,7 +627,7 @@ p, li { white-space: pre-wrap; }
              </property>
             </widget>
            </item>
-           <item row="19" column="2">
+           <item row="24" column="2">
             <widget class="SpinBoxSud" name="tbVergaerungsgrad">
              <property name="toolTip">
               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Hier kann der erwartete &lt;span style=&quot; font-weight:600;&quot;&gt;scheinbarer Endvergärungsgrad&lt;/span&gt; eingegeben werden.&lt;/p&gt;&lt;p&gt;Dies hat nur informativen Charakter und dient der Abschätzung des Alkoholgehalts.&lt;/p&gt;&lt;p&gt;Allgemein können die Angaben der Hefehersteller übernommen werden. Bei Starksuden übersteigt der tatsächliche Vergärungsgrad dagegen oft die Herstellerangaben.&lt;/p&gt;&lt;p&gt;Fragen werden im Einzelfall hierzu am besten in einem Fachforum beantwortet.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -861,6 +861,186 @@ p, li { white-space: pre-wrap; }
             <widget class="QLabel" name="lblFaktorNachgussEinheit">
              <property name="text">
               <string notr="true">L/kg</string>
+             </property>
+            </widget>
+           </item>
+           <item row="18" column="0">
+            <widget class="QLabel" name="lblNachisoModell">
+             <property name="text">
+              <string>Bittere nach Kochende</string>
+             </property>
+            </widget>
+           </item>
+           <item row="18" column="1" colspan="3">
+            <widget class="ComboBox" name="cbNachisoModell">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Hier wird gewählt, wie die &lt;b&gt;Bittere während der Zeit nach Kochende&lt;/b&gt; (Whirlpool, Absetzen des Trubs bis zum Ablassen) berechnet wird. Alle Hopfengaben bleiben in dieser Zeit in der heißen Würze und geben weiter Bittere ab.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Nachisomerisierung pauschal (bisher)&lt;/b&gt;: Jede Gabe erhält zusätzlich die Nachisomerisierungszeit × 0,549 (Rate bei 80 °C).&lt;/p&gt;&lt;p&gt;&lt;b&gt;Whirlpool mit Abkühlkurve&lt;/b&gt;: Die Würze kühlt während der Whirlpool-/Absetzzeit von 100 °C ab. Der Verlauf wird aus Würzemenge, Topfdurchmesser (Ausrüstung), Außentemperatur und Deckel (offen: Verdunstung kühlt stark) berechnet. Die Bittere wird mit der Isomerisierungsrate der jeweiligen Temperatur aufsummiert (unter 80 °C keine Bittere mehr). Eine Gabe x min nach Kochende (Ausschlagen) zieht erst ab Minute x.&lt;/p&gt;&lt;p&gt;Das &lt;b&gt;Umschalten&lt;/b&gt; lässt die Hopfenmengen unverändert, die &lt;b&gt;Bittere ändert sich&lt;/b&gt; (auch im Modus Ziel-IBU).&lt;/p&gt;&lt;p&gt;Wärmeverlust und Isomerisierungsrate sind Näherungen (Quellen ungeprüft). Genauer wird es mit der Kalibrierung in der Ausrüstung (gemessene Temperatur am Ende der Absetzzeit).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <item>
+              <property name="text">
+               <string>Nachisomerisierung pauschal (bisher)</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Whirlpool mit Abkühlkurve</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="19" column="0" colspan="2">
+            <widget class="QLabel" name="lblAussentemperatur">
+             <property name="text">
+              <string>Außentemperatur</string>
+             </property>
+             <property name="indent">
+              <number>9</number>
+             </property>
+            </widget>
+           </item>
+           <item row="19" column="2">
+            <widget class="DoubleSpinBoxSud" name="tbAussentemperatur">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;b&gt;Außentemperatur&lt;/b&gt; am Brautag. Bestimmt mit, wie schnell die Würze während der Whirlpool-/Absetzzeit abkühlt (Standard 20 °C).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
+             </property>
+             <property name="decimals">
+              <number>1</number>
+             </property>
+             <property name="minimum">
+              <double>-30.000000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>50.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="19" column="3">
+            <widget class="QLabel" name="lblAussentemperaturEinheit">
+             <property name="text">
+              <string notr="true">°C</string>
+             </property>
+             <property name="indent">
+              <number>9</number>
+             </property>
+            </widget>
+           </item>
+           <item row="20" column="0" colspan="2">
+            <widget class="QLabel" name="lblWhirlpoolDeckel">
+             <property name="text">
+              <string>Topf beim Absetzen</string>
+             </property>
+             <property name="indent">
+              <number>9</number>
+             </property>
+            </widget>
+           </item>
+           <item row="20" column="2" colspan="2">
+            <widget class="ComboBox" name="cbWhirlpoolDeckel">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Steht der Topf während der Absetzzeit &lt;b&gt;offen&lt;/b&gt;, kühlt die Würze durch Verdunstung deutlich schneller ab als &lt;b&gt;mit Deckel&lt;/b&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <item>
+              <property name="text">
+               <string>offen</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>mit Deckel</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="21" column="0" colspan="2">
+            <widget class="QLabel" name="lblWhirlpoolEndtemperatur">
+             <property name="text">
+              <string>Temperatur am Ende ca.</string>
+             </property>
+             <property name="indent">
+              <number>9</number>
+             </property>
+            </widget>
+           </item>
+           <item row="21" column="2">
+            <widget class="DoubleSpinBoxSud" name="tbWhirlpoolEndtemperatur">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;b&gt;Berechnet:&lt;/b&gt; erwartete Temperatur der Würze am Ende der Whirlpool-/Absetzzeit (Abkühlkurve). Zum Kalibrieren in der Ausrüstung mit einem gemessenen Wert vergleichen.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
+             </property>
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum>
+             </property>
+             <property name="decimals">
+              <number>1</number>
+             </property>
+             <property name="minimum">
+              <double>-50.000000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>120.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="21" column="3">
+            <widget class="QLabel" name="lblWhirlpoolEndtemperaturEinheit">
+             <property name="text">
+              <string notr="true">°C</string>
+             </property>
+             <property name="indent">
+              <number>9</number>
+             </property>
+            </widget>
+           </item>
+           <item row="22" column="0" colspan="2">
+            <widget class="QLabel" name="lblWhirlpoolWirksameZeit">
+             <property name="text">
+              <string>Wirksame Kochzeit ca.</string>
+             </property>
+             <property name="indent">
+              <number>9</number>
+             </property>
+            </widget>
+           </item>
+           <item row="22" column="2">
+            <widget class="DoubleSpinBoxSud" name="tbWhirlpoolWirksameZeit">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;b&gt;Berechnet:&lt;/b&gt; so viele Minuten Kochen entspricht die Bitterausbeute während der Whirlpool-/Absetzzeit. Sie wird zur Kochzeit jeder Gabe addiert (bisher pauschal 0,549 × Nachisomerisierungszeit).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
+             </property>
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum>
+             </property>
+             <property name="decimals">
+              <number>1</number>
+             </property>
+             <property name="minimum">
+              <double>0.000000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>9999.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="22" column="3">
+            <widget class="QLabel" name="lblWhirlpoolWirksameZeitEinheit">
+             <property name="text">
+              <string notr="true">min</string>
+             </property>
+             <property name="indent">
+              <number>9</number>
              </property>
             </widget>
            </item>
@@ -4133,14 +4313,14 @@ p, li { white-space: pre-wrap; }
            <item row="12" column="0">
             <widget class="QLabel" name="lblTopfgroesse">
              <property name="text">
-              <string>Benötigte Topfgröße (5 % Luft)</string>
+              <string>Benötigte Topfgröße ca.</string>
              </property>
             </widget>
            </item>
            <item row="12" column="3">
             <widget class="DoubleSpinBox" name="tbTopfgroesse">
              <property name="toolTip">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;b&gt;Berechnet:&lt;/b&gt; mindestens benötigte Topfgröße = maximale Flüssigkeitsmenge mit &lt;b&gt;5 % Luft&lt;/b&gt; (Flüssigkeit / 0,95).&lt;/p&gt;&lt;p&gt;Liegt eine Menge über 95 % des nutzbaren Volumens der Brauanlage, erscheint ein Hinweis.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;b&gt;Berechnet:&lt;/b&gt; mindestens benötigte Topfgröße (Gesamtvolumen). Die Flüssigkeit wird im selben Verhältnis wie beim eingestellten Topf hochgerechnet (Höhe zu maximaler Füllhöhe in der Ausrüstung).&lt;/p&gt;&lt;p&gt;Liegt eine Menge über dem nutzbaren Volumen (maximale Füllhöhe) der Brauanlage, erscheint ein Hinweis.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignmentFlag::AlignCenter</set>
@@ -4280,6 +4460,9 @@ p, li { white-space: pre-wrap; }
   <tabstop>btnVerdampfungsrate</tabstop>
   <tabstop>tbVerdampfungsrate</tabstop>
   <tabstop>tbNachisomerisierungszeit</tabstop>
+  <tabstop>cbNachisoModell</tabstop>
+  <tabstop>tbAussentemperatur</tabstop>
+  <tabstop>cbWhirlpoolDeckel</tabstop>
   <tabstop>tbVergaerungsgrad</tabstop>
   <tabstop>tbCO2</tabstop>
   <tabstop>tbReifezeit</tabstop>

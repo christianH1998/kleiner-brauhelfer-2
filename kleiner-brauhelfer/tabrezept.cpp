@@ -63,6 +63,7 @@ void TabRezept::setup(SudObject *sud)
     mTooltipBittere = ui->tbBittere->toolTip();
     mTooltipSW = ui->tbSW->toolTip();
     mTooltipMenge = ui->tbMenge->toolTip();
+    mTooltipNachiso = ui->tbNachisomerisierungszeit->toolTip();
     // Berechnungsmodus (ext-s10)
     ui->cbBerechnungsmodus->setItemData(0, tr("Menge, Stammwürze und Bittere vorgeben, Malz- und Hopfenmengen und Wasser werden berechnet (bisheriges Verhalten)."), Qt::ToolTipRole);
     ui->cbBerechnungsmodus->setItemData(1, tr("kg je Malz, g je Hopfengabe sowie Haupt- und Nachgussfaktor eingeben. Würzemenge, Stammwürze und Bittere werden berechnet. Eingabe einer Menge skaliert das Rezept."), Qt::ToolTipRole);
@@ -88,6 +89,9 @@ void TabRezept::setup(SudObject *sud)
     ui->tbHGF->setColumn(mSud, ModelSud::ColhighGravityFaktor);
     ui->tbKochzeit->setColumn(mSud, ModelSud::ColKochdauer);
     ui->tbNachisomerisierungszeit->setColumn(mSud, ModelSud::ColNachisomerisierungszeit);
+    ui->tbAussentemperatur->setColumn(mSud, ModelSud::ColAussentemperatur);
+    ui->tbWhirlpoolEndtemperatur->setColumn(mSud, ModelSud::ColWhirlpoolEndtemperatur);
+    ui->tbWhirlpoolWirksameZeit->setColumn(mSud, ModelSud::ColWhirlpoolWirksameZeit);
     ui->tbKosten->setColumn(mSud, ModelSud::Colerg_Preis);
     ui->tbWasserGesamt->setColumn(mSud, ModelSud::Colerg_W_Gesamt);
     ui->tbHauptguss->setColumn(mSud, ModelSud::Colerg_WHauptguss);
@@ -466,6 +470,8 @@ void TabRezept::checkEnabled()
     ui->tbKochzeit->setDisabled(gebraut);
     ui->tbVerdampfungsrate->setDisabled(gebraut);
     ui->tbNachisomerisierungszeit->setDisabled(gebraut);
+    ui->tbAussentemperatur->setDisabled(gebraut);
+    ui->cbWhirlpoolDeckel->setDisabled(gebraut);
     ui->tbVergaerungsgrad->setDisabled(gebraut);
     ui->tbCO2->setDisabled(gebraut);
     ui->cbWasserProfil->setEnabled(!gebraut);
@@ -482,6 +488,7 @@ void TabRezept::checkEnabled()
     ui->cbBerechnungsartMalz->setEnabled(!gebraut);
     ui->cbBerechnungsartWasser->setEnabled(!gebraut);
     ui->cbBerechnungsmodus->setEnabled(!gebraut);
+    ui->cbNachisoModell->setEnabled(!gebraut);
     ui->cbWasserPreset->setEnabled(!gebraut);
     ui->tbFaktorNachguss->setDisabled(gebraut);
     ui->tbMengeHefestarter->setDisabled(gebraut);
@@ -723,10 +730,16 @@ void TabRezept::updateValues()
         ui->wdgAnlageKorrekturSollmenge->setVisible(ui->tbAnlageKorrekturSollmenge->value() > 0);
         ui->tbAnlageSudhausausbeute->setValue(mSud->getAnlageData(ModelAusruestung::ColSudhausausbeute).toDouble());
         ui->tbAnlageVerdampfung->setValue(mSud->getAnlageData(ModelAusruestung::ColVerdampfungsrate).toDouble());
-        // Volumen und benoetigte Topfgroesse (ext-s10b): Hinweis ab 95 % des nutzbaren Volumens (5 % Luft)
-        const double luft = 0.95;
+        // Volumen und benoetigte Topfgroesse (ext-s10b): Grenze = nutzbares Volumen der Anlage
+        // (maximale Fuellhoehe). Benoetigte Topfgroesse = Fluessigkeit x Gesamt-/Nutzvolumen des
+        // eingestellten Gefaesses (gleiches Verhaeltnis Hoehe/max. Fuellhoehe).
         double kapMaische = mSud->getAnlageData(ModelAusruestung::ColMaischebottich_MaxFuellvolumen).toDouble();
         double kapKochen = mSud->getAnlageData(ModelAusruestung::ColSudpfanne_MaxFuellvolumen).toDouble();
+        double gesMaische = mSud->getAnlageData(ModelAusruestung::ColMaischebottich_Volumen).toDouble();
+        double gesKochen = mSud->getAnlageData(ModelAusruestung::ColSudpfanne_Volumen).toDouble();
+        auto topf = [](double fluessigkeit, double nutzbar, double gesamt) {
+            return (nutzbar > 0.0 && gesamt >= nutzbar) ? fluessigkeit * gesamt / nutzbar : fluessigkeit;
+        };
         double volMaische = mSud->geterg_WHauptguss() + BierCalc::MalzVerdraengung * mSud->geterg_S_Gesamt();
         double wuerzeKochbeginn = mSud->getMengeSollKochbeginn();
         if (static_cast<Brauhelfer::BerechnungsartWasser>(mSud->getberechnungsArtWasser()) == Brauhelfer::BerechnungsartWasser::Faktoren)
@@ -735,24 +748,24 @@ void TabRezept::updateValues()
         double volMax = qMax(volMaische, volKochen);
         ui->tbAnlageVolumenMaische->setValue(kapMaische);
         ui->tbVolumenMaische->setValue(volMaische);
-        bool zuVollMaische = kapMaische > 0.0 && volMaische > kapMaische * luft;
+        bool zuVollMaische = kapMaische > 0.0 && volMaische > kapMaische;
         ui->tbVolumenMaische->setError(zuVollMaische);
         ui->tbAnlageVolumenKochen->setValue(kapKochen);
         ui->tbVolumenKochen->setValue(volKochen);
-        bool zuVollKochen = kapKochen > 0.0 && volKochen > kapKochen * luft;
+        bool zuVollKochen = kapKochen > 0.0 && volKochen > kapKochen;
         ui->tbVolumenKochen->setError(zuVollKochen);
         ui->tbMaxFluessigkeit->setValue(volMax);
-        ui->tbTopfgroesse->setValue(volMax / luft);
+        ui->tbTopfgroesse->setValue(qMax(topf(volMaische, kapMaische, gesMaische), topf(volKochen, kapKochen, gesKochen)));
         ui->tbTopfgroesse->setError(zuVollMaische || zuVollKochen);
         QStringList hinweise;
         if (zuVollMaische)
-            hinweise << tr("Maischekessel: %1 L Maische, mit 5 % Luft passen höchstens %2 L (nutzbar %3 L), %4 L zu viel.")
-                        .arg(QLocale().toString(volMaische, 'f', 1), QLocale().toString(kapMaische * luft, 'f', 1),
-                             QLocale().toString(kapMaische, 'f', 1), QLocale().toString(volMaische - kapMaische * luft, 'f', 1));
+            hinweise << tr("Maischekessel: %1 L Maische, nutzbar sind %2 L (maximale Füllhöhe der Anlage), %3 L zu viel.")
+                        .arg(QLocale().toString(volMaische, 'f', 1), QLocale().toString(kapMaische, 'f', 1),
+                             QLocale().toString(volMaische - kapMaische, 'f', 1));
         if (zuVollKochen)
-            hinweise << tr("Sudpfanne: %1 L heiße Würze zu Kochbeginn, mit 5 % Luft passen höchstens %2 L (nutzbar %3 L), %4 L zu viel.")
-                        .arg(QLocale().toString(volKochen, 'f', 1), QLocale().toString(kapKochen * luft, 'f', 1),
-                             QLocale().toString(kapKochen, 'f', 1), QLocale().toString(volKochen - kapKochen * luft, 'f', 1));
+            hinweise << tr("Sudpfanne: %1 L heiße Würze zu Kochbeginn, nutzbar sind %2 L (maximale Füllhöhe der Anlage), %3 L zu viel.")
+                        .arg(QLocale().toString(volKochen, 'f', 1), QLocale().toString(kapKochen, 'f', 1),
+                             QLocale().toString(volKochen - kapKochen, 'f', 1));
         if (!hinweise.isEmpty())
             hinweise << tr("Abhilfe: Menge, Schüttung oder Haupt-/Nachgussfaktor verringern oder eine größere Brauanlage wählen.");
         ui->lblWarnungAnlage->setText(hinweise.join(QStringLiteral("\n")));
@@ -806,6 +819,26 @@ void TabRezept::updateValues()
     bool wasserFaktoren = !anlageSonderformel && (nachbrauen || artWasser == Brauhelfer::BerechnungsartWasser::Faktoren);
     if (!ui->cbBerechnungsmodus->hasFocus())
         ui->cbBerechnungsmodus->setCurrentIndex(nachbrauen ? 1 : 0);
+    // Bittere nach Kochende (ext-s11)
+    if (!ui->cbNachisoModell->hasFocus())
+        ui->cbNachisoModell->setCurrentIndex(mSud->getNachisoModell() == static_cast<int>(Brauhelfer::NachisoModell::Whirlpool) ? 1 : 0);
+    {
+        bool whirlpool = mSud->getNachisoModell() == static_cast<int>(Brauhelfer::NachisoModell::Whirlpool);
+        ui->label_12->setText(whirlpool ? tr("Whirlpool-/Absetzzeit") : tr("Nachisomerisierungszeit"));
+        for (QWidget* wdg : {static_cast<QWidget*>(ui->lblAussentemperatur), static_cast<QWidget*>(ui->tbAussentemperatur), static_cast<QWidget*>(ui->lblAussentemperaturEinheit),
+                             static_cast<QWidget*>(ui->lblWhirlpoolDeckel), static_cast<QWidget*>(ui->cbWhirlpoolDeckel),
+                             static_cast<QWidget*>(ui->lblWhirlpoolEndtemperatur), static_cast<QWidget*>(ui->tbWhirlpoolEndtemperatur), static_cast<QWidget*>(ui->lblWhirlpoolEndtemperaturEinheit),
+                             static_cast<QWidget*>(ui->lblWhirlpoolWirksameZeit), static_cast<QWidget*>(ui->tbWhirlpoolWirksameZeit), static_cast<QWidget*>(ui->lblWhirlpoolWirksameZeitEinheit)})
+            wdg->setVisible(whirlpool);
+        // Ohne Absetzzeit kuehlt nichts ab: Hinweis am Zeitfeld (ext-s11)
+        bool ohneZeit = whirlpool && mSud->getNachisomerisierungszeit() <= 0;
+        ui->tbNachisomerisierungszeit->setError(ohneZeit);
+        ui->tbNachisomerisierungszeit->setToolTip(ohneZeit ? tr("<p><b>Bitte die Whirlpool-/Absetzzeit eintragen</b> (Zeit von Kochende bis zum Ablassen, z. B. 30 min). "
+                                                               "Bei 0 min gibt es keine Abkühlphase: Temperatur, Deckel und Außentemperatur wirken dann nicht.</p>") + mTooltipNachiso
+                                                           : mTooltipNachiso);
+        if (!ui->cbWhirlpoolDeckel->hasFocus())
+            ui->cbWhirlpoolDeckel->setCurrentIndex(mSud->getWhirlpoolDeckel() != 0 ? 1 : 0);
+    }
     ui->lblBerechnungsmodus->setVisible(!anlageSonderformel);
     ui->cbBerechnungsmodus->setVisible(!anlageSonderformel);
     ui->lblBerechnungsartWasser->setVisible(!anlageSonderformel && !nachbrauen);
@@ -1428,6 +1461,22 @@ void TabRezept::on_cbBerechnungsartWasser_currentIndexChanged(int index)
     // ext-s10: Wechsel uebernimmt die aktuellen Werte (Logik in ModelSud::setDataExt_impl)
     if (ui->cbBerechnungsartWasser->hasFocus())
         mSud->setberechnungsArtWasser(index);
+}
+
+void TabRezept::on_cbNachisoModell_currentIndexChanged(int index)
+{
+    // ext-s11: Hopfenmengen bleiben, Bittere folgt dem Modell (Logik in ModelSud::setDataExt_impl)
+    if (!ui->cbNachisoModell->hasFocus())
+        return;
+    mSud->setNachisoModell(index == 1 ? static_cast<int>(Brauhelfer::NachisoModell::Whirlpool) : static_cast<int>(Brauhelfer::NachisoModell::Bestand));
+    hopfenGaben_modified();
+}
+
+void TabRezept::on_cbWhirlpoolDeckel_currentIndexChanged(int index)
+{
+    // ext-s11: Topf offen / mit Deckel waehrend der Absetzzeit
+    if (ui->cbWhirlpoolDeckel->hasFocus())
+        mSud->setWhirlpoolDeckel(index);
 }
 
 void TabRezept::on_cbBerechnungsmodus_currentIndexChanged(int index)

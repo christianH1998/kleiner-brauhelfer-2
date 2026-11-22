@@ -333,6 +333,36 @@ public:
     Q_INVOKABLE static double tinseth(double t, double sw);
 
     /**
+     * @brief Relative Isomerisierungsrate bei Temperatur T gegenueber 100 °C (ext-s11)
+     * 0,046 * e^(0,031 * T) wie bisher fuer die Nachisomerisierung (80 °C -> 0,549);
+     * unter 80 °C keine Isomerisierung (bisherige Annahme des Programms).
+     * @param T Temperatur [°C]
+     * @return Faktor (100 °C ~ 1,02)
+     */
+    Q_INVOKABLE static double isomerisierungsrate(double T);
+
+    /**
+     * @brief Whirlpool/Absetzen nach Kochende mit Abkuehlkurve (ext-s11)
+     * Waermebilanz des offenen (oder abgedeckten) runden Topfs ab 100 °C, Euler-Schritte 6 s:
+     *  - Verdunstung offene Oberflaeche: q = 0,089 kW/(m²·kPa) * (p_s(T) - p_Luft)
+     *    (ASHRAE-Beckenformel fuer ruhende Luft, hier bis Siedetemperatur extrapoliert [U])
+     *  - Konvektion h = 1,31 * dT^(1/3) W/(m²·K), Strahlung Oberflaeche eps 0,95, Topf/Deckel eps 0,3
+     *  - Wand nur benetzte Hoehe, Boden wie Wand; Waermekapazitaet Wuerze 4,19 kJ/(L·K)
+     *  - faktor skaliert den Waermeverlust (Kalibrierung der Anlage, 1 = unkalibriert)
+     * @param volumen Wuerzemenge nach Kochende [L]
+     * @param durchmesser Topfdurchmesser [cm]
+     * @param tAussen Aussentemperatur [°C]
+     * @param deckel true = Topf abgedeckt (keine Verdunstung nach aussen)
+     * @param faktor Korrekturfaktor Waermeverlust [-]
+     * @param tVon Beginn [min nach Kochende]
+     * @param tBis Ende [min nach Kochende]
+     * @param temperaturEnde optional: Temperatur bei tBis [°C]
+     * @return wirksame Kochminuten (Integral der Isomerisierungsrate) zwischen tVon und tBis
+     */
+    static double whirlpoolMinuten(double volumen, double durchmesser, double tAussen, bool deckel, double faktor,
+                                   double tVon, double tBis, double* temperaturEnde = nullptr);
+
+    /**
      * @brief mischungstemperaturTm
      * @param m1
      * @param c1

@@ -11,6 +11,7 @@
 //   --umkehrtest: Werte aendern und zuruecksetzen, Umkehrbarkeit pruefen (Exit 0 = OK).
 //   --rundlauf-malz: Rundlauftest Malz-Berechnungsart Ziel-SW <-> Mengen fest (Exit 0 = OK).
 //   --rundlauf-wasser: Rundlauftest Wasserberechnung, Presets, Treberaufnahme (Exit 0 = OK).
+//   --rundlauf-nachiso: Rundlauftest Modell "Bittere nach Kochende" (Whirlpool mit Abkuehlkurve, Exit 0 = OK).
 //   --migrate: aeltere Datenbank vorher aktualisieren (auf der Kopie; mit --save auf der Datei).
 
 #include <QCoreApplication>
@@ -23,6 +24,7 @@
 #include <algorithm>
 #include <cmath>
 #include "brauhelfer.h"
+#include "biercalc.h"
 
 static QJsonValue toJson(const QVariant& v)
 {
@@ -534,6 +536,131 @@ static int rundlaufWasser(Brauhelfer& bh, QTextStream& out)
     return fehler;
 }
 
+// Rundlauftest Modell "Bittere nach Kochende" (ext-s11): Whirlpool mit Abkuehlkurve.
+// Physik-Plausibilitaet von BierCalc::whirlpoolMinuten, dann je Sud (Absetzzeit 30 min) in
+// jeder Hopfen-Berechnungsart Bestand -> Whirlpool -> Bestand: Mengen unveraendert, IBU-Anteil
+// jeder Kochgabe genau im Verhaeltnis (1-e^(-0,04*(t+W))) / (1-e^(-0,04*(t+0,549*t_iso))),
+// IBU = Summe Anteile, Rueckweg exakt. Aussentemperatur +10 K und Deckel erhoehen die IBU.
+static int rundlaufNachiso(Brauhelfer& bh, QTextStream& out)
+{
+    int fehler = 0;
+    // Physik: 20 L, Topf 36 cm, 20 °C, offen, 30 min
+    {
+        QStringList p;
+        double t30 = 0.0, t10 = 0.0, tDeckel = 0.0, tWarm = 0.0, tF2 = 0.0;
+        const double w30 = BierCalc::whirlpoolMinuten(20, 36, 20, false, 1.0, 0, 30, &t30);
+        BierCalc::whirlpoolMinuten(20, 36, 20, false, 1.0, 0, 10, &t10);
+        const double wDeckel = BierCalc::whirlpoolMinuten(20, 36, 20, true, 1.0, 0, 30, &tDeckel);
+        BierCalc::whirlpoolMinuten(20, 36, 30, false, 1.0, 0, 30, &tWarm);
+        BierCalc::whirlpoolMinuten(20, 36, 20, false, 2.0, 0, 30, &tF2);
+        const double wTeil = BierCalc::whirlpoolMinuten(20, 36, 20, false, 1.0, 10, 30);
+        const double w10 = BierCalc::whirlpoolMinuten(20, 36, 20, false, 1.0, 0, 10);
+        if (!(t30 > 20.0 && t30 < t10 && t10 < 100.0)) p << QStringLiteral("Temperatur faellt nicht plausibel");
+        if (!(tDeckel > t30)) p << QStringLiteral("Deckel kuehlt nicht langsamer");
+        if (!(tWarm > t30)) p << QStringLiteral("Aussentemperatur ohne Wirkung");
+        if (!(tF2 < t30)) p << QStringLiteral("Faktor 2 kuehlt nicht schneller");
+        if (!(w30 > 0.0 && w30 <= 30.0 * BierCalc::isomerisierungsrate(100.0) + 1e-9)) p << QStringLiteral("wirksame Minuten ausserhalb");
+        if (!(wDeckel > w30)) p << QStringLiteral("Deckel: wirksame Minuten nicht hoeher");
+        if (std::fabs(w10 + wTeil - w30) > 1e-9) p << QStringLiteral("Teilintegrale addieren sich nicht");
+        out << (p.isEmpty() ? "OK    " : "FEHLER") << " Physik 20 L / 36 cm / 20 °C offen: nach 10 min " << QString::number(t10, 'f', 1)
+            << " °C, nach 30 min " << QString::number(t30, 'f', 1) << " °C (Deckel " << QString::number(tDeckel, 'f', 1)
+            << " °C), wirksam " << QString::number(w30, 'f', 1) << " min (bisher 0,549*30 = "
+            << QString::number(30 * BierCalc::isomerisierungsrate(80.0), 'f', 1) << ")\n";
+        if (!p.isEmpty())
+        {
+            ++fehler;
+            out << "      " << p.join(QStringLiteral("\n      ")) << "\n";
+        }
+    }
+    ModelSud* sud = bh.modelSud();
+    ModelHopfengaben* m = bh.modelHopfengaben();
+    const int colDel = m->fieldIndex(QStringLiteral("deleted"));
+    const int bestand = static_cast<int>(Brauhelfer::NachisoModell::Bestand);
+    const int whirlpool = static_cast<int>(Brauhelfer::NachisoModell::Whirlpool);
+    for (int row = 0; row < sud->rowCount(); ++row)
+    {
+        const QString name = sud->data(row, ModelSud::ColSudname).toString();
+        sud->setData(row, ModelSud::ColStatus, static_cast<int>(Brauhelfer::SudStatus::Rezept));
+        const QVariant sudId = sud->data(row, ModelSud::ColID);
+        QList<int> gaben;
+        for (int r = 0; r < m->rowCount(); ++r)
+            if (m->data(r, ModelHopfengaben::ColSudID) == sudId && !m->data(r, colDel).toBool())
+                gaben.append(r);
+        if (gaben.isEmpty())
+        {
+            out << "--     Sud '" << name << "' ohne Hopfengaben\n";
+            continue;
+        }
+        QStringList probleme;
+        auto pruefe = [&](bool bedingung, const QString& text) { if (!bedingung) probleme << text; };
+        sud->setData(row, ModelSud::ColNachisoModell, bestand);
+        setArt(bh, row, Brauhelfer::BerechnungsartHopfen::IBUBerechnet);
+        sud->setData(row, ModelSud::ColNachisomerisierungszeit, 30);
+        const double tIso = 30.0;
+        double ibuB = 0.0, ibuW = 0.0, wMin = 0.0, tEnde = 0.0;
+        for (Brauhelfer::BerechnungsartHopfen art : {Brauhelfer::BerechnungsartHopfen::Gewicht, Brauhelfer::BerechnungsartHopfen::IBU,
+                                                     Brauhelfer::BerechnungsartHopfen::IBUBerechnet, Brauhelfer::BerechnungsartHopfen::Keine})
+        {
+            setArt(bh, row, art);
+            const QString a = QString::number(static_cast<int>(art));
+            const HopfenStand s0 = hopfenStand(bh, row);
+            QList<double> anteil0;
+            for (int r : gaben)
+                anteil0.append(m->data(r, ModelHopfengaben::ColIBUAnteil).toDouble());
+            sud->setData(row, ModelSud::ColNachisoModell, whirlpool);
+            const HopfenStand s1 = hopfenStand(bh, row);
+            wMin = sud->data(row, ModelSud::ColWhirlpoolWirksameZeit).toDouble();
+            tEnde = sud->data(row, ModelSud::ColWhirlpoolEndtemperatur).toDouble();
+            HopfenStand n0 = s0, n1 = s1;
+            n0.ibu = n1.ibu = 0.0;
+            pruefe(maxRelDiff(n0, n1) <= 1e-9, QStringLiteral("Art %1: Mengen veraendert").arg(a));
+            double summe = 0.0;
+            for (int i = 0; i < gaben.size(); ++i)
+            {
+                const double anteil1 = m->data(gaben[i], ModelHopfengaben::ColIBUAnteil).toDouble();
+                summe += anteil1;
+                const double t = m->data(gaben[i], ModelHopfengaben::ColZeit).toDouble();
+                if (t >= 0.0 && anteil0[i] > 0.0)
+                {
+                    const double verh = (1 - exp(-0.04 * (t + wMin))) / (1 - exp(-0.04 * (t + tIso * BierCalc::isomerisierungsrate(80.0))));
+                    pruefe(std::fabs(anteil1 / anteil0[i] - verh) <= 1e-9,
+                           QStringLiteral("Art %1: Gabe %2 Verhaeltnis %3 statt %4").arg(a).arg(i).arg(anteil1 / anteil0[i]).arg(verh));
+                }
+            }
+            if (art != Brauhelfer::BerechnungsartHopfen::Keine)
+                pruefe(std::fabs(s1.ibu - summe) <= 1e-9 * std::max(1.0, summe), QStringLiteral("Art %1: IBU %2 != Summe Anteile %3").arg(a).arg(s1.ibu).arg(summe));
+            else
+                pruefe(s1.ibu == s0.ibu, QStringLiteral("Art Keine: IBU veraendert"));
+            if (art == Brauhelfer::BerechnungsartHopfen::IBUBerechnet)
+            {
+                ibuB = s0.ibu;
+                ibuW = s1.ibu;
+                // Aussentemperatur und Deckel wirken; zurueck exakt
+                const double ta = sud->data(row, ModelSud::ColAussentemperatur).toDouble();
+                sud->setData(row, ModelSud::ColAussentemperatur, ta + 10.0);
+                pruefe(sud->data(row, ModelSud::ColIBU).toDouble() > s1.ibu, QStringLiteral("Aussentemperatur +10: IBU nicht gestiegen"));
+                sud->setData(row, ModelSud::ColAussentemperatur, ta);
+                sud->setData(row, ModelSud::ColWhirlpoolDeckel, 1);
+                pruefe(sud->data(row, ModelSud::ColIBU).toDouble() > s1.ibu, QStringLiteral("Deckel: IBU nicht gestiegen"));
+                sud->setData(row, ModelSud::ColWhirlpoolDeckel, 0);
+                pruefe(maxRelDiff(s1, hopfenStand(bh, row)) <= 1e-9, QStringLiteral("Aussentemperatur/Deckel zurueck nicht exakt"));
+            }
+            sud->setData(row, ModelSud::ColNachisoModell, bestand);
+            pruefe(maxRelDiff(s0, hopfenStand(bh, row)) <= 1e-9, QStringLiteral("Art %1: Rueckweg nicht exakt").arg(a));
+        }
+        const bool ok = probleme.isEmpty();
+        if (!ok)
+            ++fehler;
+        out << (ok ? "OK    " : "FEHLER") << " Sud '" << name << "' Absetzzeit 30 min: Ende " << QString::number(tEnde, 'f', 1)
+            << " °C, wirksam " << QString::number(wMin, 'f', 1) << " min; IBU bisher " << QString::number(ibuB, 'f', 2)
+            << " -> Whirlpool " << QString::number(ibuW, 'f', 2) << "\n";
+        if (!ok)
+            out << "      " << probleme.join(QStringLiteral("\n      ")) << "\n";
+    }
+    out << (fehler == 0 ? QStringLiteral("Rundlauftest Nachiso: alle OK\n") : QStringLiteral("Rundlauftest Nachiso: %1 Fehler\n").arg(fehler));
+    return fehler;
+}
+
 static int umkehrTest(Brauhelfer& bh, QTextStream& out)
 {
     struct Feld { int col; const char* name; double delta; int hopfenArt; int malzArt = 0; };
@@ -710,6 +837,16 @@ int main(int argc, char *argv[])
         {
             QTextStream out(stdout);
             int fehler = rundlaufWasser(bh, out);
+            out.flush();
+            bh.discard();
+            bh.disconnectDatabase();
+            return fehler == 0 ? 0 : 3;
+        }
+
+        if (args.contains(QStringLiteral("--rundlauf-nachiso")) && !save)
+        {
+            QTextStream out(stdout);
+            int fehler = rundlaufNachiso(bh, out);
             out.flush();
             bh.discard();
             bh.disconnectDatabase();

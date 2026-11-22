@@ -61,7 +61,10 @@ Empfehlung: Kling (Q4) und eine Fachquelle zur Ausbeute (MEBAK oder Narziß/Back
   | −5 | 6,65 | 12,0 (alternativ 8,77 → 15,8) |
   | −10 | 1,21 | 2,2 (alternativ 6,16 → 11,1) |
   | −20 | 0 | 0 |
-  Änderung nur als neue, gekennzeichnete Option, nie stillschweigend (bestehende Rezepte im IBU-Modus würden andere Mengen erhalten).
+  Änderung nur als neue, gekennzeichnete Option, nie stillschweigend (bestehende Rezepte im IBU-Modus würden andere Mengen erhalten). **Umgesetzt in ext-s11** als `Sud.NachisoModell = 1` „Whirlpool mit Abkühlkurve“ (Anwenderablauf: alle Gaben im Kochen, danach Whirlpool + ~30 min Absetzen, dann Ablassen); Wechsel lässt die Mengen und passt die IBU an (Anwenderentscheidung 2026-11-22). Modell:
+  - Bittere in der Absetzzeit: t_eff,extra = ∫₀^t_abs r(T(t)) dt, r(T) = 0,046·e^(0,031·T) (= bisherige Konstante, 100 °C → 1,02, 80 °C → 0,549), unter 80 °C 0 [C für Konstanten, A für Integral; Konstanten U, Q3 nicht bestätigt].
+  - Wärmebilanz runder Topf (Durchmesser Sudpfanne, Füllhöhe aus Volumen), c = 4,19 kJ/(L·K): Verdunstung offene Oberfläche q = 0,089 kW/(m²·kPa)·(p_s(T) − 0,5·p_s(T_a)) (ASHRAE-Beckenformel für ruhende Luft, für Pools gedacht, hier bis 100 °C extrapoliert [S/U]); Konvektion h = 1,31·ΔT^(1/3) W/(m²·K) [S, vereinfachte Luft-Korrelation]; Strahlung Wasseroberfläche ε 0,95, Topf/Deckel ε 0,3 [U]; Wand nur benetzt, Boden wie Wand [A]; Deckel: keine Verdunstung nach außen [A]; Dampfdruck Antoine (1–100 °C) [Q-Standard].
+  - Prüfbeispiel [A, Code]: 20 L, Ø 36 cm, 20 °C, offen: 92,2 °C nach 10 min, 80,9 °C nach 30 min (Deckel 94,3 °C), wirksam 22,4 min statt 16,5 (0,549·30). Erfahrungswerte Hobbybrauer: einige K bis ~10 K in 30 min [U] ⇒ Modell kühlt eher schneller; daher Kalibrierung: `Ausruestung.WhirlpoolFaktor` skaliert den Wärmeverlust, per Bisektion aus gemessener Endtemperatur.
 - Kalthopfung = `WeitereZutatenGaben` Typ 100, Zeitpunkt Gärung ⇒ 0 IBU [C]; fachlich vertretbar (keine Isomerisierung) [A].
 - **Gesamt-IBU aus festen Mengen** = Σ IBUAnteil der Hopfengaben [A]; existiert nicht [C].
 - Variante B (bestehend): Modus IBU (Anteile der Soll-IBU) bzw. Gewicht (Gewichtsanteile, Gesamtmenge auf Soll-IBU skaliert) [C] ⇒ Verhältnis der Gaben bleibt erhalten.

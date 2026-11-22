@@ -111,7 +111,7 @@ Eine gebündelte, idempotente Migration in `database_update.cpp` mit `ALTER TABL
 - `ModelSud::updateWasser`: Modus 1 „Faktoren HG+NG“ ⇒ HG = S·f_HG, NG = S·f_NG; erwartete Würzemenge rückgerechnet (Treberaufnahme aus Anlage, Korrektur) + Warnung bei Abweichung von der Sollmenge. Modus 0 bleibt exakt wie heute. Sondertypen Grainfather/Brauheld bleiben unverändert.
 - UI `TabRezept`: Dropdown Modus, Dropdown Preset (Helles 4,0/3,0, Dunkles 3,0/4,0, Benutzerdefiniert 3,5/3,5), beide Faktoren editierbar. Ein Preset setzt nur die Faktoren; manuelles Ändern behält das Preset bei. Tooltip mit Richtwerten (Kling, ungeprüft).
 
-**S10b Benötigte Topfgröße + Hinweis Brauanlage (ext-s10b)** – *neu, Anwender 2026-11-22; umgesetzt: Felder `tbMaxFluessigkeit`, `tbTopfgroesse` (= max/0,95), `lblWarnungAnlage` in `groupAnlage`; Markierung „Benötigtes Volumen“ jetzt ab 95 %, kein Hinweis bei Volumen 0*
+**S10b Benötigte Topfgröße + Hinweis Brauanlage (ext-s10b)** – *neu, Anwender 2026-11-22; umgesetzt: Felder `tbMaxFluessigkeit`, `tbTopfgroesse` (= max/0,95), `lblWarnungAnlage` in `groupAnlage`; Markierung „Benötigtes Volumen“ jetzt ab 95 %, kein Hinweis bei Volumen 0; **geändert in S11 (Anwender 2026-11-22): keine feste 5-%-Reserve, Grenze = nutzbares Volumen (max. Füllhöhe), Topfgröße = Flüssigkeit × Gesamt-/Nutzvolumen des Gefäßes***
 - **Anforderung:** Im Reiter Rezept rechts (Übersicht, Gruppe „Anlage“) direkt sichtbar die voraussichtlich benötigte Topfgröße anzeigen:
   - **Maischen:** Hauptguss + Volumen des Malzes (Malzverdrängung `BierCalc::MalzVerdraengung` × Schüttung) – heute schon als „Volumen Maische“ berechnet.
   - **Kochbeginn:** Würzemenge zu Kochbeginn aus Hauptguss + Nachguss (abzüglich Treberaufnahme bzw. die Soll-Würzemenge zu Kochbeginn, heiß auf 100 °C umgerechnet wie heute `tbVolumenKochen`).
@@ -120,14 +120,14 @@ Eine gebündelte, idempotente Migration in `database_update.cpp` mit `ALTER TABL
 - Gilt in allen Modi; besonders relevant beim Nachbrauen/Skalieren (S10), wo die Menge aus Malz und Faktoren entsteht. Reine Anzeige: keine DB-Änderung, keine Wertänderung (Invariante).
 - Kochbeginn: im Faktoren-Modus der größere Wert aus Soll (`MengeSollKochbeginn`) und erwarteter Würzemenge (`WuerzemengeKochbeginnErwartet`), sonst Soll.
 
-**S11 Whirlpool/Hopfenseihen-Modell (ext-s11)**
+**S11 Whirlpool/Hopfenseihen-Modell (ext-s11)** – *umgesetzt, nach Anwendertest umgebaut (2026-11-22): Ablauf beim Anwender = alle Gaben während des Kochens, danach Whirlpool und ~30 min Absetzen bis zum Ablassen ⇒ Modell „Whirlpool mit Abkühlkurve“ (`NachisoModell = 1`): Temperaturverlauf aus Wärmebilanz (Verdunstung offene Oberfläche, Konvektion, Strahlung; Topfdurchmesser Sudpfanne aus Ausrüstung, Würzemenge, Außentemperatur, Deckel), Bittere = Integral der Isomerisierungsrate (`BierCalc::whirlpoolMinuten`) für alle Gaben; Kalibrierung über gemessene Endtemperatur (`Ausruestung.WhirlpoolFaktor`, Knopf „Kalibrieren…“). **DB-Migration 2011** (Anwender 2026-11-22): `Sud.Aussentemperatur` (später auch S12), `Sud.WhirlpoolDeckel`, `Ausruestung.WhirlpoolFaktor`. Anwender bestätigt: Mengen bleiben, IBU ändert sich (auch in Ziel-IBU-Modi); Rundlauftest `--rundlauf-nachiso`*
 - Dropdown im Hopfenbereich: „Nachisomerisierung Bestand“ / „Whirlpool (Wartezeit vor Abschwächung)“, umgesetzt als `BierCalc`-Variante (Befund `fachmodelle.md` §4). Wirkt auf `IBUAnteil` und im Ziel-IBU-Modus auf die Mengen.
 - Ein Wechsel des Modells ist ein Modus-Wechsel im Sinne der Invariante: Die Mengen bleiben, die angezeigte IBU ändert sich. Das wird im Tooltip erklärt. Hier muss der Anwender bestätigen, ob die IBU-Anzeige sich ändern darf.
 
 **S12 Brauprotokoll (ext-s12)**
 - `ModelMesswerte` (Core) + Dialog `dialogs/dlgbrauprotokoll.*` (Checkliste Soll | Ist | Abweichung | Zeit | Methode, Volumen- und Extrakthilfen).
 - Schutz der Ist-Felder in `ModelSud::setDataExt_impl`. Effektive Biermenge = letzter gemessener Volumenwert, sonst Soll mit Kennzeichnung „geschätzt“.
-- **Anforderung Anwender (2026-11-22):** Reale Zeiten je Maischschritt dokumentieren: Aufheizdauer und Rastdauer, vorbelegt mit den Rezeptwerten aus dem Maischplan, im Protokoll änderbar. Die Aufheizzeit hängt u. a. von der Außentemperatur ab, deshalb optional die Außentemperatur mit erfassen (Grundlage für spätere Auswertung/Kalibrierung der Aufheizrate in S14/S15).
+- **Anforderung Anwender (2026-11-22):** Reale Zeiten je Maischschritt dokumentieren: Aufheizdauer und Rastdauer, vorbelegt mit den Rezeptwerten aus dem Maischplan, im Protokoll änderbar. Die Aufheizzeit hängt u. a. von der Außentemperatur ab, deshalb die Außentemperatur mit erfassen (Spalte `Sud.Aussentemperatur` existiert ab DB 2011/S11) (Grundlage für spätere Auswertung/Kalibrierung der Aufheizrate in S14/S15).
 
 **S13 Abfüllart + Zucker fest in g/L (ext-s13)**
 - Dropdown Abfüllart (Konzept §7.1 inkl. Zwangskarbonisierung).
@@ -149,7 +149,7 @@ Eine gebündelte, idempotente Migration in `database_update.cpp` mit `ALTER TABL
 ### Stufe 2+
 - **S14 Kalibrierung (ext-s14)**: `DlgAusruestung` mit Gültigkeitsregeln, Median, Ausreißern, Vorschau und Historie, ergänzt um die Treberaufnahme aus Messwerten.
 - **S15 Diagramme/Statistik erweitert (ext-s15)**: Verluste je Brauschritt, Hefe-Vergleich, Gärverlauf-Vergleich, CSV-Export. Python nur, wenn ein konkretes Diagramm in QCustomPlot unverhältnismäßig aufwendig wäre (vorher abstimmen).
-- **S16 (optional) Export ins alte Datenbankformat 2009 (ext-s16)** – *Anwender 2026-11-21*: Kopie der aktuellen Datenbank als Version 2009 speichern, damit das Original-Programm (2.6.5) sie öffnen kann. Vorher Warnhinweis mit Liste der dabei verlorenen Daten (neue Sud-Spalten: Malz-/Wasser-/Whirlpool-Modus, Wasser-Preset, Nachguss-Faktor, Abfüllart, Zucker g/L; Ausrüstung.Treberaufnahme; Tabellen Messwerte und AusruestungHistorie). Hopfen-Modus 2 wird dabei auf „Keine“ (−1) gesetzt. Zugang unauffällig im Einstellungsdialog, Bereich Datenbank. Umsetzung: Kopie anlegen, neue Spalten/Tabellen per Tabellenumbau entfernen, `Global.db_Version = 2009`.
+- **S16 (optional) Export ins alte Datenbankformat 2009 (ext-s16)** – *Anwender 2026-11-21*: Kopie der aktuellen Datenbank als Version 2009 speichern, damit das Original-Programm (2.6.5) sie öffnen kann. Vorher Warnhinweis mit Liste der dabei verlorenen Daten (neue Sud-Spalten: Malz-/Wasser-/Whirlpool-Modus, Wasser-Preset, Nachguss-Faktor, Abfüllart, Zucker g/L; Ausrüstung.Treberaufnahme; ab 2011 Sud.Aussentemperatur, Sud.WhirlpoolDeckel, Ausrüstung.WhirlpoolFaktor; Tabellen Messwerte und AusruestungHistorie). Hopfen-Modus 2 wird dabei auf „Keine“ (−1) gesetzt. Zugang unauffällig im Einstellungsdialog, Bereich Datenbank. Umsetzung: Kopie anlegen, neue Spalten/Tabellen per Tabellenumbau entfernen, `Global.db_Version = 2009`.
 - **Zurückgestellt**: Malzpotential, Zuckerarten-Liste, Flaschengröße je Sud (aktuell feste Anzeige 0,5/0,33 L).
 
 ## Kritische Dateien

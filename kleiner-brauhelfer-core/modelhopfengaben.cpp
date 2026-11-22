@@ -40,8 +40,21 @@ QVariant ModelHopfengaben::dataExt(const QModelIndex &idx) const
             sw = (sw_ende - sw_beginn) / kochzeit * (kochzeit - t/2)  + sw_beginn;
         else
             sw = sw_ende;
-        double Tiso = 80.0;
-        double ausbeute = 100 * BierCalc::tinseth(t + isozeit * 0.046 * exp(0.031 * Tiso), sw);
+        double teff;
+        if (bh->modelSud()->istWhirlpool(rowSudId))
+        {
+            // ext-s11: Whirlpool mit Abkuehlkurve - jede Gabe zieht waehrend der Absetzzeit weiter,
+            // gewichtet mit der Isomerisierungsrate der jeweiligen Temperatur. Eine Gabe x min nach
+            // Kochende (t = -x) erst ab Minute x.
+            teff = qMax(0.0, t) + bh->modelSud()->whirlpoolMinuten(rowSudId, qMax(0.0, -t));
+        }
+        else
+        {
+            // bisher: Nachisomerisierungszeit pauschal mit der Rate bei 80 °C
+            double Tiso = 80.0;
+            teff = t + isozeit * 0.046 * exp(0.031 * Tiso);
+        }
+        double ausbeute = 100 * BierCalc::tinseth(teff, sw);
         if (data(idx.row(), ColPellets).toBool())
             ausbeute *= 1.1;
         if (kochzeit - t > 15)
@@ -263,6 +276,8 @@ void ModelHopfengaben::onSudDataChanged(const QModelIndex &idx)
     case ModelSud::ColhighGravityFaktor:
     case ModelSud::ColKochdauer:
     case ModelSud::ColNachisomerisierungszeit:
+    case ModelSud::ColAussentemperatur:
+    case ModelSud::ColWhirlpoolDeckel:
     {
         QVariant sudId = bh->modelSud()->data(idx.row(), ModelSud::ColID);
         mSignalModifiedBlocked = true;

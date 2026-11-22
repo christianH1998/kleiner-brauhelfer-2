@@ -1881,6 +1881,40 @@ bool Database::update()
             db.commit();
         }
 
+        if (version == 2010)
+        {
+            // Whirlpool mit Abkuehlkurve (ext-s11, Fork christianH1998). Nur neue Spalten,
+            // leer/Standard = bisheriges Verhalten. Idempotent wie 2010.
+            ++version;
+            qInfo(Brauhelfer::loggingCategory) << "Updating to version:" << version;
+            db.transaction();
+
+            auto spalteFehlt = [&](const QString& tabelle, const QString& spalte) -> bool {
+                QSqlQuery q = sqlExec(db, QStringLiteral("PRAGMA table_info(%1)").arg(tabelle));
+                while (q.next())
+                    if (q.value(1).toString().compare(spalte, Qt::CaseInsensitive) == 0)
+                        return false;
+                return true;
+            };
+            auto spalteHinzufuegen = [&](const QString& tabelle, const QString& spalte, const QString& definition) {
+                if (spalteFehlt(tabelle, spalte))
+                    sqlExec(db, QStringLiteral("ALTER TABLE %1 ADD COLUMN %2 %3").arg(tabelle, spalte, definition));
+            };
+
+            // Sud (Reihenfolge = Spalten-Enum ModelSud)
+            //  - Aussentemperatur: °C am Brautag, leer = 20 °C (Whirlpool S11, spaeter Brauprotokoll S12)
+            //  - WhirlpoolDeckel:  0 = Topf offen, 1 = abgedeckt (S11)
+            spalteHinzufuegen(QStringLiteral("Sud"), QStringLiteral("Aussentemperatur"), QStringLiteral("REAL"));
+            spalteHinzufuegen(QStringLiteral("Sud"), QStringLiteral("WhirlpoolDeckel"), QStringLiteral("INTEGER DEFAULT 0"));
+
+            // Ausruestung
+            //  - WhirlpoolFaktor: Korrektur des Waermeverlusts beim Abkuehlen (Kalibrierung), 1 = Modell
+            spalteHinzufuegen(QStringLiteral("Ausruestung"), QStringLiteral("WhirlpoolFaktor"), QStringLiteral("REAL DEFAULT 1"));
+
+            sqlExec(db, QStringLiteral("UPDATE Global SET db_Version=%1").arg(version));
+            db.commit();
+        }
+
         return true;
     }
     catch (const std::exception& ex)

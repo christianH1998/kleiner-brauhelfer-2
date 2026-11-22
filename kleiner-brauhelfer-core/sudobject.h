@@ -101,6 +101,8 @@ class LIB_EXPORT SudObject : public QObject
     Q_PROPERTY_SUD(int, NachisoModell, toInt())
     Q_PROPERTY_SUD(int, Abfuellart, toInt())
     Q_PROPERTY_SUD(double, ZuckerProLiter, toDouble())
+    Q_PROPERTY_SUD(double, Aussentemperatur, toDouble())
+    Q_PROPERTY_SUD(int, WhirlpoolDeckel, toInt())
     // virtual fields in table Sud
     Q_PROPERTY_SUD_READONLY(double, MengeSollAnstellen, toDouble())
     Q_PROPERTY_SUD_READONLY(double, MengeSollKochende, toDouble())
@@ -149,6 +151,8 @@ class LIB_EXPORT SudObject : public QObject
     Q_PROPERTY_SUD_READONLY(int, DauerHauptgaerung, toInt())
     Q_PROPERTY_SUD_READONLY(double, TemperaturHauptgaerung, toDouble())
     Q_PROPERTY_SUD_READONLY(double, WuerzemengeKochbeginnErwartet, toDouble())
+    Q_PROPERTY_SUD_READONLY(double, WhirlpoolEndtemperatur, toDouble())
+    Q_PROPERTY_SUD_READONLY(double, WhirlpoolWirksameZeit, toDouble())
 
     // tables
     Q_PROPERTY(ProxyModel* modelMaischplan READ modelMaischplan CONSTANT)

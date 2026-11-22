@@ -518,3 +518,77 @@ Technik: nur Oberfläche, TabRezept::updateValues und tabrezept.ui (tbMaxFluessi
 tbTopfgroesse, lblWarnungAnlage).
 Test: Build ohne Fehler; Rechenkern unverändert (Regressions- und Rundlauftests aus S10
 gelten weiter).
+
+--------------------------------------------------------------------------------
+S11 – Whirlpool mit Abkühlkurve, Datenbank 2011 (Tag ext-s11)  2026-11-22
+--------------------------------------------------------------------------------
+Hintergrund: Nach dem Kochen bleibt die Würze mit allen Hopfengaben noch im Topf (Whirlpool,
+dann z. B. 30 min Absetzen des Trubs bis zum Öffnen des Hahns). In dieser Zeit kühlt sie
+langsam ab und der Hopfen gibt weiter Bittere ab. Bisher rechnete das Programm dafür
+pauschal mit der Nachisomerisierungszeit x 0,549 (Rate bei 80 °C).
+
+Neu (Reiter Rezept, links unter "Nachisomerisierungszeit"): Auswahl "Bittere nach Kochende"
+  - Nachisomerisierung pauschal (bisher): unverändert.
+  - Whirlpool mit Abkühlkurve (NEU):
+      * Das Feld "Nachisomerisierungszeit" heißt dann "Whirlpool-/Absetzzeit" (Zeit von
+        Kochende bis zum Ablassen).
+      * Neue Eingaben: "Außentemperatur" (°C, Standard 20) und "Topf beim Absetzen"
+        (offen / mit Deckel).
+      * Berechnet: der Temperaturverlauf der Würze ab 100 °C aus Würzemenge, Durchmesser
+        der Sudpfanne (Ausrüstung, runder Topf), Außentemperatur und Deckel (offen: die
+        Verdunstung kühlt stark). Angezeigt werden "Temperatur am Ende ca." und
+        "Wirksame Kochzeit ca." (so viele Minuten Kochen entspricht die Bitterausbeute in
+        der Absetzzeit, unter 80 °C keine Bittere mehr). Diese Zeit wird zu jeder Gabe
+        addiert (auch zur Bitterhopfung über die volle Kochzeit). Eine Gabe x min nach
+        Kochende (Ausschlagen) zieht erst ab Minute x.
+      * Beispiel: 20 L in einem Topf mit 36 cm Durchmesser, 20 °C, offen, 30 min:
+        nach 10 min ca. 92 °C, nach 30 min ca. 81 °C, wirksam ca. 22 min (bisher 16,5).
+Ausrüstung (Dialog Ausrüstung -> Sonstiges): "Abkühlfaktor Whirlpool" (1,0 = berechnet) und
+  Knopf "Kalibrieren…": Würzemenge, Zeit bis zur Messung, Außentemperatur, Deckel und die
+  gemessene Temperatur eintragen; der Faktor wird so bestimmt, dass das Modell die
+  gemessene Temperatur trifft. Ohne Durchmesser der Sudpfanne wird ein Topf mit Höhe =
+  Durchmesser und 1,5-fachem Würzevolumen angenommen (Kalibrieren verlangt den Durchmesser).
+Umschalten des Modells: Die Hopfenmengen bleiben unverändert, die Bittere passt sich an
+(auch in den Modi "Ziel-IBU", Entscheidung Anwender 2026-11-22). Bestehende Rezepte
+bleiben auf "pauschal (bisher)". Ändert man im Whirlpool-Modell Außentemperatur, Deckel
+oder Absetzzeit, verhält sich das wie bisher bei der Nachisomerisierungszeit (Ziel-IBU:
+Mengen werden angepasst; Mengen fest: Bittere ändert sich). Bei gebrauten Suden gesperrt.
+Hinweis: Wärmeverlust (Verdunstungsformel bis zum Siedepunkt extrapoliert) und
+Isomerisierungsrate sind Näherungen mit ungeprüften Quellen (doc/claude/fachmodelle.md,
+Abschnitt 4). Das Modell kühlt eher etwas schneller als Erfahrungswerte; mit einer
+Messung kalibrieren.
+
+Hinweis im Whirlpool-Modell: Ist keine Whirlpool-/Absetzzeit eingetragen (0 min), wird das
+Zeitfeld rot (Tooltip erklärt es) - ohne Absetzzeit gibt es keine Abkühlphase, Temperatur,
+Deckel und Außentemperatur wirken dann nicht (Befund Anwendertest: Testsude hatten 0 min).
+
+Nachtrag S10b (nach Anwenderhinweis): Die feste Reserve von 5 % entfällt. Die Ausrüstung
+kennt bereits Topfhöhe und maximale Füllhöhe:
+  - Hinweis/rote Markierung, sobald Maische bzw. heiße Würze das nutzbare Volumen
+    (maximale Füllhöhe) von Maischekessel bzw. Sudpfanne übersteigt.
+  - "Benötigte Topfgröße ca." = Flüssigkeitsmenge x Gesamtvolumen / nutzbares Volumen des
+    eingestellten Gefäßes (gleiches Verhältnis Höhe zu maximaler Füllhöhe), größerer Wert
+    aus Maischekessel und Sudpfanne. Ohne Angaben in der Ausrüstung = Flüssigkeitsmenge.
+
+Datenbank 2011 (automatische Migration beim Öffnen, vorher Sicherung wie gewohnt):
+  - Sud.Aussentemperatur (leer = 20 °C; wird später auch im Brauprotokoll S12 genutzt)
+  - Sud.WhirlpoolDeckel (0 = offen)
+  - Ausruestung.WhirlpoolFaktor (1 = unkalibriert)
+  Nur neue Spalten, bestehende Daten unverändert. Vorlage-Datenbank ebenfalls auf 2011.
+  Das Original-Programm öffnet die Datenbank weiterhin nicht (wie seit 2010).
+
+Technik: database_update.cpp (2010 -> 2011), Core-Version 2.11.0 (.pro, CMake),
+BierCalc::isomerisierungsrate/whirlpoolMinuten, ModelSud (istWhirlpool, topfDurchmesser,
+whirlpoolMinuten, virtuelle Felder WhirlpoolEndtemperatur/WhirlpoolWirksameZeit,
+Aussentemperatur-Standard, Umschaltlogik NachisoModell), ModelHopfengaben (ColAusbeute,
+Reaktion auf Außentemperatur/Deckel), ModelAusruestung (WhirlpoolFaktor), SudObject,
+tabrezept (.ui/.cpp), dlgausruestung (.ui/.cpp, Kalibrierdialog).
+Test:
+  - Regressionsvergleich gegen baseline-ext-s07 (Testdatenbank mit --migrate): keine
+    Wertabweichungen (nur die 2 vom Anwender neu gespeicherten Test-Sude; neues Feld
+    Ausruestung.WhirlpoolFaktor).
+  - Rundlauftest kbh-dump --rundlauf-nachiso: Physik-Plausibilität (Temperatur fällt,
+    Deckel/Außentemperatur/Faktor wirken, Teilintegrale addieren sich) und an allen 8
+    Testsuden in allen vier Hopfen-Berechnungsarten: Mengen unverändert, Bittere je Gabe
+    exakt nach Modell, Außentemperatur +10 K und Deckel erhöhen die Bittere, Rückweg exakt.
+  - Rundlauftests Wasser/Hopfen/Malz und Umkehrtest: unverändert OK.

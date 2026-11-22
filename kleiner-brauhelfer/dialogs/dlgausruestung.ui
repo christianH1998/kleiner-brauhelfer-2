@@ -716,6 +716,45 @@
              </property>
             </widget>
            </item>
+           <item row="5" column="0">
+            <widget class="QLabel" name="lblWhirlpoolFaktor">
+             <property name="text">
+              <string>Abkühlfaktor Whirlpool</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="2">
+            <widget class="DoubleSpinBox" name="tbWhirlpoolFaktor">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;b&gt;Korrekturfaktor für die Abkühlung&lt;/b&gt; der Würze im Whirlpool/beim Absetzen (Modell „Whirlpool mit Abkühlkurve“ im Rezept). 1,0 = berechneter Wärmeverlust (Verdunstung, Konvektion, Strahlung aus Topfdurchmesser und Würzemenge), größer = kühlt schneller ab.&lt;/p&gt;&lt;p&gt;Mit &lt;b&gt;Kalibrieren…&lt;/b&gt; wird der Faktor aus einer gemessenen Temperatur am Ende der Absetzzeit bestimmt.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
+             </property>
+             <property name="decimals">
+              <number>2</number>
+             </property>
+             <property name="minimum">
+              <double>0.050000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>20.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.050000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="3">
+            <widget class="QPushButton" name="btnWhirlpoolKalibrieren">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;b&gt;Korrekturfaktor für die Abkühlung&lt;/b&gt; der Würze im Whirlpool/beim Absetzen (Modell „Whirlpool mit Abkühlkurve“ im Rezept). 1,0 = berechneter Wärmeverlust (Verdunstung, Konvektion, Strahlung aus Topfdurchmesser und Würzemenge), größer = kühlt schneller ab.&lt;/p&gt;&lt;p&gt;Mit &lt;b&gt;Kalibrieren…&lt;/b&gt; wird der Faktor aus einer gemessenen Temperatur am Ende der Absetzzeit bestimmt.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="text">
+              <string>Kalibrieren…</string>
+             </property>
+            </widget>
+           </item>
            <item row="3" column="0">
             <widget class="QLabel" name="lblKosten">
              <property name="text">
@@ -1396,6 +1435,8 @@
   <tabstop>tbKorrekturFarbe</tabstop>
   <tabstop>tbKorrekturSollmenge</tabstop>
   <tabstop>tbTreberaufnahme</tabstop>
+  <tabstop>tbWhirlpoolFaktor</tabstop>
+  <tabstop>btnWhirlpoolKalibrieren</tabstop>
   <tabstop>tbKosten</tabstop>
   <tabstop>tbMaischebottichDurchmesser</tabstop>
   <tabstop>tbMaischebottichHoehe</tabstop>

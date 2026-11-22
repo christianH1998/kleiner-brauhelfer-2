@@ -91,6 +91,9 @@ public:
         ColNachisoModell,
         ColAbfuellart,
         ColZuckerProLiter,
+        // DB-Version 2011 (ext-s11)
+        ColAussentemperatur,
+        ColWhirlpoolDeckel,
         // virtual
         ColDeleted,
         ColMengeSollAnstellen,
@@ -140,6 +143,8 @@ public:
         ColDauerHauptgaerung,
         ColTemperaturHauptgaerung,
         ColWuerzemengeKochbeginnErwartet,
+        ColWhirlpoolEndtemperatur,
+        ColWhirlpoolWirksameZeit,
         // number of columns
         NumCols
     };
@@ -162,6 +167,9 @@ public:
     void setDataWasser(int row, int col, const QVariant& value);
     void update(int row, int colChanged = -1);
     double treberaufnahme(int row) const;
+    bool istWhirlpool(int row) const;
+    double whirlpoolMinuten(int row, double abMinute, double* temperaturEnde = nullptr) const;
+    double topfDurchmesser(int row) const;
     bool istWasserFaktoren(int row) const;
     bool istNachbrauen(int row) const;
     double mengeAusWasser(int row, double schuettung) const;

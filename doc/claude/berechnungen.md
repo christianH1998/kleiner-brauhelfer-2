@@ -65,7 +65,7 @@ Kindmodelle reagieren auf `ModelSud::dataChanged`:
 - Auswertungsfelder (virtuell, ab ext-s05): `Hefe` (Namen der Hefegaben, „, “-getrennt), `DauerHauptgaerung` (Tage Braudatum→Abfülldatum, 0 = unbekannt), `TemperaturHauptgaerung` (Mittel `Hauptgaerverlauf.Temp`, 0 = keine Messung). Neue virtuelle Felder immer am Ende von Enum und `mVirtualField` anhängen.
 - `VerschneidungAbfuellen` = „Wasser für Zuckerlösung“ (`TabAbfuellen::tbWassserZuckerloesung`); verdünnt Alkohol nur bei Zucker > 0.
 - `ZuckerFaktor`, `FlaschenGroesse` global in INI-Gruppe `TabAbfuellen`.
-- Whirlpool-Gaben (Zeit < 0): t_eff = 0,549·t_Nachiso + Zeit (`modelhopfengaben.cpp` `ColAusbeute`) – siehe `fachmodelle.md` §4.
+- Zeit nach Kochende (`modelhopfengaben.cpp` `ColAusbeute`): `Sud.NachisoModell` 0 (Bestand) t_eff = Zeit + 0,549·t_Nachiso (Gabe x min nach Kochende: 0,549·t_Nachiso − x). 1 = **Whirlpool mit Abkühlkurve** (ab ext-s11): t_eff = max(0, Zeit) + `ModelSud::whirlpoolMinuten(row, max(0, −Zeit))` = ∫ r(T(t)) dt über die Whirlpool-/Absetzzeit (`Nachisomerisierungszeit`), r(T) = 0,046·e^(0,031·T) ab 80 °C, sonst 0 (`BierCalc::isomerisierungsrate`). T(t) aus `BierCalc::whirlpoolMinuten` (Euler 6 s, Volumen = `MengeSollKochende`, Durchmesser = `ModelSud::topfDurchmesser`, `Aussentemperatur`, `WhirlpoolDeckel`, `Ausruestung.WhirlpoolFaktor`). Virtuelle Felder `WhirlpoolEndtemperatur`, `WhirlpoolWirksameZeit`. Siehe `fachmodelle.md` §4. Modellwechsel (`ModelSud::setDataExt_impl` `ColNachisoModell`): Mengen bleiben, in Ziel-IBU-Modi über IBUBerechnet umgeschaltet ⇒ Soll-IBU = Σ IBUAnteil.
 - Bestehende Kalibrierung: `DlgAusruestung::updateDurchschnitt` (Mittel der letzten N Sude, `AusbeuteIgnorieren`).
 
 ## Fehlende Umkehrrechnungen (relevant für Eingabe fertiger Rezepte)

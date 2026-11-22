@@ -2,6 +2,7 @@
 #include <math.h>
 #include <cmath>
 #include <limits>
+#include <algorithm>
 
 double BierCalc::faktorPlatoToBrix = 1.03;
 
@@ -363,6 +364,69 @@ double BierCalc::tinseth(double t, double sw)
     double bigness  = 1.65 * pow(0.000125, 0.004 * sw);
     double boiltime = (1 - exp(-0.04 * t)) / 4.15;
     return bigness * boiltime;
+}
+
+double BierCalc::isomerisierungsrate(double T)
+{
+    if (T < 80.0)
+        return 0.0;
+    return 0.046 * exp(0.031 * T);
+}
+
+double BierCalc::whirlpoolMinuten(double volumen, double durchmesser, double tAussen, bool deckel, double faktor,
+                                  double tVon, double tBis, double* temperaturEnde)
+{
+    double T = 100.0;
+    if (volumen <= 0.0 || durchmesser <= 0.0 || tBis <= 0.0)
+    {
+        if (temperaturEnde)
+            *temperaturEnde = T;
+        return std::max(0.0, tBis - std::max(0.0, tVon)) * isomerisierungsrate(T);
+    }
+    if (faktor <= 0.0)
+        faktor = 1.0;
+    const double sigma = 5.670e-8;
+    const double d = durchmesser / 100.0;                          // m
+    const double aOben = 3.14159265358979 * d * d / 4.0;                      // m²
+    const double hoehe = volumen / 1000.0 / aOben;                 // m Fuellhoehe
+    const double aWand = 3.14159265358979 * d * hoehe + aOben;                 // benetzte Wand + Boden
+    const double waermekap = volumen * 4190.0;                     // J/K
+    const double Ta = tAussen;
+    const double TaK = Ta + 273.15;
+    auto dampfdruck = [](double t) {                               // kPa, Antoine (1-100 °C)
+        return 0.133322 * pow(10.0, 8.07131 - 1730.63 / (233.426 + t));
+    };
+    const double pLuft = 0.5 * dampfdruck(Ta);                     // 50 % relative Feuchte
+    const double dt = 6.0;                                         // s
+    const double ende = tBis * 60.0;
+    const double von = std::max(0.0, tVon) * 60.0;
+    double summe = 0.0;
+    for (double t = 0.0; t < ende - 1e-9; t += dt)
+    {
+        const double schritt = std::min(dt, ende - t);
+        // Isomerisierung (Mittelpunkt des Schritts naeherungsweise mit Anfangstemperatur)
+        if (t + schritt > von)
+        {
+            const double anteil = (t >= von) ? schritt : (t + schritt - von);
+            summe += isomerisierungsrate(T) * anteil / 60.0;
+        }
+        const double dT = std::max(0.0, T - Ta);
+        const double TK = T + 273.15;
+        const double hKonv = 1.31 * cbrt(dT);
+        const double strahlung = dT > 0.0 ? sigma * (TK*TK*TK*TK - TaK*TaK*TaK*TaK) / dT : 0.0;
+        double qOben;
+        if (deckel)
+            qOben = (hKonv + 0.3 * strahlung) * dT * aOben;
+        else
+            qOben = ((hKonv + 0.95 * strahlung) * dT + 89.0 * std::max(0.0, dampfdruck(T) - pLuft)) * aOben;
+        const double qWand = (hKonv + 0.3 * strahlung) * dT * aWand;
+        T -= faktor * (qOben + qWand) * schritt / waermekap;
+        if (T < Ta)
+            T = Ta;
+    }
+    if (temperaturEnde)
+        *temperaturEnde = T;
+    return summe;
 }
 
 double BierCalc::mischungstemperaturTm(double m1, double c1, double T1, double m2, double c2, double T2)

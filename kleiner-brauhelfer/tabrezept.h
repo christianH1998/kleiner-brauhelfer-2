@@ -65,6 +65,8 @@ private slots:
     void on_cbBerechnungsartWasser_currentIndexChanged(int index);
     void on_cbBerechnungsmodus_currentIndexChanged(int index);
     void on_cbWasserPreset_currentIndexChanged(int index);
+    void on_cbNachisoModell_currentIndexChanged(int index);
+    void on_cbWhirlpoolDeckel_currentIndexChanged(int index);
     void on_btnHopfenAusgleichen_clicked();
 
     void hefeGaben_modified();
@@ -114,6 +116,7 @@ private:
     QString mTooltipBittere;
     QString mTooltipSW;
     QString mTooltipMenge;
+    QString mTooltipNachiso;
     QByteArray mDefaultSplitterState;
     QByteArray mDefaultSplitterMaischenState;
     QByteArray mDefaultSplitterKochenState;

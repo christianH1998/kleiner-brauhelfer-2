@@ -1,6 +1,6 @@
 # Datenmodell & Datenbank
 
-Verifiziert gegen `kleiner-brauhelfer/data/kb_daten.sqlite` (Template-DB, ursprünglich `Global.db_Version = 2009`, ab ext-s07 **2010**) und `kleiner-brauhelfer-core/`.
+Verifiziert gegen `kleiner-brauhelfer/data/kb_daten.sqlite` (Template-DB, ursprünglich `Global.db_Version = 2009`, ab ext-s07 2010, ab ext-s11 **2011**) und `kleiner-brauhelfer-core/`.
 
 ## Tabellen → Modelle
 | Tabelle | Modell (`kleiner-brauhelfer-core/`) | Schlüssel/Bezug |
@@ -51,9 +51,10 @@ Verifiziert gegen `kleiner-brauhelfer/data/kb_daten.sqlite` (Template-DB, urspr�
 - `ModelSud::removeRows` löscht Kindzeilen in Maischplan, Malz-/Hopfen-/WZ-/Hefegaben, Gärverläufen, Bewertungen, Messwerte (ab 2010), Anhang, Etiketten, Tags. **Wasseraufbereitung fehlt in der Liste** (verifiziert; mögliche Waisen-Zeilen, bestehendes Verhalten).
 
 ## DB-Versionierung & Migration
-- Unterstützte Version = `VER_MAJ*1000 + VER_MIN` aus `kleiner-brauhelfer-core.pro` (`VER_MIN = 10` → **2010**, vorher 9 → 2009) bzw. `CMakeLists.txt` (`VERSION 2.10.0`). Beide synchron halten.
+- Unterstützte Version = `VER_MAJ*1000 + VER_MIN` aus `kleiner-brauhelfer-core.pro` (`VER_MIN = 11` → **2011**; 10 → 2010, 9 → 2009) bzw. `CMakeLists.txt` (`VERSION 2.11.0`). Beide synchron halten.
 - **Migration 2009 → 2010 (ext-s07, Fork):** nur neue Spalten/Tabellen, idempotent (Spalte nur anlegen, wenn sie fehlt; `CREATE TABLE IF NOT EXISTS`). Sud: `berechnungsArtMalz`, `berechnungsArtWasser`, `WasserPreset` (0 keins/1 Hell/2 Dunkel/3 Benutzer), `FaktorNachguss` (0 = nicht gesetzt), `NachisoModell`, `Abfuellart` (0 = abgeleitet wie bisher), `ZuckerProLiter` (NULL = berechnet); Ausruestung: `Treberaufnahme` (0.96); Tabellen `Messwerte`, `AusruestungHistorie`. **Kodierung: 0/NULL = bisheriges Verhalten**, weil neu angehängte, noch nicht gespeicherte Zeilen (z. B. kbh-Import alter Exporte, `appendDirect`) fehlende Spalten im Speicher als NULL lesen; DB-Defaults greifen erst beim Speichern. Messwerte werden beim Sud-Kopieren nicht übernommen, beim Teilen schon.
-- Original-Programm 2.6.5 (DB 2009) öffnet 2010er Datenbanken nicht. Das Update-Prüfen (`DlgCheckUpdate`) zeigt Releases des Originals an – deren Installation würde die DB nicht öffnen können (Hinweis für Anwender, ggf. später anpassen).
+- **Migration 2010 → 2011 (ext-s11, Fork):** idempotent wie 2010. Sud: `Aussentemperatur` (REAL, NULL = 20 °C, `ModelSud::dataExt` liefert 20), `WhirlpoolDeckel` (0 offen/1 Deckel); Ausruestung: `WhirlpoolFaktor` (REAL, Default 1 = unkalibriert, NULL/≤0 ⇒ 1). `NachisoModell` (seit 2010) 1 = Whirlpool mit Abkühlkurve.
+- Original-Programm 2.6.5 (DB 2009) öffnet 2010er/2011er Datenbanken nicht. Das Update-Prüfen (`DlgCheckUpdate`) zeigt Releases des Originals an – deren Installation würde die DB nicht öffnen können (Hinweis für Anwender, ggf. später anpassen).
 - Minimal unterstützt: 21 (`Brauhelfer::supportedDatabaseVersionMinimal`).
 - `Database::update()` (`database_update.cpp`): Kette `if (version == N) {++version; transaction; ALTER/CREATE...; UPDATE Global; commit}`. Tabellen-Umbau via `RENAME TO TempTable` → `CREATE` → `INSERT ... SELECT` → `DROP`.
 - Ablauf beim Start (`main.cpp: connectDatabase()`): ältere DB → Nutzerabfrage, Backup-Kopie, Update auf Kopie `*_update.sqlite`, Rückkopie. Neuere DB als unterstützt → Abbruch.

@@ -64,6 +64,8 @@ ModelSud::ModelSud(Brauhelfer *bh, const QSqlDatabase &db) :
     mVirtualField.append(QStringLiteral("DauerHauptgaerung"));
     mVirtualField.append(QStringLiteral("TemperaturHauptgaerung"));
     mVirtualField.append(QStringLiteral("WuerzemengeKochbeginnErwartet"));
+    mVirtualField.append(QStringLiteral("WhirlpoolEndtemperatur"));
+    mVirtualField.append(QStringLiteral("WhirlpoolWirksameZeit"));
     connect(this, &SqlTableModel::modelReset, this, &ModelSud::onModelReset);
     connect(this, &SqlTableModel::rowsInserted, this, &ModelSud::onModelReset);
     connect(this, &SqlTableModel::rowsRemoved, this, &ModelSud::onModelReset);
@@ -113,7 +115,9 @@ void ModelSud::onAnlageRowChanged(const QModelIndex &idx)
                                    ModelAusruestung::ColKorrekturFarbe,
                                    ModelAusruestung::ColKorrekturMenge,
                                    ModelAusruestung::ColKosten,
-                                   ModelAusruestung::ColTreberaufnahme};
+                                   ModelAusruestung::ColTreberaufnahme,
+                                   ModelAusruestung::ColSudpfanne_Durchmesser,
+                                   ModelAusruestung::ColWhirlpoolFaktor};
     if (!updateList.contains(idx.column()))
         return;
     QVariant name = bh->modelAusruestung()->data(idx.row(), ModelAusruestung::ColName);
@@ -307,6 +311,29 @@ QVariant ModelSud::dataExt(const QModelIndex &idx) const
         for (int r = 0; r < n; ++r)
             summe += modelHauptgaerverlauf.data(r, ModelHauptgaerverlauf::ColTemp).toDouble();
         return summe / n;
+    }
+    case ColAussentemperatur:
+    {
+        // leer (Altsude, neue Zeilen) = 20 °C (ext-s11)
+        QVariant v = QSqlTableModel::data(idx);
+        return v.isNull() ? QVariant(20.0) : v;
+    }
+    case ColWhirlpoolEndtemperatur:
+    {
+        // Temperatur am Ende der Whirlpool-/Absetzzeit (ext-s11), nur Modell Whirlpool
+        if (!istWhirlpool(idx.row()))
+            return QVariant();
+        double tEnde = 100.0;
+        whirlpoolMinuten(idx.row(), 0.0, &tEnde);
+        return tEnde;
+    }
+    case ColWhirlpoolWirksameZeit:
+    {
+        // Wirksame Kochminuten der Absetzzeit fuer Gaben bis Kochende (ext-s11):
+        // Modell Whirlpool = Integral der Isomerisierungsrate, sonst 0,549 * Nachisomerisierungszeit
+        if (istWhirlpool(idx.row()))
+            return whirlpoolMinuten(idx.row(), 0.0);
+        return data(idx.row(), ColNachisomerisierungszeit).toDouble() * BierCalc::isomerisierungsrate(80.0);
     }
     case ColWuerzemengeKochbeginnErwartet:
     {
@@ -840,6 +867,25 @@ bool ModelSud::setDataExt_impl(const QModelIndex &idx, const QVariant &value)
         }
         return false;
     }
+    case ColNachisoModell:
+    {
+        // ext-s11: Modellwechsel = Moduswechsel. Die Hopfenmengen bleiben, die Bittere folgt
+        // dem neuen Modell (Anwenderentscheidung 2026-11-22). In den Ziel-IBU-Modi daher ueber
+        // "Mengen fest -> Bittere berechnen" umschalten (beide Wechsel sind wertneutral, S01).
+        Brauhelfer::SudStatus status = static_cast<Brauhelfer::SudStatus>(data(idx.row(), ColStatus).toInt());
+        int artHopfen = data(idx.row(), ColberechnungsArtHopfen).toInt();
+        bool ziel = status == Brauhelfer::SudStatus::Rezept
+                && (artHopfen == static_cast<int>(Brauhelfer::BerechnungsartHopfen::IBU)
+                    || artHopfen == static_cast<int>(Brauhelfer::BerechnungsartHopfen::Gewicht));
+        if (ziel)
+            setData(idx.row(), ColberechnungsArtHopfen, static_cast<int>(Brauhelfer::BerechnungsartHopfen::IBUBerechnet));
+        bool ret = QSqlTableModel::setData(idx, value);
+        if (status == Brauhelfer::SudStatus::Rezept)
+            updateIbuBerechnet(idx.row());
+        if (ziel)
+            setData(idx.row(), ColberechnungsArtHopfen, artHopfen);
+        return ret;
+    }
     case ColWasserPreset:
     {
         // ext-s10: Voreinstellung setzt nur die beiden Faktoren; spaeteres Aendern der Faktoren
@@ -1060,6 +1106,36 @@ double ModelSud::treberaufnahme(int row) const
     if (v.isNull() || !ok || t <= 0.0)
         return 0.96;
     return t;
+}
+
+bool ModelSud::istWhirlpool(int row) const
+{
+    return static_cast<Brauhelfer::NachisoModell>(data(row, ColNachisoModell).toInt()) == Brauhelfer::NachisoModell::Whirlpool;
+}
+
+double ModelSud::topfDurchmesser(int row) const
+{
+    // Durchmesser der Sudpfanne [cm] aus der Ausruestung (ext-s11). Fehlt er, wird ein runder
+    // Topf mit Hoehe = Durchmesser und 1,5-fachem Volumen der Wuerze zu Kochbeginn angenommen.
+    double d = dataAnlage(row, ModelAusruestung::ColSudpfanne_Durchmesser).toDouble();
+    if (d > 0.0)
+        return d;
+    double v = 1.5 * data(row, ColMengeSollKochbeginn).toDouble();   // L
+    if (v <= 0.0)
+        return 0.0;
+    return cbrt(4.0 * v * 1000.0 / 3.14159265358979);               // cm
+}
+
+double ModelSud::whirlpoolMinuten(int row, double abMinute, double* temperaturEnde) const
+{
+    // Wirksame Kochminuten in der Whirlpool-/Absetzzeit ab Minute abMinute nach Kochende (ext-s11)
+    double dauer = data(row, ColNachisomerisierungszeit).toDouble();
+    double tAussen = data(row, ColAussentemperatur).toDouble();
+    bool deckel = data(row, ColWhirlpoolDeckel).toInt() != 0;
+    QVariant f = dataAnlage(row, ModelAusruestung::ColWhirlpoolFaktor);
+    double faktor = (f.isNull() || f.toDouble() <= 0.0) ? 1.0 : f.toDouble();
+    double volumen = data(row, ColMengeSollKochende).toDouble();
+    return BierCalc::whirlpoolMinuten(volumen, topfDurchmesser(row), tAussen, deckel, faktor, abMinute, dauer, temperaturEnde);
 }
 
 bool ModelSud::istWasserFaktoren(int row) const

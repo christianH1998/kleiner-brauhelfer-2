@@ -43,6 +43,8 @@ private slots:
     void on_tbVerdampfung_editingFinished();
     void on_tbKorrekturNachguss_editingFinished();
     void on_tbTreberaufnahme_editingFinished();
+    void on_tbWhirlpoolFaktor_editingFinished();
+    void on_btnWhirlpoolKalibrieren_clicked();
     void on_tbKorrekturFarbe_editingFinished();
     void on_tbKorrekturSollmenge_editingFinished();
     void on_tbKosten_editingFinished();

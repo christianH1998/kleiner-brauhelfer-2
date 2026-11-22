@@ -32,6 +32,8 @@ public:
         ColBemerkung,
         // DB-Version 2010 (ext-s07)
         ColTreberaufnahme,
+        // DB-Version 2011 (ext-s11)
+        ColWhirlpoolFaktor,
         // virtual
         ColDeleted,
         ColMaischebottich_Volumen,

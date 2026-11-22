@@ -246,4 +246,6 @@ void ModelAusruestung::defaultValues(QMap<int, QVariant> &values) const
         values.insert(ColVerdampfungsrate, 2.0);
     if (!values.contains(ColTreberaufnahme))
         values.insert(ColTreberaufnahme, 0.96);
+    if (!values.contains(ColWhirlpoolFaktor))
+        values.insert(ColWhirlpoolFaktor, 1.0);
 }

@@ -14,6 +14,13 @@
 #include "model/datedelegate.h"
 #include "model/sudnamedelegate.h"
 #include "dialogs/dlgverdampfung.h"
+#include "biercalc.h"
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QFormLayout>
+#include <QDoubleSpinBox>
+#include <QComboBox>
+#include <QLabel>
 
 extern Brauhelfer* bh;
 extern Settings* gSettings;
@@ -295,6 +302,11 @@ void DlgAusruestung::updateValues()
     if (!ui->tbTreberaufnahme->hasFocus())
         ui->tbTreberaufnahme->setValue(data(ModelAusruestung::ColTreberaufnahme).isNull() ? 0.96 : data(ModelAusruestung::ColTreberaufnahme).toDouble());
     ui->tbTreberaufnahme->setEnabled(typ != Brauhelfer::AnlageTyp::GrainfatherG30 && typ != Brauhelfer::AnlageTyp::BrauheldPro30);
+    if (!ui->tbWhirlpoolFaktor->hasFocus())
+    {
+        QVariant f = data(ModelAusruestung::ColWhirlpoolFaktor);
+        ui->tbWhirlpoolFaktor->setValue((f.isNull() || f.toDouble() <= 0.0) ? 1.0 : f.toDouble());
+    }
     if (!ui->tbKorrekturFarbe->hasFocus())
         ui->tbKorrekturFarbe->setValue(data(ModelAusruestung::ColKorrekturFarbe).toInt());
     if (!ui->tbKorrekturSollmenge->hasFocus())
@@ -466,6 +478,95 @@ void DlgAusruestung::on_tbTreberaufnahme_editingFinished()
         setData(ModelAusruestung::ColTreberaufnahme, ui->tbTreberaufnahme->value());
         QGuiApplication::restoreOverrideCursor();
     }
+}
+
+void DlgAusruestung::on_tbWhirlpoolFaktor_editingFinished()
+{
+    // ext-s11: Korrekturfaktor Waermeverlust Whirlpool/Absetzen
+    double prevValue = data(ModelAusruestung::ColWhirlpoolFaktor).toDouble();
+    if (prevValue != ui->tbWhirlpoolFaktor->value())
+    {
+        QGuiApplication::setOverrideCursor(Qt::WaitCursor);
+        setData(ModelAusruestung::ColWhirlpoolFaktor, ui->tbWhirlpoolFaktor->value());
+        QGuiApplication::restoreOverrideCursor();
+    }
+}
+
+void DlgAusruestung::on_btnWhirlpoolKalibrieren_clicked()
+{
+    // ext-s11: Faktor so bestimmen, dass die berechnete Temperatur am Ende der Absetzzeit der
+    // gemessenen entspricht (Bisektion, Endtemperatur faellt mit steigendem Faktor).
+    double durchmesser = data(ModelAusruestung::ColSudpfanne_Durchmesser).toDouble();
+    if (durchmesser <= 0.0)
+    {
+        QMessageBox::information(this, tr("Abkühlfaktor kalibrieren"),
+                                 tr("Bitte zuerst den Durchmesser der Sudpfanne eintragen. Das Modell nimmt einen runden Topf an."));
+        return;
+    }
+    QDialog dlg(this);
+    dlg.setWindowTitle(tr("Abkühlfaktor kalibrieren"));
+    QFormLayout* form = new QFormLayout(&dlg);
+    QLabel* info = new QLabel(tr("Werte eines gebrauten Suds eintragen: Würzemenge nach Kochende, Dauer von Kochende bis zur Messung, "
+                                 "Außentemperatur, Deckel und die gemessene Temperatur der Würze. Sudpfanne: Durchmesser %1 cm.")
+                              .arg(QLocale().toString(durchmesser, 'f', 1)), &dlg);
+    info->setWordWrap(true);
+    form->addRow(info);
+    auto spin = [&](double min, double max, double wert, int dez, const QString& einheit) {
+        QDoubleSpinBox* sb = new QDoubleSpinBox(&dlg);
+        sb->setRange(min, max);
+        sb->setDecimals(dez);
+        sb->setValue(wert);
+        sb->setSuffix(QStringLiteral(" ") + einheit);
+        return sb;
+    };
+    double volVorschlag = data(ModelAusruestung::ColSudpfanne_MaxFuellvolumen).toDouble() * 0.7;
+    QDoubleSpinBox* sbMenge = spin(1, 10000, volVorschlag > 0 ? volVorschlag : 20.0, 1, QStringLiteral("L"));
+    QDoubleSpinBox* sbDauer = spin(1, 600, 30, 0, QStringLiteral("min"));
+    QDoubleSpinBox* sbAussen = spin(-30, 50, 20, 1, QStringLiteral("°C"));
+    QComboBox* cbDeckel = new QComboBox(&dlg);
+    cbDeckel->addItems({tr("offen"), tr("mit Deckel")});
+    QDoubleSpinBox* sbGemessen = spin(0, 100, 85, 1, QStringLiteral("°C"));
+    form->addRow(tr("Würzemenge nach Kochende"), sbMenge);
+    form->addRow(tr("Zeit von Kochende bis Messung"), sbDauer);
+    form->addRow(tr("Außentemperatur"), sbAussen);
+    form->addRow(tr("Topf"), cbDeckel);
+    form->addRow(tr("Gemessene Temperatur"), sbGemessen);
+    QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+    connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    form->addRow(buttons);
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+    const double menge = sbMenge->value(), dauer = sbDauer->value(), aussen = sbAussen->value(), gemessen = sbGemessen->value();
+    const bool deckel = cbDeckel->currentIndex() == 1;
+    auto tEnde = [&](double f) {
+        double t = 100.0;
+        BierCalc::whirlpoolMinuten(menge, durchmesser, aussen, deckel, f, 0.0, dauer, &t);
+        return t;
+    };
+    double lo = 0.05, hi = 20.0;
+    if (gemessen > tEnde(lo) || gemessen < tEnde(hi))
+    {
+        QMessageBox::warning(this, tr("Abkühlfaktor kalibrieren"),
+                             tr("Die gemessene Temperatur liegt außerhalb dessen, was das Modell abbilden kann "
+                                "(%1 bis %2 °C). Bitte die Eingaben prüfen.")
+                             .arg(QLocale().toString(tEnde(hi), 'f', 1), QLocale().toString(tEnde(lo), 'f', 1)));
+        return;
+    }
+    for (int i = 0; i < 60; ++i)
+    {
+        double mid = 0.5 * (lo + hi);
+        if (tEnde(mid) > gemessen)
+            lo = mid;
+        else
+            hi = mid;
+    }
+    double faktor = 0.5 * (lo + hi);
+    QMessageBox::information(this, tr("Abkühlfaktor kalibrieren"),
+                             tr("Ohne Korrektur berechnet das Modell %1 °C, gemessen wurden %2 °C.\nNeuer Abkühlfaktor: %3")
+                             .arg(QLocale().toString(tEnde(1.0), 'f', 1), QLocale().toString(gemessen, 'f', 1), QLocale().toString(faktor, 'f', 2)));
+    ui->tbWhirlpoolFaktor->setValue(faktor);
+    setData(ModelAusruestung::ColWhirlpoolFaktor, faktor);
 }
 
 void DlgAusruestung::on_tbKorrekturFarbe_editingFinished()

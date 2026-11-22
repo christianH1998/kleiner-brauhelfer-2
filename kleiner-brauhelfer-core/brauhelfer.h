@@ -113,6 +113,14 @@ public:
     };
     Q_ENUM(BerechnungsartWasser)
 
+    // Sud.NachisoModell (ab DB 2010, ext-s11): Bittere von Gaben nach Kochende (Ausschlagen)
+    enum class NachisoModell
+    {
+        Bestand = 0,   // t_eff = t + 0,549 * t_Nachiso (bisher; Gabe x min nach Kochende: 0,549 * t_Nachiso - x)
+        Whirlpool = 1  // Gabe x min nach Kochende: t_eff = 0,549 * (t_Nachiso - x), d. h. nur die verbleibende heisse Zeit
+    };
+    Q_ENUM(NachisoModell)
+
     // Sud.WasserPreset (ab DB 2010, ext-s10); setzt nur die Faktoren HG/NG
     enum class WasserPreset
     {
