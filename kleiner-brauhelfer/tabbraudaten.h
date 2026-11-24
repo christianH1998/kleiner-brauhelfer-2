@@ -50,6 +50,7 @@ private slots:
     void on_btnVerduennung_clicked();
     void on_btnSpeisemengeNoetig_clicked();
     void on_cbDurchschnittIgnorieren_clicked(bool checked);
+    void on_btnBrauprotokoll_clicked();
     void on_btnSudGebraut_clicked();
     void on_btnSudGebrautReset_clicked();
 

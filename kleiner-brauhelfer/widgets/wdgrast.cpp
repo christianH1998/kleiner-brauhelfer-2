@@ -16,7 +16,8 @@ const QList<WdgRast::Rast> WdgRast::rasten = {
     {tr("Zwischenrast"),67,15},
     {tr("Verzuckerungsrast (2. Verzuckerung)"),71,20},
     {tr("Kombirast"),67,60},
-    {tr("Abmaischen"),78,1}
+    {tr("Abmaischen"),78,1},
+    {tr("Läuterruhe"),78,15}
 };
 
 WdgRast::WdgRast(SudObject *sud, int row, QLayout* parentLayout, QWidget *parent) :

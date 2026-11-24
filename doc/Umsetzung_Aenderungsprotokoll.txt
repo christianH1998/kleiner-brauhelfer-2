@@ -617,3 +617,95 @@ Technik: virtuelles Feld Sud.SWErwartet (ModelSud::dataExt), SudObject, tabrezep
 Test: Rundlauftest Wasser erweitert (ohne Abweichung erwartete SW = SW; Nachgussfaktor
 +0,5 senkt die erwartete SW, Rezept-SW bleibt; beim Nachbrauen erwartete SW = SW): alle
 OK. Übrige Rundlauftests, Umkehrtest und Regressionsvergleich unverändert.
+
+--------------------------------------------------------------------------------
+S12 – Brauprotokoll (Tag ext-s12)  2026-11-24
+--------------------------------------------------------------------------------
+Keine Datenbankänderung: Die Tabelle "Messwerte" gibt es seit Datenbank 2010 (S07), die
+Datenbank bleibt bei Version 2011.
+
+Neu: Dialog "Brauprotokoll" (Toolbar "Brauprotokoll" oder Knopf "Brauprotokoll..." im Reiter
+Braudaten). Nicht-modales Fenster, folgt dem geladenen Sud. Checkliste der Brauschritte mit
+den Spalten Schritt | Messgröße | Soll | Ist | Abweichung | Methode | Erfasst | Bemerkung:
+  - Außentemperatur (Soll = Außentemperatur aus dem Rezept)
+  - Schüttung gewogen (Soll = Gesamtschüttung), Hauptguss, Nachguss (Soll = Rezept)
+  - je Maischschritt: Aufheizdauer und Rastdauer. Soll-Rastdauer aus dem Maischplan,
+    Soll-Aufheizdauer = Temperaturdifferenz / Richtwert Aufheizrate (nur Schritte vom Typ
+    "Aufheizen"; Einmaischen ohne Aufheizdauer, Zubrühen/Zuschütten/Dekoktion ohne Soll).
+    Richtwert oben rechts im Dialog, Standard 1 K/min, gilt für alle Sude (Einstellung).
+    Hinweis Maischplan: Eine Rast vom Typ "Aufheizen" bedeutet "auf die Rasttemperatur
+    aufheizen und dort rasten". Eigene Zeilen nur für das Aufheizen sind nicht nötig
+    (sonst erscheint der Schritt doppelt).
+  - Maischdiagramm (Reiter Rezept): zeigt bei Rasten vom Typ "Aufheizen" jetzt die
+    Aufheizzeit als Rampe (gleicher Richtwert). Die Zeitachse entspricht damit der
+    erwarteten Maischdauer inkl. Aufheizen (bisher nur Summe der Rastzeiten).
+  - Vorderwürze (Volumen, Stammwürze; ohne Soll)
+  - Ablauf bis zum Gärbehälter (für Statistik und spätere Kalibrierung der Anlage):
+    Starttemperatur Hauptguss und Aufheizdauer bis Einmaischtemperatur, Läuterdauer,
+    Temperatur der Pfannevollwürze, Aufheizdauer bis zum Kochen, Kochdauer (Soll =
+    Rezept), Whirlpool/Absetzen: Dauer bis zum Ablassen (Soll = Nachisomerisierungszeit)
+    und Temperatur beim Ablassen (Soll = berechnete Endtemperatur, nur bei Modell
+    "Whirlpool mit Abkühlkurve"), Kühldauer und Anstelltemperatur.
+    Soll-Aufheizdauer Hauptguss/Kochen erscheint, sobald die Starttemperatur gemessen ist
+    (Temperaturdifferenz / Richtwert Aufheizrate; gleicher Richtwert wie beim Maischen).
+  - Kochbeginn, Kochende vor Hopfenseihen, Kochende, Anstellen, Abfüllen (Jungbier):
+    Volumen und Stammwürze bzw. Restextrakt
+Bedienung:
+  - Ist-Wert: Zelle anklicken, eintippen (Komma oder Punkt), mit Enter übernehmen (Tab
+    oder Klick daneben übernimmt ebenfalls). Leeres Feld = nicht gemessen (Schritt
+    ausgelassen), es gilt dann der Sollwert. Feld leeren entfernt den Messwert.
+  - Eindeutige Bezeichnungen (z. B. "Pfannevollwürze (Kochbeginn)", "Ausschlagwürze (nach
+    dem Hopfenseihen)", "Aufheizdauer bis 63 °C") und Tooltips: je Zeile (was/wann/wie
+    messen), je Sollwert (Herkunft), je Ist-Feld (wohin übernommen bzw. nur Protokoll)
+    und je Spaltenkopf.
+  - Läuterruhe: neue Vorlage in der Rasten-Auswahl des Maischplans (78 °C, 15 min);
+    erscheint damit im Maischdiagramm und im Protokoll (Rastdauer).
+  - Knopf "..." öffnet die bekannten Hilfen: Volumen (Messung von oben/unten, bei Kochbeginn
+    und vor Hopfenseihen mit den Maßen der Sudpfanne) bzw. Stammwürze (Spindel,
+    Refraktometer in Brix, oder direkt °P). Die Methode wird mit gespeichert.
+  - Methode und Bemerkung je Messung änderbar; "Erfasst" zeigt den Zeitpunkt.
+  - Rückgängig/Wiederholen wie bei allen Eingaben.
+  - Bearbeitbar wie der Reiter Braudaten (bis "Sud gebraut", sonst nach "Eingabefelder
+    entsperren").
+  - Oben: "Effektive Biermenge" = letzter gemessener Volumenwert (Abfüllen, sonst Anstellen,
+    sonst Kochende); ohne Messwert der Sollwert ("geschätzt") bzw. bei gebrauten Suden die
+    Werte aus den Braudaten.
+
+Geändert (Schutz der Messwerte): Messwerte zu Feldern der Braudaten (Würzemenge und
+Stammwürze Kochbeginn/Kochende/Anstellen, Würzemenge vor Hopfenseihen, Jungbiermenge und
+Restextrakt beim Abfüllen) werden in diese Felder übernommen. Bisher hat eine Änderung von
+Stammwürze oder Menge im Rezept diese Felder wieder mit Sollwerten überschrieben (auch
+eingetragene Messungen). Jetzt bleiben gemessene Felder stehen; nur nicht gemessene Felder
+werden wie bisher mit den Sollwerten vorbelegt.
+  - Eingaben direkt im Reiter Braudaten (Ist-Felder, Volumen-/Extrakt-Hilfen) und im Reiter
+    Abfüllen (Jungbiermenge, Restextrakt) zählen ebenfalls als Messwert (Methode "Eingabe"
+    bzw. aus der Hilfe) und erscheinen im Brauprotokoll.
+  - Kennzeichnung im Reiter Braudaten/Abfüllen: nicht gemessene Ist-Felder kursiv, Tooltip
+    "Nicht gemessen: Sollwert ...", gemessene normal mit Tooltip "Gemessen (Brauprotokoll)".
+  - Messwert entfernen (im Protokoll Feld leeren): Das Feld fällt im Rezeptstatus wieder auf
+    den Sollwert zurück.
+  - Außentemperatur, Wasser, Schüttung, Vorderwürze und Maischzeiten werden nur im Protokoll
+    gespeichert und ändern das Rezept nicht (die gemessene Außentemperatur ändert also nicht
+    die Bittere-Berechnung des Whirlpools; Soll und Abweichung werden angezeigt).
+  - Sud teilen: gemessene Volumen und Massen werden mit aufgeteilt.
+  - Bestehende Sude ohne Messwerte rechnen unverändert.
+
+Technik: ModelMesswerte (Enums Schritt/Groesse/Methode, Zuordnung Messwert <-> Sud-Feld,
+zeile/wert/setze/entferne/istGemessen/skaliere), ModelSud (setDataVorbelegung in den
+Kaskaden von setDataExt_impl, istVorbelegung, setzeMesswert, virtuelle Felder
+MengeEffektiv/MengeEffektivQuelle), Brauhelfer::sudTeilen, neuer Undo-Befehl
+SetMesswertCommand, DoubleSpinBoxSud::setMesswert, neuer Dialog dialogs/dlgbrauprotokoll,
+DlgRestextrakt::messmethode, Reiter Braudaten/Abfüllen, MainWindow (Aktion).
+Übersetzungen (translations/*.ts) sind für die neuen Texte noch nicht nachgezogen.
+
+Test:
+  - Build ohne Fehler.
+  - Regressionsvergleich gegen den Stand S11b (gleiche Testdatenbank): keine Abweichungen
+    außer datumsabhängigen Feldern (ReifezeitDelta, Woche); neue Felder MengeEffektiv,
+    MengeEffektivQuelle.
+  - Neuer Rundlauftest kbh-dump --rundlauf-protokoll an allen Testsuden: Vorbelegung =
+    Sollwerte; Messwerte Kochbeginn (Volumen, SW), Anstellen (Volumen), Maischschritt-Dauer
+    setzen -> Sud-Felder übernommen, Sollwert-Snapshot richtig, effektive Menge = Messwert;
+    Stammwürze +0,5, Menge +2 L, Speise +0,3 L -> Messwerte bleiben; zurück und Messwerte
+    entfernen -> alle Ist-Felder exakt wie vorher: alle OK.
+  - Rundlauftests Hopfen/Malz/Wasser/Nachiso und Umkehrtest: unverändert OK.

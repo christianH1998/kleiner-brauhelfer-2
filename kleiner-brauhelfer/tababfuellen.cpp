@@ -8,6 +8,7 @@
 #include "dialogs/dlgrestextrakt.h"
 #include "widgets/widgetdecorator.h"
 #include "commands/undostack.h"
+#include "commands/setmesswertcommand.h"
 
 extern Settings* gSettings;
 
@@ -31,9 +32,11 @@ void TabAbfuellen::setup(SudObject *sud)
     ui->tbReifezeit->setColumn(mSud, ModelSud::ColWoche);
     ui->tbSWSchnellgaerprobe->setColumn(mSud, ModelSud::ColSWSchnellgaerprobe);
     ui->tbSWJungbier->setColumn(mSud, ModelSud::ColSWJungbier);
+    ui->tbSWJungbier->setMesswert(ModelMesswerte::SchrittAbfuellen, ModelMesswerte::GroesseExtrakt);
     ui->tbSWJungbierSoll->setColumn(mSud, ModelSud::ColSREErwartet);
     ui->tbBiermengeAbfuellen->setColumn(mSud, ModelSud::Colerg_AbgefuellteBiermenge);
     ui->tbJungbiermengeAbfuellen->setColumn(mSud, ModelSud::ColJungbiermengeAbfuellen);
+    ui->tbJungbiermengeAbfuellen->setMesswert(ModelMesswerte::SchrittAbfuellen, ModelMesswerte::GroesseVolumen);
     ui->tbSpeisemengeAbgefuellt->setColumn(mSud, ModelSud::ColSpeisemenge);
     ui->tbTemperaturJungbier->setColumn(mSud, ModelSud::ColTemperaturJungbier);
     ui->tbNebenkosten->setColumn(mSud, ModelSud::ColKostenWasserStrom);
@@ -373,7 +376,7 @@ void TabAbfuellen::on_btnSWJungbier_clicked()
     {
         gUndoStack->beginMacro(QStringLiteral("macro"));
         gUndoStack->push(new SetModelDataCommand(mSud->bh()->modelSud(), mSud->row(), ModelSud::ColTemperaturJungbier, dlg.temperatur()));
-        gUndoStack->push(new SetModelDataCommand(mSud->bh()->modelSud(), mSud->row(), ModelSud::ColSWJungbier, dlg.value()));
+        gUndoStack->push(new SetMesswertCommand(mSud->bh(), mSud->row(), ModelMesswerte::SchrittAbfuellen, ModelMesswerte::GroesseExtrakt, dlg.value(), dlg.messmethode()));
         gUndoStack->endMacro();
     }
 }

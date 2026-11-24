@@ -146,10 +146,21 @@ public:
         ColWhirlpoolEndtemperatur,
         ColWhirlpoolWirksameZeit,
         ColSWErwartet,
+        ColMengeEffektiv,
+        ColMengeEffektivQuelle,
         // number of columns
         NumCols
     };
     Q_ENUM(Column)
+
+    // Herkunft von ColMengeEffektiv (ext-s12)
+    enum class MengeQuelle
+    {
+        Soll = 0,       // nicht gemessen, Sollwert (geschaetzt)
+        Gemessen = 1,   // Messwert aus dem Brauprotokoll
+        Braudaten = 2   // gebrauter Sud ohne Messwert: Werte aus den Braudaten
+    };
+    Q_ENUM(MengeQuelle)
 
 public:
 
@@ -176,6 +187,14 @@ public:
     double mengeAusWasser(int row, double schuettung) const;
     static bool wasserPresetFaktoren(int preset, double &faktorHauptguss, double &faktorNachguss);
 
+    // Brauprotokoll (ext-s12)
+    bool istGemessen(int row, int col) const;
+    QVariant istVorbelegung(int row, int col) const;
+    // Messwert setzen (wert gueltig) bzw. entfernen (wert ungueltig) inkl. zugehoerigem Sud-Feld;
+    // beim Entfernen faellt das Sud-Feld im Rezeptstatus auf die Soll-Vorbelegung zurueck
+    bool setzeMesswert(int row, int schritt, int groesse, const QVariant &wert, int methode = 0,
+                       const QString &bemerkung = QString(), const QVariant &sollwert = QVariant());
+
 private slots:
 
     void onModelReset();
@@ -196,6 +215,7 @@ private:
     void skaliereMengen(int row, double mengeAlt, double mengeNeu);
     void updatePreis(int row);
     void removeRowsFrom(SqlTableModel* model, int colId, const QList<int>& sudIds);
+    bool setDataVorbelegung(int row, int col, const QVariant &value);
 
 private:
 

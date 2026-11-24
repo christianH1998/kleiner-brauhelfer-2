@@ -126,10 +126,23 @@ Eine gebündelte, idempotente Migration in `database_update.cpp` mit `ALTER TABL
 - Dropdown im Hopfenbereich: „Nachisomerisierung Bestand“ / „Whirlpool (Wartezeit vor Abschwächung)“, umgesetzt als `BierCalc`-Variante (Befund `fachmodelle.md` §4). Wirkt auf `IBUAnteil` und im Ziel-IBU-Modus auf die Mengen.
 - Ein Wechsel des Modells ist ein Modus-Wechsel im Sinne der Invariante: Die Mengen bleiben, die angezeigte IBU ändert sich. Das wird im Tooltip erklärt. Hier muss der Anwender bestätigen, ob die IBU-Anzeige sich ändern darf.
 
-**S12 Brauprotokoll (ext-s12)**
+**S12 Brauprotokoll (ext-s12)** – *umgesetzt (2026-11-24), keine DB-Änderung; Außentemperatur, Wasser, Schüttung, Vorderwürze und Maischzeiten nur im Protokoll (ändern das Rezept nicht), effektive Biermenge ohne Kochbeginn (Abfüllen > Anstellen > Kochende)*
 - `ModelMesswerte` (Core) + Dialog `dialogs/dlgbrauprotokoll.*` (Checkliste Soll | Ist | Abweichung | Zeit | Methode, Volumen- und Extrakthilfen).
 - Schutz der Ist-Felder in `ModelSud::setDataExt_impl`. Effektive Biermenge = letzter gemessener Volumenwert, sonst Soll mit Kennzeichnung „geschätzt“.
 - **Anforderung Anwender (2026-11-22):** Reale Zeiten je Maischschritt dokumentieren: Aufheizdauer und Rastdauer, vorbelegt mit den Rezeptwerten aus dem Maischplan, im Protokoll änderbar. Die Aufheizzeit hängt u. a. von der Außentemperatur ab, deshalb die Außentemperatur mit erfassen (Spalte `Sud.Aussentemperatur` existiert ab DB 2011/S11) (Grundlage für spätere Auswertung/Kalibrierung der Aufheizrate in S14/S15).
+- **Detailplan, Entscheidungen Anwender (2026-11-24):**
+  - Keine DB-Änderung: Tabelle `Messwerte` + `ModelMesswerte` existieren seit S07 (DB bleibt 2011). Schritt/Größe/Methode werden als Enums in `ModelMesswerte` festgelegt.
+  - Aufheizdauer-Soll = ΔT / Aufheizrate; Richtwert **1 K/min**, als globale Einstellung änderbar (QSettings, keine DB). Bleibt Vorgabe (keine automatische Übernahme); gemessene Zeiten zeigen nur die Abweichung bzw. fließen in die Auswertung des fertigen Biers ein (S13b/S14).
+  - Eingaben im Tab Braudaten (und Abfüllen) zählen als Messwert (Methode „Eingabe“) und sind dadurch vor der Soll-Vorbelegung geschützt.
+  - Schritte: Außentemperatur, Schüttung gewogen, Wasser Ist (Haupt-/Nachguss), Maischschritte (Aufheiz-/Rastdauer), Vorderwürze (Menge/SW), Kochbeginn, vor Hopfenseihen, Kochende, Anstellen, Abfüllen (Jungbiermenge/SW). Stammwürze-Eingabe direkt in °P, Brix über das bestehende Rechenfenster (`DlgRestextrakt`).
+  - Schreibschutz wie Tab Braudaten.
+
+**S12b Farbmalz-Zugabe im Maischplan (ext-s12b)** – *neu, Anwender 2026-11-24, nach Commit S12*
+- Eingabe: Maischplan-Zeile Art „Zuschütten“ (Wasser 0 möglich) mit Auswahl, welche Malze der Schüttung hier zugegeben werden; nicht zugeordnete Malze = Einmaischen (bisher).
+- Kontaktzeit = Summe der Dauern ab dieser Zeile bis Ende Maischplan (Rasten + Aufheizzeiten nach Richtwert, Läuterruhe als Maischplan-Zeile; Zugabe zur Hälfte der Läuterruhe = Läuterruhe in zwei Zeilen teilen).
+- Farbe: Malzfarbe × Farbausbeute f(t) = 1 − e^(−t/τ), τ = 10 min als Richtwert einstellbar, gekennzeichnet „Annahme, ungeprüft“. Extrakt (SW/Malzmengen) **unverändert** (Anwender 2026-11-24; Fehler bei kleinen Farbmalzmengen ~0,2 °P, sichtbar im Protokoll, Ausgleich über Kalibrierung S14).
+- DB-Migration **2012**: Maischplan + Textspalte mit den Namen der zugegebenen Malze (Bezug per Name wie bei Rohstoffen; Kopieren/Teilen/Export ohne ID-Umschlüsselung). Ohne Zuordnung rechnen bestehende Rezepte bit-gleich.
+- Läuterruhe: kein eigenes Feld (Anwender 2026-11-24), als letzte Maischplan-Zeile (Art „Aufheizen“, gleiche Temperatur wie Abmaischen ⇒ keine Rampe).
 
 **S13 Abfüllart + Zucker fest in g/L (ext-s13)**
 - Dropdown Abfüllart (Konzept §7.1 inkl. Zwangskarbonisierung).
@@ -151,6 +164,11 @@ Eine gebündelte, idempotente Migration in `database_update.cpp` mit `ALTER TABL
 ### Stufe 2+
 - **S14 Kalibrierung (ext-s14)**: `DlgAusruestung` mit Gültigkeitsregeln, Median, Ausreißern, Vorschau und Historie, ergänzt um die Treberaufnahme aus Messwerten.
 - **S15 Diagramme/Statistik erweitert (ext-s15)**: Verluste je Brauschritt, Hefe-Vergleich, Gärverlauf-Vergleich, CSV-Export. Python nur, wenn ein konkretes Diagramm in QCustomPlot unverhältnismäßig aufwendig wäre (vorher abstimmen).
+- **S16 Interaktiver Braumodus (ext-s16)** – *neu, Anwender 2026-11-24; **vor der Umsetzung zuerst theoretisch sauber ausarbeiten und abstimmen** (eigenes Konzept: Ablaufmodell, Zustände, Bedienung, Datenablage)*
+  - Nach der Planung die Ausführung starten: Schritt-für-Schritt-Führung durch den ganzen Brauprozess (Hauptguss, Maischen, Läutern, Kochen, Whirlpool, Kühlen, Anstellen); Zeitstempel und Dauern werden automatisch ins Brauprotokoll (S12) eingetragen.
+  - Parallele Timeranzeige; je Schritt passende Knöpfe (quittieren, Temperatur bestätigen, Messwert eingeben).
+  - Beispiel Maischen: Rast läuft mit Timer, Zwischentemperaturen eingebbar, Hinweise zum Halten der Temperatur, ggf. Erinnerung „Temperatur kontrollieren“; Timer abgelaufen → nach Quittierung startet der Aufheiztimer → erreichte Temperatur mit realem Messwert bestätigen usw.
+  - Kochen: Checkliste Hopfengaben/Zutaten nach Plan (Zeitpunkt erreicht → Erinnerung → quittiert) – die einfache Hopfen-Checkliste im Protokoll wurde dafür zurückgestellt.
 - **S16 (optional) Export ins alte Datenbankformat 2009 (ext-s16)** – *Anwender 2026-11-21*: Kopie der aktuellen Datenbank als Version 2009 speichern, damit das Original-Programm (2.6.5) sie öffnen kann. Vorher Warnhinweis mit Liste der dabei verlorenen Daten (neue Sud-Spalten: Malz-/Wasser-/Whirlpool-Modus, Wasser-Preset, Nachguss-Faktor, Abfüllart, Zucker g/L; Ausrüstung.Treberaufnahme; ab 2011 Sud.Aussentemperatur, Sud.WhirlpoolDeckel, Ausrüstung.WhirlpoolFaktor; Tabellen Messwerte und AusruestungHistorie). Hopfen-Modus 2 wird dabei auf „Keine“ (−1) gesetzt. Zugang unauffällig im Einstellungsdialog, Bereich Datenbank. Umsetzung: Kopie anlegen, neue Spalten/Tabellen per Tabellenumbau entfernen, `Global.db_Version = 2009`.
 - **Zurückgestellt**: Malzpotential, Zuckerarten-Liste, Flaschengröße je Sud (aktuell feste Anzeige 0,5/0,33 L).
 

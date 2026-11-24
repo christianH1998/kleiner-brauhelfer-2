@@ -390,9 +390,11 @@ int Brauhelfer::sudTeilen(int sudId, const QString& name1, const QString &name2,
         listValues[i] = modelSud()->data(row1, listIndexes[i]).toDouble();
 
     double factor = 1.0 - prozent;
+    int sudId2 = modelSud()->data(row2, ModelSud::ColID).toInt();
+    // Gemessene Volumen/Massen (Brauprotokoll, ext-s12) vor den Sud-Feldern skalieren
+    modelMesswerte()->skaliere(sudId2, factor);
     for (size_t i = 0; i < listIndexes.size(); i++)
         modelSud()->setData(row2, listIndexes[i], listValues[i] * factor);
-    int sudId2 = modelSud()->data(row2, ModelSud::ColID).toInt();
     for (int row = 0; row < modelHopfengaben()->rowCount(); ++row)
     {
         if (modelHopfengaben()->data(row, ModelHopfengaben::ColSudID).toInt() == sudId2)
@@ -415,6 +417,7 @@ int Brauhelfer::sudTeilen(int sudId, const QString& name1, const QString &name2,
     }
 
     factor = prozent;
+    modelMesswerte()->skaliere(sudId, factor);
     modelSud()->setData(row1, ModelSud::ColSudname, name1);
     for (size_t i = 0; i < listIndexes.size(); i++)
         modelSud()->setData(row1, listIndexes[i], listValues[i] * factor);

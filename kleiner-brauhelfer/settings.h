@@ -68,6 +68,12 @@ public:
     bool animationsEnabled();
     void setAnimationsEnabled(bool enabled);
 
+    // Richtwert Aufheizrate Maischen [K/min] (ext-s12): Soll-Aufheizdauer im Brauprotokoll und Maischdiagramm
+    double aufheizrate();
+    void setAufheizrate(double rate);
+    // Aufheizdauer [min, ganzzahlig] von tVon auf tNach mit dem Richtwert; 0 bei Abkuehlen
+    int aufheizdauer(double tVon, double tNach);
+
     QString language();
     void setLanguage(const QString &language);
 
@@ -98,6 +104,7 @@ signals:
     void languageChanged(const QString &language);
     void databasePathChanged(const QString& path);
     void modulesChanged(Settings::Modules modules);
+    void aufheizrateChanged(double rate);
 
 private:
     void initTheme();

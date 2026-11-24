@@ -19,6 +19,8 @@ public:
     double value() const;
     void setValue(double value);
     double temperatur() const;
+    // Messmethode fuer das Brauprotokoll (ModelMesswerte::Methode, ext-s12)
+    int messmethode() const;
     void setTemperatur(double value);
     QDateTime datum() const;
     void setDatum(const QDateTime& value);

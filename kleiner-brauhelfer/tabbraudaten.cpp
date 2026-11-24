@@ -10,8 +10,15 @@
 #include "dialogs/dlgrohstoffeabziehen.h"
 #include "widgets/widgetdecorator.h"
 #include "commands/undostack.h"
+#include "commands/setmesswertcommand.h"
 
 extern Settings* gSettings;
+
+// Brauprotokoll (ext-s12): Eingabe als Messwert (schuetzt das Ist-Feld vor der Soll-Vorbelegung)
+static void pushMesswert(SudObject *sud, int schritt, int groesse, double wert, int methode)
+{
+    gUndoStack->push(new SetMesswertCommand(sud->bh(), sud->row(), schritt, groesse, wert, methode));
+}
 
 TabBraudaten::TabBraudaten(QWidget *parent) :
     QWidget(parent),
@@ -67,6 +74,16 @@ void TabBraudaten::setup(SudObject *sud)
     ui->lblNebenkostenEinheit->setText(QLocale().currencySymbol());
     ui->lblKostenEinheit->setText(QLocale().currencySymbol() + "/L");
     ui->lblDurchschnittWarnung->setPalette(gSettings->paletteErrorLabel);
+
+    // Ist-Felder: Eingaben gelten als Messwert (ext-s12)
+    ui->tbSWKochbeginn->setMesswert(ModelMesswerte::SchrittKochbeginn, ModelMesswerte::GroesseExtrakt);
+    ui->tbWuerzemengeKochbeginn->setMesswert(ModelMesswerte::SchrittKochbeginn, ModelMesswerte::GroesseVolumen);
+    ui->tbWuerzemengeVorHopfenseihen->setMesswert(ModelMesswerte::SchrittVorHopfenseihen, ModelMesswerte::GroesseVolumen);
+    ui->tbWuerzemengeKochende->setMesswert(ModelMesswerte::SchrittKochende, ModelMesswerte::GroesseVolumen);
+    ui->tbSWKochende->setMesswert(ModelMesswerte::SchrittKochende, ModelMesswerte::GroesseExtrakt);
+    ui->tbSWAnstellen->setMesswert(ModelMesswerte::SchrittAnstellen, ModelMesswerte::GroesseExtrakt);
+    ui->tbWuerzemengeAnstellen->setMesswert(ModelMesswerte::SchrittAnstellen, ModelMesswerte::GroesseVolumen);
+    ui->tbWuerzemengeAnstellenTotal->setMesswert(ModelMesswerte::SchrittAnstellen, ModelMesswerte::GroesseVolumen);
 
     ui->wdgBemerkung->setSudObject(mSud);
     ui->wdgBemerkung->setPlaceholderText(tr("Bemerkung Braudaten"));
@@ -349,7 +366,7 @@ void TabBraudaten::on_btnSWKochbeginn_clicked()
 {
     DlgRestextrakt dlg(mSud->getSWKochbeginn());
     if (dlg.exec() == QDialog::Accepted)
-        gUndoStack->push(new SetModelDataCommand(mSud->bh()->modelSud(), mSud->row(), ModelSud::ColSWKochbeginn, dlg.value()));
+        pushMesswert(mSud, ModelMesswerte::SchrittKochbeginn, ModelMesswerte::GroesseExtrakt, dlg.value(), dlg.messmethode());
 }
 
 void TabBraudaten::on_btnWuerzemengeKochbeginn_clicked()
@@ -363,7 +380,7 @@ void TabBraudaten::on_btnWuerzemengeKochbeginn_clicked()
     DlgVolumen dlg(d, h, this);
     dlg.setValue(ui->tbWuerzemengeKochbeginn->value());
     if (dlg.exec() == QDialog::Accepted)
-        gUndoStack->push(new SetModelDataCommand(mSud->bh()->modelSud(), mSud->row(), ModelSud::ColWuerzemengeKochbeginn, dlg.value()));
+        pushMesswert(mSud, ModelMesswerte::SchrittKochbeginn, ModelMesswerte::GroesseVolumen, dlg.value(), ModelMesswerte::MethodeMessstab);
 }
 
 void TabBraudaten::on_tbTempKochbeginn_valueChanged(double)
@@ -383,7 +400,7 @@ void TabBraudaten::on_btnWuerzemengeVorHopfenseihen_clicked()
     DlgVolumen dlg(d, h, this);
     dlg.setValue(ui->tbWuerzemengeVorHopfenseihen->value());
     if (dlg.exec() == QDialog::Accepted)
-        gUndoStack->push(new SetModelDataCommand(mSud->bh()->modelSud(), mSud->row(), ModelSud::ColWuerzemengeVorHopfenseihen, dlg.value()));
+        pushMesswert(mSud, ModelMesswerte::SchrittVorHopfenseihen, ModelMesswerte::GroesseVolumen, dlg.value(), ModelMesswerte::MethodeMessstab);
 }
 
 void TabBraudaten::on_btnWuerzemengeKochende_clicked()
@@ -391,7 +408,7 @@ void TabBraudaten::on_btnWuerzemengeKochende_clicked()
     DlgVolumen dlg(this);
     dlg.setValue(ui->tbWuerzemengeKochende->value());
     if (dlg.exec() == QDialog::Accepted)
-        gUndoStack->push(new SetModelDataCommand(mSud->bh()->modelSud(), mSud->row(), ModelSud::ColWuerzemengeKochende, dlg.value()));
+        pushMesswert(mSud, ModelMesswerte::SchrittKochende, ModelMesswerte::GroesseVolumen, dlg.value(), ModelMesswerte::MethodeMessstab);
 }
 
 void TabBraudaten::on_tbTempKochende_valueChanged(double)
@@ -404,14 +421,14 @@ void TabBraudaten::on_btnSWKochende_clicked()
 {
     DlgRestextrakt dlg(mSud->getSWKochende());
     if (dlg.exec() == QDialog::Accepted)
-        gUndoStack->push(new SetModelDataCommand(mSud->bh()->modelSud(), mSud->row(), ModelSud::ColSWKochende, dlg.value()));
+        pushMesswert(mSud, ModelMesswerte::SchrittKochende, ModelMesswerte::GroesseExtrakt, dlg.value(), dlg.messmethode());
 }
 
 void TabBraudaten::on_btnSWAnstellen_clicked()
 {
     DlgRestextrakt dlg(mSud->getSWAnstellen());
     if (dlg.exec() == QDialog::Accepted)
-        gUndoStack->push(new SetModelDataCommand(mSud->bh()->modelSud(), mSud->row(), ModelSud::ColSWAnstellen, dlg.value()));
+        pushMesswert(mSud, ModelMesswerte::SchrittAnstellen, ModelMesswerte::GroesseExtrakt, dlg.value(), dlg.messmethode());
 }
 
 void TabBraudaten::on_btnWuerzemengeAnstellenTotal_clicked()
@@ -419,7 +436,7 @@ void TabBraudaten::on_btnWuerzemengeAnstellenTotal_clicked()
     DlgVolumen dlg(this);
     dlg.setValue(mSud->getWuerzemengeAnstellenTotal());
     if (dlg.exec() == QDialog::Accepted)
-        gUndoStack->push(new SetModelDataCommand(mSud->bh()->modelSud(), mSud->row(), ModelSud::ColWuerzemengeAnstellenTotal, dlg.value()));
+        pushMesswert(mSud, ModelMesswerte::SchrittAnstellen, ModelMesswerte::GroesseVolumen, dlg.value() - mSud->getValue(ModelSud::ColSpeisemenge).toDouble(), ModelMesswerte::MethodeMessstab);
 }
 
 void TabBraudaten::on_btnWuerzemengeAnstellen_clicked()
@@ -427,7 +444,7 @@ void TabBraudaten::on_btnWuerzemengeAnstellen_clicked()
     DlgVolumen dlg(this);
     dlg.setValue(mSud->getWuerzemengeAnstellen());
     if (dlg.exec() == QDialog::Accepted)
-        gUndoStack->push(new SetModelDataCommand(mSud->bh()->modelSud(), mSud->row(), ModelSud::ColWuerzemengeAnstellen, dlg.value()));
+        pushMesswert(mSud, ModelMesswerte::SchrittAnstellen, ModelMesswerte::GroesseVolumen, dlg.value(), ModelMesswerte::MethodeMessstab);
 }
 
 void TabBraudaten::on_tbSpeiseSRE_valueChanged(double)
@@ -483,6 +500,13 @@ void TabBraudaten::on_btnSpeisemengeNoetig_clicked()
 void TabBraudaten::on_cbDurchschnittIgnorieren_clicked(bool checked)
 {
     gUndoStack->push(new SetModelDataCommand(mSud->bh()->modelSud(), mSud->row(), ModelSud::ColAusbeuteIgnorieren, checked));
+}
+
+void TabBraudaten::on_btnBrauprotokoll_clicked()
+{
+    QAction *action = window()->findChild<QAction*>(QStringLiteral("actionBrauprotokoll"));
+    if (action)
+        action->trigger();
 }
 
 void TabBraudaten::on_btnSudGebraut_clicked()

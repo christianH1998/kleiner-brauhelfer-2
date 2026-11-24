@@ -121,6 +121,14 @@ void ChartMaischplan::update(const SudObject* sud)
             graphAux->addData(tTotal, T);
             graph->addData(tTotal, lastT);
             break;
+        case Brauhelfer::RastTyp::Aufheizen:
+            // Aufheizzeit mit Richtwert Aufheizrate (ext-s12), wie Soll im Brauprotokoll
+            if (row > 0 && T > lastT)
+            {
+                graph->addData(tTotal, lastT);
+                tTotal += gSettings->aufheizdauer(lastT, T);
+            }
+            break;
         default:
             break;
         }

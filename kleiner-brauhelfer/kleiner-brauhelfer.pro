@@ -55,12 +55,14 @@ SOURCES += \
     charts/chartmalz.cpp \
     charts/chartrestextrakt.cpp \
     charts/qcustomplot.cpp \
+    commands/setmesswertcommand.cpp \
     commands/setmodeldatacommand.cpp \
     commands/undostack.cpp \
     dialogs/dlgabout.cpp \
     dialogs/dlgabstract.cpp \
     dialogs/dlgausruestung.cpp \
     dialogs/dlgbewertungen.cpp \
+    dialogs/dlgbrauprotokoll.cpp \
     dialogs/dlgbrauuebersicht.cpp \
     dialogs/dlgcheckupdate.cpp \
     dialogs/dlgdatabasecleaner.cpp \
@@ -160,6 +162,7 @@ HEADERS += \
     charts/chartmalz.h \
     charts/chartrestextrakt.h \
     charts/qcustomplot.h \
+    commands/setmesswertcommand.h \
     commands/setmodeldatacommand.h \
     commands/undostack.h \
     dialogs/dlgabout.h \
@@ -167,6 +170,7 @@ HEADERS += \
     dialogs/dlgabstract-inl.h \
     dialogs/dlgausruestung.h \
     dialogs/dlgbewertungen.h \
+    dialogs/dlgbrauprotokoll.h \
     dialogs/dlgbrauuebersicht.h \
     dialogs/dlgcheckupdate.h \
     dialogs/dlgdatabasecleaner.h \
@@ -256,6 +260,7 @@ FORMS += \
     dialogs/dlgabout.ui \
     dialogs/dlgausruestung.ui \
     dialogs/dlgbewertungen.ui \
+    dialogs/dlgbrauprotokoll.ui \
     dialogs/dlgbrauuebersicht.ui \
     dialogs/dlgcheckupdate.ui \
     dialogs/dlgdatabasecleaner.ui \

@@ -165,6 +165,7 @@ void TabRezept::setup(SudObject *sud)
     gSettings->endGroup();
 
     connect(gSettings, &Settings::themeChanged, this, &TabRezept::themeChanged);
+    connect(gSettings, &Settings::aufheizrateChanged, this, &TabRezept::updateRastenDiagram);
     themeChanged(gSettings->theme());
 
     connect(mSud->bh(), &Brauhelfer::modified, this, &TabRezept::updateValues);

@@ -159,6 +159,7 @@
    <addaction name="actionRohstoffe"/>
    <addaction name="actionAusruestung"/>
    <addaction name="actionBrauUebersicht"/>
+   <addaction name="actionBrauprotokoll"/>
    <addaction name="actionPrintout"/>
    <addaction name="actionEtikett"/>
    <addaction name="actionBewertungen"/>
@@ -359,6 +360,23 @@
    </property>
    <property name="visible">
     <bool>true</bool>
+   </property>
+  </action>
+  <action name="actionBrauprotokoll">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset theme="braudaten"/>
+   </property>
+   <property name="text">
+    <string>Brauprotokoll</string>
+   </property>
+   <property name="toolTip">
+    <string>Brauprotokoll: Messwerte je Brauschritt (Soll, Ist, Abweichung) für den geladenen Sud erfassen</string>
    </property>
   </action>
   <action name="actionAusruestung">

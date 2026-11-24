@@ -23,7 +23,7 @@ Kindmodelle reagieren auf `ModelSud::dataChanged`:
 - `SW` → `SWKochbeginn` (=SWSollKochbeginn) → `SWKochende` → `SWAnstellen` → `SWSchnellgaerprobe`, `SWJungbier` (= SRE aus Vergärungsgrad).
 - `Anlage` → übernimmt `Sudhausausbeute`, `Verdampfungsrate` der Ausrüstung.
 - `PhMaischeSoll` (virtuell, schreibbar) → `RestalkalitaetSoll`.
-→ Ist-Felder werden im Rezeptstatus mit Sollwerten vorbelegt.
+→ Ist-Felder werden im Rezeptstatus mit Sollwerten vorbelegt. Ab ext-s12 über `setDataVorbelegung`: gemessene Felder (Messwert in `Messwerte`, Zuordnung `ModelMesswerte::sudSpalte`) werden übersprungen, die Kette endet dort. `ModelSud::istVorbelegung(row, col)` liefert den Vorbelegungswert; `ModelSud::setzeMesswert` schreibt Messwert + Sud-Feld bzw. entfernt ihn und setzt das Feld (Status Rezept) auf die Vorbelegung zurück. Virtuell `MengeEffektiv`/`MengeEffektivQuelle` (gemessen Abfüllen > Anstellen > Kochende, sonst `MengeIst`; Quelle Soll/Gemessen/Braudaten).
 
 ## Virtuelle Sud-Felder (`ModelSud::dataExt`)
 - Mengen: `MengeSollAnstellen` = Menge + KorrekturMenge(Anlage); `MengeSollHgf`; `MengeSollKochende` = Anstellen − HGF − Hefestarter; `MengeSollVerdampfung` = Rate × Kochdauer/60; `MengeSollKochbeginn`.
@@ -60,7 +60,7 @@ Kindmodelle reagieren auf `ModelSud::dataChanged`:
 - Planungs-`Sudhausausbeute` wirkt auf `MengeSollAnstellen` ⇒ fachlich effektive Ausbeute (Anstellwürze); Details `fachmodelle.md` §1.
 - `update()` schreibt `erg_S_Gesamt`, Wasser, `erg_Farbe`, `erg_Sudhausausbeute`, `erg_EffektiveAusbeute` nur bei Status Rezept; `erg_Alkohol`, `erg_Preis` bis Status Gebraut. Virtuelle Felder sind immer live.
 - Live aus Ausrüstung gelesen: `KorrekturMenge`, `KorrekturWasser`, `KorrekturFarbe`, `Kosten`, `Typ`; kopiert beim Anlagenwechsel: `Sudhausausbeute`, `Verdampfungsrate`.
-- Ist-Felder (Würzemengen, SW Kochbeginn/-ende/Anstellen, SRE) werden im Status Rezept per Kaskade mit Sollwerten überschrieben.
+- Ist-Felder (Würzemengen, SW Kochbeginn/-ende/Anstellen, SRE) werden im Status Rezept per Kaskade mit Sollwerten überschrieben – ab ext-s12 nur noch, solange kein Messwert vorliegt.
 - Alkohol (ab ext-s03 vereinheitlicht): `AlkoholSoll` = Rezept (Soll); `AlkoholJungbier` (virtuell) = alkohol(SWIst, SWJungbier), vor Nachgärung; `erg_Alkohol` = fertiges Bier (erwartet) = alkohol(SWIst, SREIst, Zucker)/(1+Verdünnung/Menge), gespeichert bis Status Gebraut. `SREIst` = Schnellgärprobe falls aktiv, sonst SWJungbier. Gärverlauf-`Alc` = Stand je Messung. UI: alle drei in `TabAbfuellen` Gruppe „Vergärung“.
 - Auswertungsfelder (virtuell, ab ext-s05): `Hefe` (Namen der Hefegaben, „, “-getrennt), `DauerHauptgaerung` (Tage Braudatum→Abfülldatum, 0 = unbekannt), `TemperaturHauptgaerung` (Mittel `Hauptgaerverlauf.Temp`, 0 = keine Messung). Neue virtuelle Felder immer am Ende von Enum und `mVirtualField` anhängen.
 - `VerschneidungAbfuellen` = „Wasser für Zuckerlösung“ (`TabAbfuellen::tbWassserZuckerloesung`); verdünnt Alkohol nur bei Zucker > 0.

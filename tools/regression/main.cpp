@@ -12,6 +12,7 @@
 //   --rundlauf-malz: Rundlauftest Malz-Berechnungsart Ziel-SW <-> Mengen fest (Exit 0 = OK).
 //   --rundlauf-wasser: Rundlauftest Wasserberechnung, Presets, Treberaufnahme (Exit 0 = OK).
 //   --rundlauf-nachiso: Rundlauftest Modell "Bittere nach Kochende" (Whirlpool mit Abkuehlkurve, Exit 0 = OK).
+//   --rundlauf-protokoll: Rundlauftest Brauprotokoll (Messwerte schuetzen Ist-Felder, Entfernen exakt, Exit 0 = OK).
 //   --migrate: aeltere Datenbank vorher aktualisieren (auf der Kopie; mit --save auf der Datei).
 
 #include <QCoreApplication>
@@ -670,6 +671,92 @@ static int rundlaufNachiso(Brauhelfer& bh, QTextStream& out)
     return fehler;
 }
 
+static int rundlaufProtokoll(Brauhelfer& bh, QTextStream& out)
+{
+    // Brauprotokoll (ext-s12): Messwerte schuetzen Ist-Felder vor der Soll-Vorbelegung,
+    // Entfernen faellt exakt auf die Vorbelegung zurueck.
+    ModelSud* sud = bh.modelSud();
+    ModelMesswerte* mw = bh.modelMesswerte();
+    const QList<int> istFelder = {ModelSud::ColWuerzemengeKochbeginn, ModelSud::ColWuerzemengeVorHopfenseihen, ModelSud::ColWuerzemengeKochende,
+                                  ModelSud::ColWuerzemengeAnstellen, ModelSud::ColJungbiermengeAbfuellen, ModelSud::ColSWKochbeginn,
+                                  ModelSud::ColSWKochende, ModelSud::ColSWAnstellen, ModelSud::ColSWJungbier};
+    auto istStand = [&](int row) { QList<double> l; for (int c : istFelder) l.append(sud->data(row, c).toDouble()); return l; };
+    int fehler = 0;
+    for (int row = 0; row < sud->rowCount(); ++row)
+    {
+        const QString name = sud->data(row, ModelSud::ColSudname).toString();
+        const QVariant sudId = sud->data(row, ModelSud::ColID);
+        QStringList probleme;
+        auto pruefe = [&](bool bedingung, const QString& text) { if (!bedingung) probleme << text; };
+        sud->setData(row, ModelSud::ColStatus, static_cast<int>(Brauhelfer::SudStatus::Rezept));
+        const double sw = sud->data(row, ModelSud::ColSW).toDouble();
+        const double menge = sud->data(row, ModelSud::ColMenge).toDouble();
+        // vorhandene Messwerte des Suds (z. B. aus einem App-Test) im Speicher entfernen
+        for (int r = mw->rowCount() - 1; r >= 0; --r)
+            if (mw->data(r, ModelMesswerte::ColSudID) == sudId && !mw->data(r, ModelMesswerte::ColDeleted).toBool())
+                mw->removeRow(r);
+        // Ausgangslage stimmig machen: Vorbelegung aller Ist-Felder aus den Sollwerten
+        sud->setData(row, ModelSud::ColSW, sw);
+        sud->setData(row, ModelSud::ColMenge, menge);
+        const QList<double> s0 = istStand(row);
+        for (int i = 0; i < istFelder.size(); ++i)
+            pruefe(std::fabs(s0[i] - sud->istVorbelegung(row, istFelder[i]).toDouble()) <= 1e-9,
+                   QStringLiteral("Vorbelegung Feld %1: %2 statt %3").arg(sud->fieldName(istFelder[i])).arg(s0[i]).arg(sud->istVorbelegung(row, istFelder[i]).toDouble()));
+        pruefe(sud->data(row, ModelSud::ColMengeEffektivQuelle).toInt() == static_cast<int>(ModelSud::MengeQuelle::Soll), QStringLiteral("Quelle ohne Messwert nicht Soll"));
+
+        // Messen
+        const double vKb = s0[0] + 1.5, swKb = s0[5] - 0.7, vAn = s0[3] - 1.2;
+        const double sollKb = sud->data(row, ModelSud::ColMengeSollKochbeginn).toDouble();
+        sud->setzeMesswert(row, ModelMesswerte::SchrittKochbeginn, ModelMesswerte::GroesseVolumen, vKb, ModelMesswerte::MethodeMessstab);
+        sud->setzeMesswert(row, ModelMesswerte::SchrittKochbeginn, ModelMesswerte::GroesseExtrakt, swKb, ModelMesswerte::MethodeRefraktometer);
+        sud->setzeMesswert(row, ModelMesswerte::SchrittAnstellen, ModelMesswerte::GroesseVolumen, vAn);
+        sud->setzeMesswert(row, ModelMesswerte::SchrittMaischschritt + 1, ModelMesswerte::GroesseDauerRast, 47.0, ModelMesswerte::MethodeUhr, QString(), 45.0);
+        pruefe(sud->data(row, ModelSud::ColWuerzemengeKochbeginn).toDouble() == vKb, QStringLiteral("Sud-Feld Kochbeginn != Messwert"));
+        pruefe(sud->data(row, ModelSud::ColSWKochbeginn).toDouble() == swKb, QStringLiteral("Sud-Feld SW Kochbeginn != Messwert"));
+        pruefe(sud->data(row, ModelSud::ColWuerzemengeAnstellen).toDouble() == vAn, QStringLiteral("Sud-Feld Anstellen != Messwert"));
+        pruefe(std::fabs(sud->data(row, ModelSud::ColWuerzemengeKochende).toDouble() - vKb) <= 1e-9, QStringLiteral("Kochende folgt Messwert Kochbeginn nicht"));
+        pruefe(mw->data(mw->zeile(sudId, ModelMesswerte::SchrittKochbeginn, ModelMesswerte::GroesseVolumen), ModelMesswerte::ColSollwert).toDouble() == sollKb,
+               QStringLiteral("Sollwert-Snapshot Kochbeginn falsch"));
+        pruefe(mw->wert(sudId, ModelMesswerte::SchrittMaischschritt + 1, ModelMesswerte::GroesseDauerRast).toDouble() == 47.0, QStringLiteral("Maischschritt-Dauer nicht gespeichert"));
+        pruefe(sud->istGemessen(row, ModelSud::ColWuerzemengeKochbeginn) && !sud->istGemessen(row, ModelSud::ColWuerzemengeKochende), QStringLiteral("istGemessen falsch"));
+        pruefe(sud->data(row, ModelSud::ColMengeEffektiv).toDouble() == vAn
+               && sud->data(row, ModelSud::ColMengeEffektivQuelle).toInt() == static_cast<int>(ModelSud::MengeQuelle::Gemessen), QStringLiteral("effektive Menge nicht Messwert Anstellen"));
+
+        // Rezept aendern: Messwerte bleiben
+        sud->setData(row, ModelSud::ColSW, sw + 0.5);
+        sud->setData(row, ModelSud::ColMenge, menge + 2.0);
+        sud->setData(row, ModelSud::ColSpeisemenge, sud->data(row, ModelSud::ColSpeisemenge).toDouble() + 0.3);
+        pruefe(sud->data(row, ModelSud::ColWuerzemengeKochbeginn).toDouble() == vKb, QStringLiteral("Rezeptaenderung ueberschreibt Messwert Kochbeginn"));
+        pruefe(sud->data(row, ModelSud::ColSWKochbeginn).toDouble() == swKb, QStringLiteral("Rezeptaenderung ueberschreibt Messwert SW Kochbeginn"));
+        pruefe(sud->data(row, ModelSud::ColWuerzemengeAnstellen).toDouble() == vAn, QStringLiteral("Rezeptaenderung ueberschreibt Messwert Anstellen"));
+        sud->setData(row, ModelSud::ColSpeisemenge, sud->data(row, ModelSud::ColSpeisemenge).toDouble() - 0.3);
+        sud->setData(row, ModelSud::ColSW, sw);
+        sud->setData(row, ModelSud::ColMenge, menge);
+
+        // Entfernen: zurueck auf die Vorbelegung
+        sud->setzeMesswert(row, ModelMesswerte::SchrittKochbeginn, ModelMesswerte::GroesseVolumen, QVariant());
+        sud->setzeMesswert(row, ModelMesswerte::SchrittKochbeginn, ModelMesswerte::GroesseExtrakt, QVariant());
+        sud->setzeMesswert(row, ModelMesswerte::SchrittAnstellen, ModelMesswerte::GroesseVolumen, QVariant());
+        sud->setzeMesswert(row, ModelMesswerte::SchrittMaischschritt + 1, ModelMesswerte::GroesseDauerRast, QVariant());
+        const QList<double> s1 = istStand(row);
+        for (int i = 0; i < istFelder.size(); ++i)
+            pruefe(std::fabs(s1[i] - s0[i]) <= 1e-9 * std::max(1.0, std::fabs(s0[i])),
+                   QStringLiteral("Rueckweg Feld %1: %2 statt %3").arg(sud->fieldName(istFelder[i])).arg(s1[i]).arg(s0[i]));
+        pruefe(mw->zeile(sudId, ModelMesswerte::SchrittKochbeginn, ModelMesswerte::GroesseVolumen) < 0
+               && !mw->wert(sudId, ModelMesswerte::SchrittMaischschritt + 1, ModelMesswerte::GroesseDauerRast).isValid(), QStringLiteral("Messwerte nicht entfernt"));
+        pruefe(sud->data(row, ModelSud::ColMengeEffektivQuelle).toInt() == static_cast<int>(ModelSud::MengeQuelle::Soll), QStringLiteral("Quelle nach Entfernen nicht Soll"));
+
+        const bool ok = probleme.isEmpty();
+        if (!ok)
+            ++fehler;
+        out << (ok ? "OK    " : "FEHLER") << " Sud '" << name << "'\n";
+        if (!ok)
+            out << "      " << probleme.join(QStringLiteral("\n      ")) << "\n";
+    }
+    out << (fehler == 0 ? QStringLiteral("Rundlauftest Protokoll: alle OK\n") : QStringLiteral("Rundlauftest Protokoll: %1 Fehler\n").arg(fehler));
+    return fehler;
+}
+
 static int umkehrTest(Brauhelfer& bh, QTextStream& out)
 {
     struct Feld { int col; const char* name; double delta; int hopfenArt; int malzArt = 0; };
@@ -856,6 +943,16 @@ int main(int argc, char *argv[])
         {
             QTextStream out(stdout);
             int fehler = rundlaufNachiso(bh, out);
+            out.flush();
+            bh.discard();
+            bh.disconnectDatabase();
+            return fehler == 0 ? 0 : 3;
+        }
+
+        if (args.contains(QStringLiteral("--rundlauf-protokoll")) && !save)
+        {
+            QTextStream out(stdout);
+            int fehler = rundlaufProtokoll(bh, out);
             out.flush();
             bh.discard();
             bh.disconnectDatabase();

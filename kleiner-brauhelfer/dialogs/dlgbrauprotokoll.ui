@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DlgBrauprotokoll</class>
+ <widget class="QDialog" name="DlgBrauprotokoll">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>980</width>
+    <height>720</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Brauprotokoll</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="lblSud">
+     <property name="font">
+      <font>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>Sud</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="lblMengeEffektiv">
+       <property name="toolTip">
+        <string>Effektive Biermenge: letzter gemessener Volumenwert (Abfüllen, sonst Anstellen, sonst Kochende). Ohne Messwert der Sollwert (geschätzt) bzw. bei gebrauten Suden die Braudaten.</string>
+       </property>
+       <property name="text">
+        <string>Effektive Biermenge</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="lblAufheizrate">
+       <property name="text">
+        <string>Richtwert Aufheizrate</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QDoubleSpinBox" name="tbAufheizrate">
+       <property name="toolTip">
+        <string>Richtwert für die Soll-Aufheizdauer der Maischschritte (Aufheizdauer = Temperaturdifferenz / Aufheizrate). Gilt für alle Sude; gemessene Zeiten ändern ihn nicht, sie zeigen nur die Abweichung.</string>
+       </property>
+       <property name="suffix">
+        <string> K/min</string>
+       </property>
+       <property name="decimals">
+        <number>2</number>
+       </property>
+       <property name="minimum">
+        <double>0.100000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>10.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
+       </property>
+       <property name="value">
+        <double>1.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QTableWidget" name="table">
+     <property name="selectionMode">
+      <enum>QAbstractItemView::NoSelection</enum>
+     </property>
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+     <attribute name="verticalHeaderVisible">
+      <bool>false</bool>
+     </attribute>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="lblHinweis">
+     <property name="text">
+      <string>Ist-Wert: Zelle anklicken, Wert tippen, mit Enter übernehmen (Tab oder Klick daneben übernimmt ebenfalls). Leeres Ist-Feld = nicht gemessen (Schritt ausgelassen), es gilt dann der Sollwert; Leeren entfernt den Messwert. Messwerte mit Feld in den Braudaten werden dort übernommen und bei Rezeptänderungen nicht mehr überschrieben. Hinweise zu jeder Zeile und Spalte: Maus darüber halten.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Close</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>DlgBrauprotokoll</receiver>
+   <slot>reject()</slot>
+  </connection>
+ </connections>
+</ui>

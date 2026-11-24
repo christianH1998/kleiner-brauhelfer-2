@@ -315,6 +315,27 @@ void Settings::setAnimationsEnabled(bool enabled)
     setValueInGroup("General", "Animations", enabled);
 }
 
+double Settings::aufheizrate()
+{
+    double rate = valueInGroup("DlgBrauprotokoll", "Aufheizrate", 1.0).toDouble();
+    return rate > 0.0 ? rate : 1.0;
+}
+
+void Settings::setAufheizrate(double rate)
+{
+    if (rate <= 0.0 || rate == aufheizrate())
+        return;
+    setValueInGroup("DlgBrauprotokoll", "Aufheizrate", rate);
+    emit aufheizrateChanged(rate);
+}
+
+int Settings::aufheizdauer(double tVon, double tNach)
+{
+    if (tNach <= tVon)
+        return 0;
+    return qRound((tNach - tVon) / aufheizrate());
+}
+
 QString Settings::language()
 {
     return valueInGroup("General", "language", "de").toString();

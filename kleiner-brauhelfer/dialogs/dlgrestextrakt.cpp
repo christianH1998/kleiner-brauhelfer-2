@@ -1,4 +1,5 @@
 #include "dlgrestextrakt.h"
+#include "modelmesswerte.h"
 #include "ui_dlgrestextrakt.h"
 #include "widgets/widgetdecorator.h"
 #include "biercalc.h"
@@ -139,6 +140,16 @@ QDateTime DlgRestextrakt::datum() const
 void DlgRestextrakt::setDatum(const QDateTime& value)
 {
     ui->dtDatum->setDateTime(value);
+}
+
+int DlgRestextrakt::messmethode() const
+{
+    switch (ui->cbAuswahl->currentIndex())
+    {
+    case 0: return ModelMesswerte::MethodeSpindel;
+    case 1: return ModelMesswerte::MethodeRefraktometer;
+    default: return ModelMesswerte::MethodeEingabe;
+    }
 }
 
 void DlgRestextrakt::on_cbAuswahl_currentIndexChanged(int index)

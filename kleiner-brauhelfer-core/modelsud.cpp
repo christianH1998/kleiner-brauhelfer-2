@@ -67,6 +67,8 @@ ModelSud::ModelSud(Brauhelfer *bh, const QSqlDatabase &db) :
     mVirtualField.append(QStringLiteral("WhirlpoolEndtemperatur"));
     mVirtualField.append(QStringLiteral("WhirlpoolWirksameZeit"));
     mVirtualField.append(QStringLiteral("SWErwartet"));
+    mVirtualField.append(QStringLiteral("MengeEffektiv"));
+    mVirtualField.append(QStringLiteral("MengeEffektivQuelle"));
     connect(this, &SqlTableModel::modelReset, this, &ModelSud::onModelReset);
     connect(this, &SqlTableModel::rowsInserted, this, &ModelSud::onModelReset);
     connect(this, &SqlTableModel::rowsRemoved, this, &ModelSud::onModelReset);
@@ -318,6 +320,39 @@ QVariant ModelSud::dataExt(const QModelIndex &idx) const
         // leer (Altsude, neue Zeilen) = 20 °C (ext-s11)
         QVariant v = QSqlTableModel::data(idx);
         return v.isNull() ? QVariant(20.0) : v;
+    }
+    case ColMengeEffektiv:
+    case ColMengeEffektivQuelle:
+    {
+        // Effektive Biermenge (ext-s12): letzter gemessener Volumenwert (Abfuellen > Anstellen >
+        // Kochende), sonst bei gebrauten Suden die Braudaten (MengeIst), sonst Soll (geschaetzt).
+        const int row = idx.row();
+        const QVariant sudId = data(row, ColID);
+        ModelMesswerte *mw = bh->modelMesswerte();
+        double menge = 0.0;
+        MengeQuelle quelle = MengeQuelle::Soll;
+        const int schritte[] = {ModelMesswerte::SchrittAbfuellen, ModelMesswerte::SchrittAnstellen, ModelMesswerte::SchrittKochende};
+        bool gefunden = false;
+        for (int schritt : schritte)
+        {
+            QVariant v = mw->wert(sudId, schritt, ModelMesswerte::GroesseVolumen);
+            if (v.isValid())
+            {
+                menge = v.toDouble();
+                quelle = MengeQuelle::Gemessen;
+                gefunden = true;
+                break;
+            }
+        }
+        if (!gefunden)
+        {
+            Brauhelfer::SudStatus status = static_cast<Brauhelfer::SudStatus>(data(row, ColStatus).toInt());
+            menge = data(row, ColMengeIst).toDouble();
+            quelle = status == Brauhelfer::SudStatus::Rezept ? MengeQuelle::Soll : MengeQuelle::Braudaten;
+        }
+        if (idx.column() == ColMengeEffektiv)
+            return menge;
+        return static_cast<int>(quelle);
     }
     case ColSWErwartet:
     {
@@ -694,7 +729,7 @@ bool ModelSud::setDataExt_impl(const QModelIndex &idx, const QVariant &value)
         {
             Brauhelfer::SudStatus status = static_cast<Brauhelfer::SudStatus>(data(idx.row(), ColStatus).toInt());
             if (status == Brauhelfer::SudStatus::Rezept)
-                setData(idx.row(), ColWuerzemengeKochbeginn, data(idx.row(), ColMengeSollKochbeginn));
+                setDataVorbelegung(idx.row(), ColWuerzemengeKochbeginn, data(idx.row(), ColMengeSollKochbeginn));
             if (skalieren)
             {
                 // Die Kaskade oben (verschachteltes setDataExt) setzt den Merker bereits zurueck;
@@ -712,7 +747,7 @@ bool ModelSud::setDataExt_impl(const QModelIndex &idx, const QVariant &value)
         {
             Brauhelfer::SudStatus status = static_cast<Brauhelfer::SudStatus>(data(idx.row(), ColStatus).toInt());
             if (status == Brauhelfer::SudStatus::Rezept)
-                setData(idx.row(), ColWuerzemengeVorHopfenseihen, value);
+                setDataVorbelegung(idx.row(), ColWuerzemengeVorHopfenseihen, value);
             return true;
         }
         return false;
@@ -723,7 +758,7 @@ bool ModelSud::setDataExt_impl(const QModelIndex &idx, const QVariant &value)
         {
             Brauhelfer::SudStatus status = static_cast<Brauhelfer::SudStatus>(data(idx.row(), ColStatus).toInt());
             if (status == Brauhelfer::SudStatus::Rezept)
-                setData(idx.row(), ColWuerzemengeKochende, value);
+                setDataVorbelegung(idx.row(), ColWuerzemengeKochende, value);
             return true;
         }
         return false;
@@ -736,7 +771,7 @@ bool ModelSud::setDataExt_impl(const QModelIndex &idx, const QVariant &value)
             if (status == Brauhelfer::SudStatus::Rezept)
             {
                 double v = value.toDouble() + data(idx.row(), ColVerduennungAnstellen).toDouble() + data(idx.row(), ColMengeHefestarter).toDouble() - data(idx.row(), ColSpeisemenge).toDouble();
-                setData(idx.row(), ColWuerzemengeAnstellen, v);
+                setDataVorbelegung(idx.row(), ColWuerzemengeAnstellen, v);
             }
             return true;
         }
@@ -750,7 +785,7 @@ bool ModelSud::setDataExt_impl(const QModelIndex &idx, const QVariant &value)
             if (status == Brauhelfer::SudStatus::Rezept)
             {
                 double v = data(idx.row(), ColWuerzemengeKochende).toDouble() + value.toDouble() + data(idx.row(), ColMengeHefestarter).toDouble()  - data(idx.row(), ColSpeisemenge).toDouble();
-                setData(idx.row(), ColWuerzemengeAnstellen, v);
+                setDataVorbelegung(idx.row(), ColWuerzemengeAnstellen, v);
             }
             return true;
         }
@@ -764,7 +799,7 @@ bool ModelSud::setDataExt_impl(const QModelIndex &idx, const QVariant &value)
             if (status == Brauhelfer::SudStatus::Rezept)
             {
                 double v = data(idx.row(), ColWuerzemengeKochende).toDouble() + data(idx.row(), ColVerduennungAnstellen).toDouble() + value.toDouble() - data(idx.row(), ColSpeisemenge).toDouble();
-                setData(idx.row(), ColWuerzemengeAnstellen, v);
+                setDataVorbelegung(idx.row(), ColWuerzemengeAnstellen, v);
             }
             return true;
         }
@@ -781,7 +816,7 @@ bool ModelSud::setDataExt_impl(const QModelIndex &idx, const QVariant &value)
         {
             Brauhelfer::SudStatus status = static_cast<Brauhelfer::SudStatus>(data(idx.row(), ColStatus).toInt());
             if (status == Brauhelfer::SudStatus::Rezept)
-                setData(idx.row(), ColJungbiermengeAbfuellen, value);
+                setDataVorbelegung(idx.row(), ColJungbiermengeAbfuellen, value);
             return true;
         }
         return false;
@@ -792,7 +827,7 @@ bool ModelSud::setDataExt_impl(const QModelIndex &idx, const QVariant &value)
         if (QSqlTableModel::setData(idx, value))
         {
             Brauhelfer::SudStatus status = static_cast<Brauhelfer::SudStatus>(data(idx.row(), ColStatus).toInt());
-            if (status == Brauhelfer::SudStatus::Rezept)
+            if (status == Brauhelfer::SudStatus::Rezept && !istGemessen(idx.row(), ColWuerzemengeAnstellen))
                 QSqlTableModel::setData(index(idx.row(), ColWuerzemengeAnstellen), v);
             return true;
         }
@@ -829,7 +864,7 @@ bool ModelSud::setDataExt_impl(const QModelIndex &idx, const QVariant &value)
         {
             Brauhelfer::SudStatus status = static_cast<Brauhelfer::SudStatus>(data(idx.row(), ColStatus).toInt());
             if (status == Brauhelfer::SudStatus::Rezept)
-                setData(idx.row(), ColSWKochbeginn, data(idx.row(), ColSWSollKochbeginn));
+                setDataVorbelegung(idx.row(), ColSWKochbeginn, data(idx.row(), ColSWSollKochbeginn));
             return true;
         }
         return false;
@@ -840,7 +875,7 @@ bool ModelSud::setDataExt_impl(const QModelIndex &idx, const QVariant &value)
         {
             Brauhelfer::SudStatus status = static_cast<Brauhelfer::SudStatus>(data(idx.row(), ColStatus).toInt());
             if (status == Brauhelfer::SudStatus::Rezept)
-                setData(idx.row(), ColSWKochende, value);
+                setDataVorbelegung(idx.row(), ColSWKochende, value);
             return true;
         }
         return false;
@@ -851,7 +886,7 @@ bool ModelSud::setDataExt_impl(const QModelIndex &idx, const QVariant &value)
         {
             Brauhelfer::SudStatus status = static_cast<Brauhelfer::SudStatus>(data(idx.row(), ColStatus).toInt());
             if (status == Brauhelfer::SudStatus::Rezept)
-                setData(idx.row(), ColSWAnstellen, value);
+                setDataVorbelegung(idx.row(), ColSWAnstellen, value);
             return true;
         }
         return false;
@@ -866,7 +901,7 @@ bool ModelSud::setDataExt_impl(const QModelIndex &idx, const QVariant &value)
                 double vg = data(idx.row(), ColVergaerungsgrad).toDouble();
                 double sre = BierCalc::sreAusVergaerungsgrad(value.toDouble() - swWzUnvergaerbarRecipe[idx.row()], vg) + swWzUnvergaerbarRecipe[idx.row()];
                 setData(idx.row(), ColSWSchnellgaerprobe, sre);
-                setData(idx.row(), ColSWJungbier, sre);
+                setDataVorbelegung(idx.row(), ColSWJungbier, sre);
             }
             return true;
         }
@@ -1588,4 +1623,78 @@ QMap<int, QVariant> ModelSud::copyValues(int row) const
     QMap<int, QVariant> values = SqlTableModel::copyValues(row);
     values[ColID] = getNextId();
     return values;
+}
+
+bool ModelSud::istGemessen(int row, int col) const
+{
+    return bh->modelMesswerte()->istGemessen(data(row, ColID), col);
+}
+
+bool ModelSud::setDataVorbelegung(int row, int col, const QVariant &value)
+{
+    // ext-s12: gemessene Ist-Felder (Brauprotokoll) nicht mit Sollwerten ueberschreiben
+    if (istGemessen(row, col))
+        return false;
+    return setData(row, col, value);
+}
+
+QVariant ModelSud::istVorbelegung(int row, int col) const
+{
+    // Wert, den die Kaskaden in setDataExt_impl im Rezeptstatus in ein Ist-Feld schreiben
+    switch (col)
+    {
+    case ColWuerzemengeKochbeginn:
+        return data(row, ColMengeSollKochbeginn);
+    case ColWuerzemengeVorHopfenseihen:
+        return data(row, ColWuerzemengeKochbeginn);
+    case ColWuerzemengeKochende:
+        return data(row, ColWuerzemengeVorHopfenseihen);
+    case ColWuerzemengeAnstellen:
+        return data(row, ColWuerzemengeKochende).toDouble() + data(row, ColVerduennungAnstellen).toDouble() + data(row, ColMengeHefestarter).toDouble() - data(row, ColSpeisemenge).toDouble();
+    case ColJungbiermengeAbfuellen:
+        return data(row, ColWuerzemengeAnstellen);
+    case ColSWKochbeginn:
+        return data(row, ColSWSollKochbeginn);
+    case ColSWKochende:
+        return data(row, ColSWKochbeginn);
+    case ColSWAnstellen:
+        return data(row, ColSWKochende);
+    case ColSWJungbier:
+    {
+        double vg = data(row, ColVergaerungsgrad).toDouble();
+        double unvergaerbar = row < swWzUnvergaerbarRecipe.size() ? swWzUnvergaerbarRecipe[row] : 0.0;
+        return BierCalc::sreAusVergaerungsgrad(data(row, ColSWAnstellen).toDouble() - unvergaerbar, vg) + unvergaerbar;
+    }
+    default:
+        return QVariant();
+    }
+}
+
+bool ModelSud::setzeMesswert(int row, int schritt, int groesse, const QVariant &wert, int methode, const QString &bemerkung, const QVariant &sollwert)
+{
+    ModelMesswerte *mw = bh->modelMesswerte();
+    const QVariant sudId = data(row, ColID);
+    const int sudCol = ModelMesswerte::sudSpalte(schritt, groesse);
+    if (wert.isValid() && !wert.isNull())
+    {
+        QVariant soll = sollwert;
+        if (!soll.isValid())
+        {
+            int sollCol = ModelMesswerte::sollSpalte(schritt, groesse);
+            if (sollCol >= 0)
+                soll = data(row, sollCol);
+        }
+        mw->setze(sudId, schritt, groesse, wert.toDouble(), methode, soll, bemerkung);
+        if (sudCol >= 0)
+            setData(row, sudCol, wert);
+        return true;
+    }
+    bool warGemessen = mw->entferne(sudId, schritt, groesse);
+    if (warGemessen && sudCol >= 0)
+    {
+        Brauhelfer::SudStatus status = static_cast<Brauhelfer::SudStatus>(data(row, ColStatus).toInt());
+        if (status == Brauhelfer::SudStatus::Rezept)
+            setData(row, sudCol, istVorbelegung(row, sudCol));
+    }
+    return warGemessen;
 }

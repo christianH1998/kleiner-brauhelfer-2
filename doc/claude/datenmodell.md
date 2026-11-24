@@ -19,7 +19,7 @@ Verifiziert gegen `kleiner-brauhelfer/data/kb_daten.sqlite` (Template-DB, urspr�
 | Wasser | `ModelWasser` | Name ← Sud.Wasserprofil |
 | Kategorien | `ModelKategorien` | Name ← Sud.Kategorie |
 | Global | – | `db_Version` |
-| Messwerte (ab 2010) | `ModelMesswerte` | SudID; Brauprotokoll, eine Zeile je Messung (Schritt, Groesse, Wert, Sollwert-Snapshot, Temperatur, Methode, Zeitstempel, Bemerkung); Bedeutung der Codes ab ext-s12 |
+| Messwerte (ab 2010) | `ModelMesswerte` | SudID; Brauprotokoll, eine Zeile je Messung (Schritt, Groesse, Wert, Sollwert-Snapshot, Temperatur, Methode, Zeitstempel, Bemerkung); Codes ab ext-s12 als Enums in `ModelMesswerte` (Schritt 1–10, Maischschritt n = 100+n; Groesse Volumen/Extrakt/Temperatur/Masse/DauerAufheizen/DauerRast; Methode). Je Sud/Schritt/Groesse höchstens eine Zeile. Zuordnung zu Sud-Feldern in `modelmesswerte.cpp` (`zuordnungen`) |
 | AusruestungHistorie (ab 2010) | – (Modell ab ext-s14) | Anlage (Name); Kalibrierverlauf |
 
 - **Keine Foreign Keys.** Beziehungen rein logisch über `SudID` bzw. Namen (Text).

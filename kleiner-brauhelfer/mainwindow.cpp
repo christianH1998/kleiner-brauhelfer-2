@@ -17,6 +17,7 @@
 #include "dialogs/dlgausruestung.h"
 #include "dialogs/dlgbewertungen.h"
 #include "dialogs/dlgbrauuebersicht.h"
+#include "dialogs/dlgbrauprotokoll.h"
 #include "dialogs/dlgcheckupdate.h"
 #include "dialogs/dlgdatabasecleaner.h"
 #include "dialogs/dlgdatenbank.h"
@@ -207,6 +208,10 @@ void MainWindow::initActions()
     connect(ui->actionBrauUebersicht, &QAction::triggered, this, [this](){
         DlgBrauUebersicht* dlg = DlgAbstract::showDialog<DlgBrauUebersicht>(this, ui->actionBrauUebersicht);
         dlg->select(mSud->id());
+    });
+    connect(ui->actionBrauprotokoll, &QAction::triggered, this, [this](){
+        DlgBrauprotokoll* dlg = DlgAbstract::showDialog<DlgBrauprotokoll>(this, ui->actionBrauprotokoll);
+        dlg->setSud(mSud);
     });
     connect(ui->actionPrintout, &QAction::triggered, this, [this](){
         DlgPrintout* dlg = DlgAbstract::showDialog<DlgPrintout>(this, ui->actionPrintout);
@@ -456,6 +461,7 @@ void MainWindow::restoreView()
     DlgAusruestung::restoreView();
     DlgBewertungen::restoreView();
     DlgBrauUebersicht::restoreView();
+    DlgBrauprotokoll::restoreView();
     DlgCheckUpdate::restoreView();
     DlgDatabaseCleaner::restoreView();
     DlgDatenbank::restoreView();
@@ -557,6 +563,9 @@ void MainWindow::updateValues()
     ui->tabMain->setTabEnabled(ui->tabMain->indexOf(ui->tabHauptgaerung), loaded);
     ui->tabMain->setTabEnabled(ui->tabMain->indexOf(ui->tabNachgaerung), loaded);
     ui->actionEingabefelderEntsperren->setChecked(false);
+    ui->actionBrauprotokoll->setEnabled(loaded);
+    if (!loaded)
+        DlgAbstract::closeDialog<DlgBrauprotokoll>();
     ui->actionEingabefelderEntsperren->setEnabled(loaded && static_cast<Brauhelfer::SudStatus>(mSud->getStatus()) != Brauhelfer::SudStatus::Rezept);
     if (!loaded)
         ui->tabMain->setCurrentWidget(ui->tabSudAuswahl);
@@ -622,6 +631,8 @@ void MainWindow::eingabefelderEntsperren()
     ui->tabRezept->checkEnabled();
     ui->tabBraudaten->checkEnabled();
     ui->tabAbfuelldaten->checkEnabled();
+    if (DlgBrauprotokoll::Dialog)
+        DlgBrauprotokoll::Dialog->setSud(mSud, true);
     ui->tabHauptgaerung->checkEnabled();
     ui->tabNachgaerung->checkEnabled();
     ui->actionEingabefelderEntsperren->setChecked(gSettings->ForceEnabled);
