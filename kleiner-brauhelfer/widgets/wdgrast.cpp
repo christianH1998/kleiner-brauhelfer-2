@@ -1,9 +1,13 @@
 #include "wdgrast.h"
 #include "ui_wdgrast.h"
 #include <QLineEdit>
+#include <QLabel>
+#include <QPushButton>
 #include "brauhelfer.h"
 #include "settings.h"
 #include "dialogs/dlgmaischplanmalz.h"
+#include "dialogs/dlgmalzzugabe.h"
+#include "biercalc.h"
 
 extern Settings* gSettings;
 
@@ -32,6 +36,17 @@ WdgRast::WdgRast(SudObject *sud, int row, QLayout* parentLayout, QWidget *parent
     QPalette pal = ui->frame->palette();
     pal.setColor(QPalette::Window, gSettings->colorRast);
     ui->frame->setPalette(pal);
+
+    // Malz-Zugabe (ext-s12b): nur bei Art "Zuschuetten"; Knopf in der Malz-Zeile, Info direkt darunter
+    // (Zeile 2 = Teilmaische, nur bei Dekoktion sichtbar, daher hier frei)
+    mLblMalzeInfo = new QLabel(ui->widget);
+    mLblMalzeInfo->setWordWrap(true);
+    mBtnMalze = new QPushButton(tr("Malze…"), ui->widget);
+    mBtnMalze->setToolTip(tr("Malze der Schüttung auswählen, die in diesem Schritt zugegeben werden (z. B. Farbmalz zur Läuterruhe). "
+                             "Die Menge wird daraus berechnet; nicht ausgewählte Malze werden eingemaischt."));
+    connect(mBtnMalze, &QPushButton::clicked, this, &WdgRast::btnMalzeClicked);
+    ui->horizontalLayout_2->addWidget(mBtnMalze);
+    ui->gridLayout_7->addWidget(mLblMalzeInfo, 2, 1, 1, 6);
 
     ui->cbRast->setCompleter(nullptr);
     connect(qApp, &QApplication::focusChanged, this, &WdgRast::focusChanged);
@@ -177,6 +192,8 @@ void WdgRast::updateValues()
     ui->btnNachUnten->setEnabled(mRow < mModel->rowCount() - 1);
 
     bool wasser = false, malz = false, dekoktion = false;
+    ui->lblMengeWasser->setText(tr("Hauptguss"));
+    ui->lblMengeMalz->setText(tr("Schüttung"));
     switch (static_cast<Brauhelfer::RastTyp>(data(ModelMaischplan::ColTyp).toInt()))
     {
     case Brauhelfer::RastTyp::Einmaischen:
@@ -189,10 +206,13 @@ void WdgRast::updateValues()
         break;
     case Brauhelfer::RastTyp::Zubruehen:
         ui->lblRast->setText(tr("Rast"));
+        ui->lblMengeWasser->setText(tr("Zubrühwasser"));
         wasser = true;
         break;
     case Brauhelfer::RastTyp::Zuschuetten:
-        ui->lblRast->setText(tr("Rast"));
+        ui->lblRast->setText(tr("Rast nach Zugabe"));
+        ui->lblMengeWasser->setText(tr("Wasser-Zugabe"));
+        ui->lblMengeMalz->setText(tr("Malz-Zugabe"));
         wasser = true;
         malz = true;
         break;
@@ -231,6 +251,73 @@ void WdgRast::updateValues()
     ui->lblDauerExtra1Einheit->setVisible(dekoktion);
     ui->tbTempExtra1->setVisible(dekoktion);
     ui->lblTempExtra1Einheit->setVisible(dekoktion);
+    updateMalzZugabe(static_cast<Brauhelfer::RastTyp>(data(ModelMaischplan::ColTyp).toInt()) == Brauhelfer::RastTyp::Zuschuetten);
+}
+
+void WdgRast::updateMalzZugabe(bool sichtbar)
+{
+    mLblMalzeInfo->setVisible(sichtbar);
+    mBtnMalze->setVisible(sichtbar && mEnabled);
+    if (!sichtbar)
+    {
+        ui->tbMengeMalz->setToolTip(QString());
+        ui->tbAnteilMalz->setToolTip(QString());
+        return;
+    }
+    ui->btnAnteilMalz->setVisible(false);
+    const QStringList namen = ModelMaischplan::malzListe(data(ModelMaischplan::ColMalze));
+    if (namen.isEmpty())
+    {
+        ui->tbMengeMalz->setToolTip(QString());
+        ui->tbAnteilMalz->setToolTip(QString());
+        mLblMalzeInfo->setText(tr("Über „Malze…“ die Malze wählen, die hier zugegeben werden (z. B. Farbmalz); die Menge wird dann berechnet. "
+                                  "Ohne Auswahl gilt die eingegebene Menge als Teilschüttung."));
+        mLblMalzeInfo->setToolTip(QString());
+        return;
+    }
+
+    // Menge folgt den gewaehlten Malzen und wird nicht von Hand gepflegt
+    const QString tipMenge = tr("Wird aus den über „Malze…“ gewählten Malzen berechnet (Anteil an der Schüttung); "
+                                "der Anteil beim Einmaischen verringert sich entsprechend.");
+    ui->tbMengeMalz->setEnabled(false);
+    ui->tbAnteilMalz->setEnabled(false);
+    ui->tbMengeMalz->setToolTip(tipMenge);
+    ui->tbAnteilMalz->setToolTip(tipMenge);
+
+    QLocale locale;
+    double t = mSud->bh()->modelMaischplan()->kontaktzeit(mModel->mapRowToSource(mRow));
+    double f = BierCalc::farbausbeute(t, mSud->bh()->farbmalzTau());
+    QString text = tr("Zugegeben: %1 · Kontaktzeit bis Ende Maischplan %2 min → Farbausbeute %3 %")
+                       .arg(namen.join(QStringLiteral(", ")).toHtmlEscaped(), locale.toString(t, 'f', 0), locale.toString(f * 100, 'f', 0));
+    if (mEnabled)
+    {
+        // Vergleich mit dem Einmaischen derselben Schuettung: die Malze stehen bereits in der Schuettung,
+        // die spaete Zugabe verringert also deren Farbbeitrag
+        const double mit = mSud->bh()->modelSud()->berechneFarbe(mSud->row(), true);
+        const double ohne = mSud->bh()->modelSud()->berechneFarbe(mSud->row(), false);
+        text += QStringLiteral("<br>") + tr("Bierfarbe %1 EBC (alle Malze eingemaischt: %2 EBC)")
+                                              .arg(locale.toString(mit, 'f', 0), locale.toString(ohne, 'f', 0));
+    }
+    mLblMalzeInfo->setText(text);
+    mLblMalzeInfo->setToolTip(tr("Die gewählten Malze sind Teil der Schüttung und zählen schon mit. Eine späte Zugabe gibt nur einen Teil "
+                                 "ihrer Farbe ab, die Bierfarbe ist daher niedriger als beim Einmaischen. Kontaktzeit = Summe der Dauern ab diesem "
+                                 "Schritt bis Ende Maischplan (Aufheizzeiten mit Richtwert Aufheizrate). Farbausbeute 1 − e^(−t/τ), "
+                                 "τ = %1 min (Annahme, ungeprüft). Der Extrakt wird voll gerechnet.")
+                              .arg(locale.toString(mSud->bh()->farbmalzTau(), 'f', 1)));
+}
+
+void WdgRast::btnMalzeClicked()
+{
+    DlgMalzZugabe dlg(mSud, mRow, this);
+    if (dlg.exec() == QDialog::Accepted)
+    {
+        gSettings->setFarbmalzTau(dlg.tau());
+        QString text = ModelMaischplan::malzText(dlg.malze());
+        if (text != data(ModelMaischplan::ColMalze).toString())
+            setData(ModelMaischplan::ColMalze, text);
+        else
+            updateValues();
+    }
 }
 
 void WdgRast::focusChanged(QWidget *old, QWidget *now)

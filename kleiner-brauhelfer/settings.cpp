@@ -336,6 +336,20 @@ int Settings::aufheizdauer(double tVon, double tNach)
     return qRound((tNach - tVon) / aufheizrate());
 }
 
+double Settings::farbmalzTau()
+{
+    double tau = valueInGroup("Rezept", "FarbmalzTau", 10.0).toDouble();
+    return tau > 0.0 ? tau : 10.0;
+}
+
+void Settings::setFarbmalzTau(double tau)
+{
+    if (tau <= 0.0 || tau == farbmalzTau())
+        return;
+    setValueInGroup("Rezept", "FarbmalzTau", tau);
+    emit farbmalzTauChanged(tau);
+}
+
 QString Settings::language()
 {
     return valueInGroup("General", "language", "de").toString();

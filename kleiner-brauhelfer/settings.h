@@ -73,6 +73,9 @@ public:
     void setAufheizrate(double rate);
     // Aufheizdauer [min, ganzzahlig] von tVon auf tNach mit dem Richtwert; 0 bei Abkuehlen
     int aufheizdauer(double tVon, double tNach);
+    // Richtwert Zeitkonstante Farbausbeute Farbmalz-Zugabe [min] (ext-s12b, Annahme ungeprueft)
+    double farbmalzTau();
+    void setFarbmalzTau(double tau);
 
     QString language();
     void setLanguage(const QString &language);
@@ -105,6 +108,7 @@ signals:
     void databasePathChanged(const QString& path);
     void modulesChanged(Settings::Modules modules);
     void aufheizrateChanged(double rate);
+    void farbmalzTauChanged(double tau);
 
 private:
     void initTheme();

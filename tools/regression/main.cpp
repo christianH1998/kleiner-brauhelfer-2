@@ -13,6 +13,7 @@
 //   --rundlauf-wasser: Rundlauftest Wasserberechnung, Presets, Treberaufnahme (Exit 0 = OK).
 //   --rundlauf-nachiso: Rundlauftest Modell "Bittere nach Kochende" (Whirlpool mit Abkuehlkurve, Exit 0 = OK).
 //   --rundlauf-protokoll: Rundlauftest Brauprotokoll (Messwerte schuetzen Ist-Felder, Entfernen exakt, Exit 0 = OK).
+//   --rundlauf-farbmalz: Rundlauftest Malz-Zugabe im Maischplan (Farbausbeute, Malzanteile, Entfernen exakt, Exit 0 = OK).
 //   --migrate: aeltere Datenbank vorher aktualisieren (auf der Kopie; mit --save auf der Datei).
 
 #include <QCoreApplication>
@@ -848,6 +849,157 @@ static QJsonArray dumpModel(SqlTableModel* model)
     return rows;
 }
 
+// ---- Rundlauftest Farbmalz-Zugabe im Maischplan (ext-s12b) ----
+// Je Sud mit mind. 2 Malzen: dunkelstes Malz in einer neuen letzten Maischplan-Zeile "Zuschuetten"
+// (8 min) zugeben. Pruefungen: Extrakt/Schuettung unveraendert, Malzanteil der Zeile = Prozent des
+// Malzes und Einmaischen um denselben Wert kleiner, Farbe sinkt im Verhaeltnis (1 - f(t)),
+// tau sehr klein = volle Farbe (exakt), Kontaktzeit mit Aufheizschritt, Entfernen = exakt wie vorher.
+static int rundlaufFarbmalz(Brauhelfer& bh, QTextStream& out)
+{
+    int fehler = 0;
+    ModelSud* sud = bh.modelSud();
+    ModelMaischplan* mp = bh.modelMaischplan();
+    ModelMalzschuettung* ms = bh.modelMalzschuettung();
+    const int colDelMp = mp->fieldIndex(QStringLiteral("deleted"));
+    const int colDelMs = ms->fieldIndex(QStringLiteral("deleted"));
+    const int zuschuetten = static_cast<int>(Brauhelfer::RastTyp::Zuschuetten);
+    const int einmaischen = static_cast<int>(Brauhelfer::RastTyp::Einmaischen);
+    for (int row = 0; row < sud->rowCount(); ++row)
+    {
+        const QString name = sud->data(row, ModelSud::ColSudname).toString();
+        sud->setData(row, ModelSud::ColStatus, static_cast<int>(Brauhelfer::SudStatus::Rezept));
+        const QVariant sudId = sud->data(row, ModelSud::ColID);
+        QString malz;
+        double farbeMalz = -1.0, prozent = 0.0;
+        int anzahl = 0;
+        for (int r = 0; r < ms->rowCount(); ++r)
+        {
+            if (ms->data(r, ModelMalzschuettung::ColSudID) != sudId || ms->data(r, colDelMs).toBool())
+                continue;
+            ++anzahl;
+            double f = ms->data(r, ModelMalzschuettung::ColFarbe).toDouble();
+            if (f > farbeMalz)
+            {
+                farbeMalz = f;
+                malz = ms->data(r, ModelMalzschuettung::ColName).toString().trimmed();
+                prozent = ms->data(r, ModelMalzschuettung::ColProzent).toDouble();
+            }
+        }
+        int rowEin = -1;
+        double lastT = 0.0;
+        for (int r = 0; r < mp->rowCount(); ++r)
+        {
+            if (mp->data(r, ModelMaischplan::ColSudID) != sudId || mp->data(r, colDelMp).toBool())
+                continue;
+            if (rowEin < 0 && mp->data(r, ModelMaischplan::ColTyp).toInt() == einmaischen)
+                rowEin = r;
+            lastT = mp->data(r, ModelMaischplan::ColTempRast).toDouble();
+        }
+        if (mp->hatMalzZugabe(sudId))
+        {
+            out << "--     Sud '" << name << "' uebersprungen (hat bereits eine Malz-Zugabe im Maischplan)\n";
+            continue;
+        }
+        if (anzahl < 2 || farbeMalz <= 0.0 || rowEin < 0)
+        {
+            out << "--     Sud '" << name << "' uebersprungen (weniger als 2 Malze oder kein Einmaischen)\n";
+            continue;
+        }
+        sud->update(row);
+        const double farbe0 = sud->data(row, ModelSud::Colerg_Farbe).toDouble();
+        const double schuet0 = sud->data(row, ModelSud::Colerg_S_Gesamt).toDouble();
+        const double sw0 = sud->data(row, ModelSud::ColSW).toDouble();
+        const double ein0 = mp->data(rowEin, ModelMaischplan::ColAnteilMalz).toDouble();
+        QStringList p;
+
+        // Zugabe-Zeile anhaengen (wie GUI: Zeile anlegen, dann Malze zuordnen)
+        QMap<int, QVariant> v;
+        v[ModelMaischplan::ColSudID] = sudId;
+        v[ModelMaischplan::ColTyp] = zuschuetten;
+        v[ModelMaischplan::ColName] = QStringLiteral("Farbmalz-Zugabe");
+        v[ModelMaischplan::ColAnteilWasser] = 0;
+        v[ModelMaischplan::ColAnteilMalz] = 0;
+        v[ModelMaischplan::ColTempMalz] = 21;
+        v[ModelMaischplan::ColTempRast] = lastT;
+        v[ModelMaischplan::ColDauerRast] = 8;
+        const int rowZu = mp->append(v);
+        mp->setData(rowZu, ModelMaischplan::ColDauerRast, 8);   // Art setzt Standarddauer
+        const double farbeOhne = sud->data(row, ModelSud::Colerg_Farbe).toDouble();
+        if (farbeOhne != farbe0)
+            p << QStringLiteral("Zeile ohne Zuordnung aendert Farbe (%1 -> %2)").arg(farbe0).arg(farbeOhne);
+        mp->setData(rowZu, ModelMaischplan::ColMalze, malz);
+
+        const double kontakt = mp->kontaktzeit(rowZu);
+        const double farbeTau10 = sud->data(row, ModelSud::Colerg_Farbe).toDouble();
+        if (std::fabs(kontakt - 8.0) > 1e-12)
+            p << QStringLiteral("Kontaktzeit %1 statt 8 min").arg(kontakt);
+        if (!(farbeTau10 < farbe0))
+            p << QStringLiteral("Farbe sinkt nicht (%1 -> %2)").arg(farbe0).arg(farbeTau10);
+        if (sud->data(row, ModelSud::Colerg_S_Gesamt).toDouble() != schuet0 || sud->data(row, ModelSud::ColSW).toDouble() != sw0)
+            p << QStringLiteral("Schuettung/SW veraendert");
+        const double anteilZu = mp->data(rowZu, ModelMaischplan::ColAnteilMalz).toDouble();
+        const double anteilEin = mp->data(rowEin, ModelMaischplan::ColAnteilMalz).toDouble();
+        if (std::fabs(anteilZu - prozent) > 1e-9)
+            p << QStringLiteral("Malzanteil Zugabe %1 statt %2 %").arg(anteilZu).arg(prozent);
+        if (std::fabs(anteilEin - (ein0 - prozent)) > 1e-9)
+            p << QStringLiteral("Einmaischen %1 statt %2 %").arg(anteilEin).arg(ein0 - prozent);
+
+        // tau sehr klein -> volle Farbe (exakt); tau sehr gross -> Farbe des Malzes ~0; Verhaeltnis (1 - f)
+        bh.setFarbmalzTau(1e-3);
+        const double farbeVoll = sud->data(row, ModelSud::Colerg_Farbe).toDouble();
+        bh.setFarbmalzTau(1e12);
+        const double farbeNull = sud->data(row, ModelSud::Colerg_Farbe).toDouble();
+        bh.setFarbmalzTau(10.0);
+        if (farbeVoll != farbe0)
+            p << QStringLiteral("tau->0: Farbe %1 statt %2").arg(farbeVoll, 0, 'g', 15).arg(farbe0, 0, 'g', 15);
+        const double erwartet = (1.0 - BierCalc::farbausbeute(8.0, 10.0));
+        const double ist = (farbe0 - farbeTau10) / (farbe0 - farbeNull);
+        if (std::fabs(ist - erwartet) > 1e-6)
+            p << QStringLiteral("Farbminderung %1 statt %2 von voll").arg(ist).arg(erwartet);
+        if (sud->data(row, ModelSud::Colerg_Farbe).toDouble() != farbeTau10)
+            p << QStringLiteral("tau zurueck: Farbe nicht wie vorher");
+
+        // weiterer Aufheizschritt danach: +6 K, 5 min -> Kontaktzeit 8 + 6/Rate + 5
+        QMap<int, QVariant> v2;
+        v2[ModelMaischplan::ColSudID] = sudId;
+        v2[ModelMaischplan::ColTyp] = static_cast<int>(Brauhelfer::RastTyp::Aufheizen);
+        v2[ModelMaischplan::ColName] = QStringLiteral("Test");
+        v2[ModelMaischplan::ColTempRast] = lastT + 6;
+        v2[ModelMaischplan::ColDauerRast] = 5;
+        const int rowAuf = mp->append(v2);
+        mp->setData(rowAuf, ModelMaischplan::ColTempRast, lastT + 6);
+        mp->setData(rowAuf, ModelMaischplan::ColDauerRast, 5);
+        const double kontakt2 = mp->kontaktzeit(rowZu);
+        const double kontakt2Soll = 8.0 + qRound(6.0 / bh.aufheizrate()) + 5.0;
+        if (std::fabs(kontakt2 - kontakt2Soll) > 1e-12)
+            p << QStringLiteral("Kontaktzeit mit Aufheizen %1 statt %2").arg(kontakt2).arg(kontakt2Soll);
+        if (!(sud->data(row, ModelSud::Colerg_Farbe).toDouble() > farbeTau10))
+            p << QStringLiteral("laengere Kontaktzeit erhoeht Farbe nicht");
+        mp->removeRow(rowAuf);
+        if (sud->data(row, ModelSud::Colerg_Farbe).toDouble() != farbeTau10)
+            p << QStringLiteral("Aufheizschritt entfernt: Farbe nicht wie vorher");
+
+        // Zuordnung entfernen, Zeile entfernen -> Farbe exakt wie vorher
+        mp->setData(rowZu, ModelMaischplan::ColMalze, QString());
+        if (sud->data(row, ModelSud::Colerg_Farbe).toDouble() != farbe0)
+            p << QStringLiteral("Zuordnung entfernt: Farbe %1 statt %2").arg(sud->data(row, ModelSud::Colerg_Farbe).toDouble(), 0, 'g', 15).arg(farbe0, 0, 'g', 15);
+        mp->removeRow(rowZu);
+        if (sud->data(row, ModelSud::Colerg_Farbe).toDouble() != farbe0)
+            p << QStringLiteral("Zeile entfernt: Farbe nicht wie vorher");
+
+        out << (p.isEmpty() ? "OK    " : "FEHLER") << " " << name << ": " << malz << " (" << farbeMalz << " EBC, "
+            << QString::number(prozent, 'f', 1) << " %) 8 min -> Farbe " << QString::number(farbe0, 'f', 2) << " -> "
+            << QString::number(farbeTau10, 'f', 2) << " EBC (Ausbeute " << QString::number(BierCalc::farbausbeute(8, 10) * 100, 'f', 0) << " %)\n";
+        if (!p.isEmpty())
+        {
+            ++fehler;
+            out << "      " << p.join(QStringLiteral("\n      ")) << "\n";
+        }
+    }
+    out << (fehler == 0 ? "Rundlauftest Farbmalz: alle OK\n" : QStringLiteral("Rundlauftest Farbmalz: %1 Fehler\n").arg(fehler));
+    return fehler;
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
@@ -943,6 +1095,16 @@ int main(int argc, char *argv[])
         {
             QTextStream out(stdout);
             int fehler = rundlaufNachiso(bh, out);
+            out.flush();
+            bh.discard();
+            bh.disconnectDatabase();
+            return fehler == 0 ? 0 : 3;
+        }
+
+        if (args.contains(QStringLiteral("--rundlauf-farbmalz")) && !save)
+        {
+            QTextStream out(stdout);
+            int fehler = rundlaufFarbmalz(bh, out);
             out.flush();
             bh.discard();
             bh.disconnectDatabase();

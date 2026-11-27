@@ -2,7 +2,9 @@
 #include "modelmaischplan.h"
 #include "proxymodel.h"
 #include "brauhelfer.h"
+#include "modelmalzschuettung.h"
 #include "biercalc.h"
+#include <QtMath>
 
 ModelMaischplan::ModelMaischplan(Brauhelfer* bh, const QSqlDatabase &db) :
     SqlTableModel(bh, db),
@@ -80,6 +82,19 @@ bool ModelMaischplan::setDataExt(const QModelIndex &idx, const QVariant &value)
     case ColMengeMaische:
         total = BierCalc::MalzVerdraengung * data(idx.row(), ColTotalMengeMalz).toDouble() + data(idx.row(), ColTotalMengeWasser).toDouble();
         ret = setData(idx.row(), ColAnteilMaische, value.toDouble() / total * 100);
+        break;
+    case ColMalze:
+        // Malz-Zugabe (ext-s12b): Namen normalisiert speichern, Malzanteil der Zeile folgt der Schuettung
+        if (QSqlTableModel::setData(idx, malzText(malzListe(value))))
+        {
+            if (static_cast<Brauhelfer::RastTyp>(data(idx.row(), ColTyp).toInt()) == Brauhelfer::RastTyp::Zuschuetten)
+            {
+                const QStringList namen = malzListe(data(idx.row(), ColMalze));
+                if (!namen.isEmpty())
+                    setzeAnteilZugabe(idx.row(), anteilMalze(sudId, namen));
+            }
+            ret = true;
+        }
         break;
     case ColTyp:
         if (QSqlTableModel::setData(idx, value))
@@ -274,6 +289,167 @@ bool ModelMaischplan::setDataExt(const QModelIndex &idx, const QVariant &value)
     if (ret)
         updateSud(sudId);
     return ret;
+}
+
+QStringList ModelMaischplan::malzListe(const QVariant &value)
+{
+    QStringList namen;
+    const QStringList teile = value.toString().split(QLatin1Char('\n'));
+    for (const QString &teil : teile)
+    {
+        const QString name = teil.trimmed();
+        if (!name.isEmpty() && !namen.contains(name))
+            namen.append(name);
+    }
+    return namen;
+}
+
+QString ModelMaischplan::malzText(const QStringList &namen)
+{
+    return namen.join(QLatin1Char('\n'));
+}
+
+double ModelMaischplan::anteilMalze(const QVariant &sudId, const QStringList &namen) const
+{
+    ProxyModel model;
+    model.setSourceModel(bh->modelMalzschuettung());
+    model.setFilterKeyColumn(ModelMalzschuettung::ColSudID);
+    model.setFilterRegularExpression(QStringLiteral("^%1$").arg(sudId.toInt()));
+    double anteil = 0.0;
+    for (int r = 0; r < model.rowCount(); r++)
+    {
+        if (namen.contains(model.data(r, ModelMalzschuettung::ColName).toString().trimmed()))
+            anteil += model.data(r, ModelMalzschuettung::ColProzent).toDouble();
+    }
+    return anteil;
+}
+
+void ModelMaischplan::setzeAnteilZugabe(int row, double anteil)
+{
+    // Malzanteil der Zugabe-Zeile setzen; die Differenz geht zu Lasten der ersten Zeile
+    // "Einmaischen" (nicht zugeordnete Malze werden eingemaischt), damit die Summe gleich bleibt
+    double delta = anteil - data(row, ColAnteilMalz).toDouble();
+    QSqlTableModel::setData(index(row, ColAnteilMalz), anteil);
+    if (delta == 0.0)
+        return;
+    ProxyModel model;
+    model.setSourceModel(this);
+    model.setFilterKeyColumn(ColSudID);
+    model.setFilterRegularExpression(QStringLiteral("^%1$").arg(data(row, ColSudID).toInt()));
+    for (int r = 0; r < model.rowCount(); r++)
+    {
+        int rowSrc = model.mapRowToSource(r);
+        if (rowSrc == row)
+            continue;
+        if (static_cast<Brauhelfer::RastTyp>(data(rowSrc, ColTyp).toInt()) == Brauhelfer::RastTyp::Einmaischen)
+        {
+            double rest = data(rowSrc, ColAnteilMalz).toDouble() - delta;
+            if (rest >= 0.0 && rest <= 100.0)
+                QSqlTableModel::setData(index(rowSrc, ColAnteilMalz), rest);
+            break;
+        }
+    }
+}
+
+double ModelMaischplan::kontaktzeit(int row) const
+{
+    ProxyModel model;
+    model.setSourceModel(const_cast<ModelMaischplan*>(this));
+    model.setFilterKeyColumn(ColSudID);
+    model.setFilterRegularExpression(QStringLiteral("^%1$").arg(data(row, ColSudID).toInt()));
+    int r0 = model.mapRowFromSource(row);
+    if (r0 < 0)
+        return 0.0;
+    // Zugabe-Zeile: nur ihre Rastdauer; danach alle Schritte wie im Maischplan-Diagramm (ext-s12)
+    double t = model.data(r0, ColDauerRast).toDouble();
+    double lastT = model.data(r0, ColTempRast).toDouble();
+    for (int r = r0 + 1; r < model.rowCount(); r++)
+    {
+        double T = model.data(r, ColTempRast).toDouble();
+        switch (static_cast<Brauhelfer::RastTyp>(model.data(r, ColTyp).toInt()))
+        {
+        case Brauhelfer::RastTyp::Aufheizen:
+            if (T > lastT)
+                t += qRound((T - lastT) / bh->aufheizrate());
+            break;
+        case Brauhelfer::RastTyp::Dekoktion:
+            t += model.data(r, ColDauerExtra1).toDouble() + model.data(r, ColDauerExtra2).toDouble();
+            break;
+        default:
+            break;
+        }
+        t += model.data(r, ColDauerRast).toDouble();
+        lastT = T;
+    }
+    return t;
+}
+
+QMap<QString, double> ModelMaischplan::malzZugaben(const QVariant &sudId) const
+{
+    QMap<QString, double> zugaben;
+    ProxyModel model;
+    model.setSourceModel(const_cast<ModelMaischplan*>(this));
+    model.setFilterKeyColumn(ColSudID);
+    model.setFilterRegularExpression(QStringLiteral("^%1$").arg(sudId.toInt()));
+    for (int r = 0; r < model.rowCount(); r++)
+    {
+        if (static_cast<Brauhelfer::RastTyp>(model.data(r, ColTyp).toInt()) != Brauhelfer::RastTyp::Zuschuetten)
+            continue;
+        const QStringList namen = malzListe(model.data(r, ColMalze));
+        if (namen.isEmpty())
+            continue;
+        double t = kontaktzeit(model.mapRowToSource(r));
+        for (const QString &name : namen)
+        {
+            if (!zugaben.contains(name))
+                zugaben.insert(name, t);
+        }
+    }
+    return zugaben;
+}
+
+bool ModelMaischplan::hatMalzZugabe(const QVariant &sudId) const
+{
+    ProxyModel model;
+    model.setSourceModel(const_cast<ModelMaischplan*>(this));
+    model.setFilterKeyColumn(ColSudID);
+    model.setFilterRegularExpression(QStringLiteral("^%1$").arg(sudId.toInt()));
+    for (int r = 0; r < model.rowCount(); r++)
+    {
+        if (static_cast<Brauhelfer::RastTyp>(model.data(r, ColTyp).toInt()) == Brauhelfer::RastTyp::Zuschuetten &&
+            !malzListe(model.data(r, ColMalze)).isEmpty())
+            return true;
+    }
+    return false;
+}
+
+void ModelMaischplan::aktualisiereMalzZugabe(const QVariant &sudId)
+{
+    if (mUpdating)
+        return;
+    bool geaendert = false;
+    mSignalModifiedBlocked = true;
+    ProxyModel model;
+    model.setSourceModel(this);
+    model.setFilterKeyColumn(ColSudID);
+    model.setFilterRegularExpression(QStringLiteral("^%1$").arg(sudId.toInt()));
+    for (int r = 0; r < model.rowCount(); r++)
+    {
+        if (static_cast<Brauhelfer::RastTyp>(model.data(r, ColTyp).toInt()) != Brauhelfer::RastTyp::Zuschuetten)
+            continue;
+        const QStringList namen = malzListe(model.data(r, ColMalze));
+        if (namen.isEmpty())
+            continue;
+        double anteil = anteilMalze(sudId, namen);
+        if (anteil != model.data(r, ColAnteilMalz).toDouble())
+        {
+            setzeAnteilZugabe(model.mapRowToSource(r), anteil);
+            geaendert = true;
+        }
+    }
+    mSignalModifiedBlocked = false;
+    if (geaendert)
+        updateSud(sudId);
 }
 
 double ModelMaischplan::getTotalAnteil(const QVariant &sudId, int rowFrom, int colAnteil) const

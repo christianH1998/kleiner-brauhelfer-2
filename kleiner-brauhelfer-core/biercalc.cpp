@@ -429,6 +429,15 @@ double BierCalc::whirlpoolMinuten(double volumen, double durchmesser, double tAu
     return summe;
 }
 
+double BierCalc::farbausbeute(double t, double tau)
+{
+    if (tau <= 0.0)
+        return 1.0;
+    if (t <= 0.0)
+        return 0.0;
+    return 1.0 - std::exp(-t / tau);
+}
+
 double BierCalc::mischungstemperaturTm(double m1, double c1, double T1, double m2, double c2, double T2)
 {
     return (m1*c1*T1 + m2*c2*T2) / (m1*c1 + m2*c2);

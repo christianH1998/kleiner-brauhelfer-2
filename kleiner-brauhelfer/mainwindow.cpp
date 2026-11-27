@@ -26,6 +26,7 @@
 #include "dialogs/dlghilfe.h"
 #include "dialogs/dlgimportexport.h"
 #include "dialogs/dlgmaischplanmalz.h"
+#include "dialogs/dlgmalzzugabe.h"
 #include "dialogs/dlgphmalz.h"
 #include "dialogs/dlgprintout.h"
 #include "dialogs/dlgrestextrakt.h"
@@ -470,6 +471,7 @@ void MainWindow::restoreView()
     DlgHilfe::restoreView();
     DlgImportExport::restoreView();
     DlgMaischplanMalz::restoreView();
+    DlgMalzZugabe::restoreView();
     DlgPhMalz::restoreView();
     DlgPrintout::restoreView();
     DlgRestextrakt::restoreView();

@@ -71,6 +71,7 @@ Empfehlung: Kling (Q4) und eine Fachquelle zur Ausbeute (MEBAK oder Narziß/Back
 
 ## 5 Farbe
 - Code [C]: EBC = (Σ m·EBC / Σ m) · P/10 + 1,5 · t_Koch/60 + KorrekturFarbe. Eigenes kbh-Modell; Rezeptangaben anderer Programme (z. B. Morey) können abweichen [U, Morey hier nicht geprüft]. Empfehlung: Modell beibehalten, als „kbh-Farbmodell“ kennzeichnen, Abgleich über `KorrekturFarbe`.
+- Späte Malzzugabe (ext-s12b) [A, ungeprüft]: Farbausbeute f(t) = 1 − e^(−t/τ), t = Kontaktzeit ab Zugabe bis Ende Maischplan [min], τ = 10 min Richtwert (einstellbar). Malz geht mit EBC·f(t) in die Mischungsformel ein, Masse und Extrakt voll. Beispiel: 8 min → f = 0,551; 2,5 % Farbmalz 1150 EBC im Testsud „Tittingdorfer Spezial“: 86,2 → 67,4 EBC. Prüfszenario: `kbh-dump --rundlauf-farbmalz` (τ→0 = volle Farbe exakt, Farbminderung ∝ 1 − f). Extraktfehler bei kleinen Farbmalzmengen ~0,2 °P (Anwender 2026-11-24 akzeptiert, Ausgleich über Kalibrierung S14).
 
 ## 6 Gärung, Alkohol, Karbonisierung
 - TRE = 0,1808·P + 0,8192·SRE; Alkohol_w = (P − TRE)/(2,0665 − 0,010665·P); Alkohol_v = (Alkohol_w + Zusatz)·ρ(TRE)/0,794 [C]. Beispiel 12 °P / SRE 2,5 ⇒ 5,14 %vol [A].

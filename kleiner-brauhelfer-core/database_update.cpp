@@ -1915,6 +1915,32 @@ bool Database::update()
             db.commit();
         }
 
+        if (version == 2011)
+        {
+            // Farbmalz-Zugabe im Maischplan (ext-s12b, Fork christianH1998). Nur eine neue Spalte,
+            // leer = bisheriges Verhalten (alle Malze beim Einmaischen). Idempotent wie 2010.
+            ++version;
+            qInfo(Brauhelfer::loggingCategory) << "Updating to version:" << version;
+            db.transaction();
+
+            auto spalteFehlt = [&](const QString& tabelle, const QString& spalte) -> bool {
+                QSqlQuery q = sqlExec(db, QStringLiteral("PRAGMA table_info(%1)").arg(tabelle));
+                while (q.next())
+                    if (q.value(1).toString().compare(spalte, Qt::CaseInsensitive) == 0)
+                        return false;
+                return true;
+            };
+
+            // Maischplan (Reihenfolge = Spalten-Enum ModelMaischplan)
+            //  - Malze: Namen der in dieser Zeile (Art Zuschuetten) zugegebenen Malze der Schuettung,
+            //           Zeilenumbruch-getrennt; Bezug per Name wie bei Rohstoffen
+            if (spalteFehlt(QStringLiteral("Maischplan"), QStringLiteral("Malze")))
+                sqlExec(db, QStringLiteral("ALTER TABLE Maischplan ADD COLUMN Malze TEXT"));
+
+            sqlExec(db, QStringLiteral("UPDATE Global SET db_Version=%1").arg(version));
+            db.commit();
+        }
+
         return true;
     }
     catch (const std::exception& ex)

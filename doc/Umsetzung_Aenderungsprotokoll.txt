@@ -709,3 +709,72 @@ Test:
     Stammwürze +0,5, Menge +2 L, Speise +0,3 L -> Messwerte bleiben; zurück und Messwerte
     entfernen -> alle Ist-Felder exakt wie vorher: alle OK.
   - Rundlauftests Hopfen/Malz/Wasser/Nachiso und Umkehrtest: unverändert OK.
+
+--------------------------------------------------------------------------------
+S12b – Farbmalz-Zugabe im Maischplan, Datenbank 2012 (Tag ext-s12b)  2026-11-27
+--------------------------------------------------------------------------------
+Neu (Reiter Rezept, Maischplan): Bei einer Maischplan-Zeile vom Typ "Zuschütten" heißen die
+Felder "Wasser-Zugabe", "Malz-Zugabe" und "Rast nach Zugabe"; in der Zeile "Malz-Zugabe"
+steht der Knopf "Malze...". Dort werden die Malze der Schüttung
+angehakt, die in diesem Schritt zugegeben werden (z. B. Farbmalz zur Läuterruhe). Alle
+nicht zugeordneten Malze werden wie bisher eingemaischt.
+  - Kontaktzeit = Summe der Dauern ab dieser Zeile bis Ende Maischplan: Rastdauer der
+    Zugabe-Zeile, danach alle Rasten, Dekoktionsschritte und Aufheizzeiten (Richtwert
+    Aufheizrate aus dem Brauprotokoll, wie im Maischdiagramm).
+  - Farbe: Das zugegebene Malz gibt nur den Anteil f(t) = 1 − e^(−t/τ) seiner Farbe ab.
+    τ = 10 min als Richtwert, im Dialog "Malze..." einstellbar (gilt für alle Sude),
+    gekennzeichnet "Annahme, ungeprüft". Beispiel 8 min Kontakt: 55 % der Farbe.
+  - Extrakt/Stammwürze und Malzmengen bleiben unverändert (bewusste Vereinfachung; bei
+    kleinen Farbmalzmengen ~0,2 °P Fehler, Ausgleich später über Kalibrierung S14).
+  - Wichtig: Die zugegebenen Malze stehen bereits in der Schüttung und zählten bisher voll
+    (wie eingemaischt). Die späte Zugabe macht das Bier daher heller, nicht dunkler. Für
+    mehr Farbe die Menge in der Schüttung erhöhen.
+  - Anzeige unter der Malz-Zugabe: Malze, Kontaktzeit, Farbausbeute sowie die Bierfarbe
+    im Vergleich zu "alle Malze eingemaischt"; Tooltip mit Formel.
+  - Malzmenge/-anteil der Zeile sind bei einer Zuordnung gesperrt (keine Handpflege) und
+    folgen automatisch den zugeordneten Malzen (Summe ihrer Prozente);
+    die Differenz wird bei der Zeile "Einmaischen" abgezogen, die Summe bleibt 100 %.
+    Ändert sich die Schüttung, werden beide Anteile nachgeführt.
+  - Zuordnung entfernen: Farbe wieder voll; der Malzanteil der Zeile bleibt wie er ist
+    (normale Teilschüttung wie bisher).
+  - Ein Malz in mehreren Zugabe-Zeilen: die erste Zuordnung zählt (Hinweis im Dialog).
+    Nicht mehr in der Schüttung vorhandene Namen werden im Dialog angezeigt und wirken nicht.
+  - Spickzettel und Zusammenfassung (deutsch) nennen bei "Zuschütten" die Malze.
+  - Brauprotokoll: eigener Schritt "Läuterruhe" (Dauer) vor "Läutern", sofern keine
+    Maischplan-Zeile "Läuterruhe" heißt (dann wird sie dort als Maischschritt erfasst).
+Bedienung Läuterruhe mit Zugabe zur Hälfte: Läuterruhe in zwei Zeilen teilen, z. B.
+"Läuterruhe" (Aufheizen, 78 °C, 7 min) und danach "Zuschütten" (Wasser 0 %, 78 °C, 8 min)
+mit Farbmalz.
+
+Datenbank 2012 (automatische Migration beim Öffnen, vorher Sicherung wie gewohnt):
+  - Maischplan.Malze (Text): Namen der zugegebenen Malze, Zeilenumbruch-getrennt, Bezug per
+    Name wie bei den Rohstoffen. Kopieren, Teilen, kbh-Export/-Import übernehmen die
+    Spalte automatisch.
+  Nur eine neue Spalte, bestehende Daten unverändert; ohne Zuordnung rechnen alle Rezepte
+  exakt wie bisher. Vorlage-Datenbank ebenfalls auf 2012. Original-Programm 2.6.5 öffnet
+  die Datenbank weiterhin nicht.
+
+Technik: database_update.cpp (2011 -> 2012), Core-Version 2.12.0 (.pro, CMake),
+BierCalc::farbausbeute, ModelMaischplan (ColMalze, malzListe/malzText, kontaktzeit,
+malzZugaben, hatMalzZugabe, aktualisiereMalzZugabe), ModelSud::updateFarbe und
+Neuberechnung bei Maischplan-Änderungen (nur Sude mit Zuordnung), Brauhelfer
+aufheizrate/farbmalzTau (Richtwerte aus den Einstellungen), Settings::farbmalzTau, neuer
+Dialog dialogs/dlgmalzzugabe, WdgRast, templatetags + Vorlagen spickzettel/zusammenfassung.
+Übersetzungen (translations/*.ts) für die neuen Texte noch nicht nachgezogen.
+
+Test:
+  - Build ohne Fehler.
+  - Regressionsvergleich gegen den Stand S12 (gleiche Testdatenbank, migrierte Kopie):
+    keine Abweichungen; neues Feld Maischplan.Malze.
+  - Neuer Rundlauftest kbh-dump --rundlauf-farbmalz an allen Testsuden (dunkelstes Malz in
+    neuer letzter Zeile "Zuschütten", 8 min): Zeile ohne Zuordnung ändert nichts; mit
+    Zuordnung sinkt die Farbe, Schüttung/SW unverändert, Malzanteil = Prozent des Malzes,
+    Einmaischen um denselben Wert kleiner; Farbminderung exakt im Verhältnis 1 − f(8 min);
+    τ → 0 ergibt exakt die volle Farbe; weiterer Aufheizschritt verlängert die Kontaktzeit
+    um Aufheizzeit + Rast; Zuordnung bzw. Zeilen entfernen -> Farbe exakt wie vorher: alle
+    OK (z. B. Tittingdorfer Spezial, 2,5 % Farbmalz 1150 EBC: 86,2 -> 67,4 EBC). Sude, die
+    schon eine Malz-Zugabe haben, werden übersprungen.
+  - Nachbesserung nach Anwendertest: Testsud "Tittingdorfer Spezial Kopie" (Farbmalz in
+    Zuschütten nach Abmaischen, 15 min) 54,6 -> 48,8 EBC, Maischplan-Anteile 97,5/2,5 %
+    korrekt gespeichert; der Vergleich gegen den Stand vorher zeigt nur diesen Sud.
+  - Rundlauftests Hopfen/Malz/Wasser/Nachiso/Protokoll und Umkehrtest: unverändert OK.

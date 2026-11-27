@@ -29,6 +29,7 @@ public:
         ColDauerExtra1,
         ColTempExtra2,
         ColDauerExtra2,
+        ColMalze,
         // virtual
         ColDeleted,
         ColMengeWasser,
@@ -47,9 +48,24 @@ public:
     QVariant dataExt(const QModelIndex &index) const Q_DECL_OVERRIDE;
     bool setDataExt(const QModelIndex &index, const QVariant &value) Q_DECL_OVERRIDE;
 
+    // Malz-Zugabe im Maischplan (ext-s12b): Zeile Art "Zuschuetten" mit den Namen der hier
+    // zugegebenen Malze (ColMalze, Zeilenumbruch-getrennt); nicht zugeordnete Malze = Einmaischen
+    static QStringList malzListe(const QVariant &value);
+    static QString malzText(const QStringList &namen);
+    // Kontaktzeit [min] ab Zeile row (Quellzeile) bis Ende Maischplan: Rasten, Dekoktionsschritte
+    // und Aufheizzeiten nach Richtwert Brauhelfer::aufheizrate()
+    double kontaktzeit(int row) const;
+    // Malzname -> Kontaktzeit [min] fuer alle zugeordneten Malze des Suds (erste Zuordnung zaehlt)
+    QMap<QString, double> malzZugaben(const QVariant &sudId) const;
+    bool hatMalzZugabe(const QVariant &sudId) const;
+    // Malzanteil der Zugabe-Zeilen aus der Schuettung nachfuehren und Temperaturen neu rechnen
+    void aktualisiereMalzZugabe(const QVariant &sudId);
+
 private:
 
     void updateSud(const QVariant &sudId);
+    void setzeAnteilZugabe(int row, double anteil);
+    double anteilMalze(const QVariant &sudId, const QStringList &namen) const;
     double getTotalAnteil(const QVariant &sudId, int rowFrom, int colAnteil) const;
     double getPreviousValueTemperature(int row) const;
     void getPreviousMaischeValues(int row, double& m, double &c, double &T) const;

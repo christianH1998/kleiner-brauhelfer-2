@@ -13,7 +13,9 @@ QLoggingCategory Brauhelfer::loggingCategory("kleiner-brauhelfer-core", QtWarnin
 Brauhelfer::Brauhelfer(const QString &databasePath, QObject *parent) :
     QObject(parent),
     mDatabasePath(databasePath),
-    mReadonly(false)
+    mReadonly(false),
+    mAufheizrate(1.0),
+    mFarbmalzTau(10.0)
 {
     mDb = new Database();
     mDb->createTables(this);
@@ -520,4 +522,30 @@ bool Brauhelfer::rohstoffAbziehen(RohstoffTyp typ, const QString& name, double m
         break;
     }
     return false;
+}
+
+double Brauhelfer::aufheizrate() const
+{
+    return mAufheizrate;
+}
+
+void Brauhelfer::setAufheizrate(double rate)
+{
+    if (rate <= 0.0 || rate == mAufheizrate)
+        return;
+    mAufheizrate = rate;
+    modelSud()->updateMalzZugabe();
+}
+
+double Brauhelfer::farbmalzTau() const
+{
+    return mFarbmalzTau;
+}
+
+void Brauhelfer::setFarbmalzTau(double tau)
+{
+    if (tau <= 0.0 || tau == mFarbmalzTau)
+        return;
+    mFarbmalzTau = tau;
+    modelSud()->updateMalzZugabe();
 }

@@ -72,6 +72,7 @@ SOURCES += \
     dialogs/dlghilfe.cpp \
     dialogs/dlgimportexport.cpp \
     dialogs/dlgmaischplanmalz.cpp \
+    dialogs/dlgmalzzugabe.cpp \
     dialogs/dlgphmalz.cpp \
     dialogs/dlgprintout.cpp \
     dialogs/dlgrestextrakt.cpp \
@@ -180,6 +181,7 @@ HEADERS += \
     dialogs/dlghilfe.h \
     dialogs/dlgimportexport.h \
     dialogs/dlgmaischplanmalz.h \
+    dialogs/dlgmalzzugabe.h \
     dialogs/dlgphmalz.h \
     dialogs/dlgprintout.h \
     dialogs/dlgrestextrakt.h \

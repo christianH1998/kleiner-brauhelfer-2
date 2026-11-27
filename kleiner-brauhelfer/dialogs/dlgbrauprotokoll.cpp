@@ -255,6 +255,17 @@ QList<DlgBrauprotokoll::Eintrag> DlgBrauprotokoll::eintraege() const
         tVorher = tRast;
     }
 
+    // Laeuterruhe (ext-s12b): eigener Schritt, sofern sie nicht schon als Maischplan-Zeile dokumentiert wird
+    bool laeuterruheImPlan = false;
+    for (int r = 0; r < mp->rowCount(); ++r)
+        if (mp->data(r, ModelMaischplan::ColName).toString().contains(tr("Läuterruhe"), Qt::CaseInsensitive))
+            laeuterruheImPlan = true;
+    if (!laeuterruheImPlan)
+        add(ModelMesswerte::SchrittLaeuterruhe, ModelMesswerte::GroesseDauer, tr("Läuterruhe"),
+            tr("Dauer [%1]").arg(min), min, 0, HilfeKeine, QVariant(),
+            tr("Zeit vom Abmaischen bis zum Beginn des Abläuterns, in der sich der Treber setzt. "
+               "Steht die Läuterruhe als Zeile im Maischplan, wird sie dort dokumentiert."), keinSoll);
+
     // Laeutern
     add(ModelMesswerte::SchrittLaeutern, ModelMesswerte::GroesseDauer, tr("Läutern"),
         tr("Läuterdauer [%1]").arg(min), min, 0, HilfeKeine, QVariant(),

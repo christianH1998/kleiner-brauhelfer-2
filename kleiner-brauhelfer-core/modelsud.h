@@ -178,6 +178,10 @@ public:
     QVariant dataWasser(int row, int col) const;
     void setDataWasser(int row, int col, const QVariant& value);
     void update(int row, int colChanged = -1);
+    // Rezepte mit Malz-Zugabe im Maischplan neu rechnen (ext-s12b, nach Aenderung der Richtwerte)
+    void updateMalzZugabe();
+    // Bierfarbe [EBC] wie in updateFarbe; mitZugabe = false rechnet alle Malze voll (wie eingemaischt)
+    double berechneFarbe(int row, bool mitZugabe) const;
     double treberaufnahme(int row) const;
     bool istWhirlpool(int row) const;
     double whirlpoolMinuten(int row, double abMinute, double* temperaturEnde = nullptr) const;
@@ -200,6 +204,9 @@ private slots:
     void onModelReset();
     void onRowChanged(const QModelIndex &index);
     void onOtherModelRowChanged(const QModelIndex &index);
+    void onMaischplanRowChanged(const QModelIndex &index);
+    void onMaischplanRowsAboutToBeRemoved(const QModelIndex &parent, int first, int last);
+    void onMaischplanRowsRemoved();
     void onAnlageRowChanged(const QModelIndex &index);
 
 private:
@@ -222,6 +229,7 @@ private:
     Brauhelfer* bh;
     bool mUpdating;
     bool mSkipUpdateOnOtherModelChanged;
+    QList<QVariant> mMaischplanEntfernt;
     QVector<double> swWzMaischenRecipe;
     QVector<double> swWzKochenRecipe;
     QVector<double> swWzGaerungRecipe;

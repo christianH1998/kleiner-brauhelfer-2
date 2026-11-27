@@ -79,6 +79,15 @@ static bool chooseDatabase()
     return false;
 }
 
+// Richtwerte aus den Einstellungen an den Core (ext-s12b: Kontaktzeit und Farbausbeute Farbmalz)
+static void uebernehmeRichtwerte()
+{
+    if (!bh)
+        return;
+    bh->setAufheizrate(gSettings->aufheizrate());
+    bh->setFarbmalzTau(gSettings->farbmalzTau());
+}
+
 static bool connectDatabase()
 {
     while (true)
@@ -87,6 +96,7 @@ static bool connectDatabase()
         if (bh)
             delete bh;
         bh = new Brauhelfer(gSettings->databasePath());
+        uebernehmeRichtwerte();
 
         // connect
         if (bh->connectDatabase())
@@ -154,6 +164,7 @@ static bool connectDatabase()
                             bh = nullptr;
                           #ifdef MODE_TEST_UPDATE
                             bh = new Brauhelfer(fileUpdate.fileName());
+                            uebernehmeRichtwerte();
                             return bh->connectDatabase();
                           #else
                             // copy back
@@ -401,6 +412,8 @@ int main(int argc, char *argv[])
   #endif
     QApplication a(argc, argv);
     gSettings->init();
+    QObject::connect(gSettings, &Settings::aufheizrateChanged, [](double rate){ if (bh) bh->setAufheizrate(rate); });
+    QObject::connect(gSettings, &Settings::farbmalzTauChanged, [](double tau){ if (bh) bh->setFarbmalzTau(tau); });
 
     // logging
     defaultMessageHandler = qInstallMessageHandler(messageHandler);

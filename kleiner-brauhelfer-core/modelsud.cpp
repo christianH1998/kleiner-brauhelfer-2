@@ -82,6 +82,9 @@ void ModelSud::createConnections()
     connect(bh->modelHefegaben(), &SqlTableModel::rowChanged, this, &ModelSud::onOtherModelRowChanged);
     connect(bh->modelWeitereZutatenGaben(), &SqlTableModel::rowChanged, this, &ModelSud::onOtherModelRowChanged);
     connect(bh->modelAusruestung(), &SqlTableModel::rowChanged, this, &ModelSud::onAnlageRowChanged);
+    connect(bh->modelMaischplan(), &SqlTableModel::rowChanged, this, &ModelSud::onMaischplanRowChanged);
+    connect(bh->modelMaischplan(), &SqlTableModel::rowsAboutToBeRemoved, this, &ModelSud::onMaischplanRowsAboutToBeRemoved);
+    connect(bh->modelMaischplan(), &SqlTableModel::rowsRemoved, this, &ModelSud::onMaischplanRowsRemoved);
 }
 
 void ModelSud::onModelReset()
@@ -109,6 +112,61 @@ void ModelSud::onOtherModelRowChanged(const QModelIndex &idx)
     const SqlTableModel* model = static_cast<const SqlTableModel*>(idx.model());
     int row = getRowWithValue(ColID, model->data(idx.row(), model->fieldIndex(QStringLiteral("SudID"))));
     update(row);
+}
+
+void ModelSud::onMaischplanRowChanged(const QModelIndex &idx)
+{
+    // Farbmalz-Zugabe (ext-s12b): Kontaktzeit haengt am Maischplan. Ohne Zuordnung keine
+    // Neuberechnung (Verhalten wie bisher).
+    if (mSkipUpdateOnOtherModelChanged || mUpdating)
+        return;
+    ModelMaischplan* model = bh->modelMaischplan();
+    QVariant sudId = model->data(idx.row(), ModelMaischplan::ColSudID);
+    if (idx.column() != ModelMaischplan::ColMalze && !model->hatMalzZugabe(sudId) &&
+        ModelMaischplan::malzListe(model->data(idx.row(), ModelMaischplan::ColMalze)).isEmpty())
+        return;
+    int row = getRowWithValue(ColID, sudId);
+    if (row >= 0 && static_cast<Brauhelfer::SudStatus>(data(row, ColStatus).toInt()) == Brauhelfer::SudStatus::Rezept)
+        update(row);
+}
+
+void ModelSud::onMaischplanRowsAboutToBeRemoved(const QModelIndex &parent, int first, int last)
+{
+    // Noch nicht gespeicherte Zeilen entfernt Qt sofort (ohne rowChanged): betroffene Sude merken
+    Q_UNUSED(parent)
+    ModelMaischplan* model = bh->modelMaischplan();
+    for (int r = first; r <= last; ++r)
+    {
+        QVariant sudId = model->data(r, ModelMaischplan::ColSudID);
+        if (!mMaischplanEntfernt.contains(sudId) &&
+            (!ModelMaischplan::malzListe(model->data(r, ModelMaischplan::ColMalze)).isEmpty() || model->hatMalzZugabe(sudId)))
+            mMaischplanEntfernt.append(sudId);
+    }
+}
+
+void ModelSud::onMaischplanRowsRemoved()
+{
+    const QList<QVariant> sudIds = mMaischplanEntfernt;
+    mMaischplanEntfernt.clear();
+    if (mSkipUpdateOnOtherModelChanged)
+        return;
+    for (const QVariant &sudId : sudIds)
+    {
+        int row = getRowWithValue(ColID, sudId);
+        if (row >= 0 && static_cast<Brauhelfer::SudStatus>(data(row, ColStatus).toInt()) == Brauhelfer::SudStatus::Rezept)
+            update(row);
+    }
+}
+
+void ModelSud::updateMalzZugabe()
+{
+    for (int row = 0; row < rowCount(); ++row)
+    {
+        if (static_cast<Brauhelfer::SudStatus>(data(row, ColStatus).toInt()) != Brauhelfer::SudStatus::Rezept)
+            continue;
+        if (bh->modelMaischplan()->hatMalzZugabe(data(row, ColID)))
+            update(row);
+    }
 }
 
 void ModelSud::onAnlageRowChanged(const QModelIndex &idx)
@@ -1068,6 +1126,9 @@ void ModelSud::update(int row, int colChanged)
         updateWasser(row);
 
         // erg_Farbe
+        // ext-s12b: Malzanteil der Zugabe-Zeilen im Maischplan an die Schuettung anpassen
+        if (bh->modelMaischplan()->hatMalzZugabe(data(row, ColID)))
+            bh->modelMaischplan()->aktualisiereMalzZugabe(data(row, ColID));
         updateFarbe(row);
 
         // IBU aus Hopfenmengen (nur Berechnungsart IBUBerechnet)
@@ -1360,10 +1421,20 @@ void ModelSud::updateWasser(int row)
 
 void ModelSud::updateFarbe(int row)
 {
+    setData(row, Colerg_Farbe, berechneFarbe(row, true));
+}
+
+double ModelSud::berechneFarbe(int row, bool mitZugabe) const
+{
     QRegularExpression sudReg(QStringLiteral("^%1$").arg(data(row, ColID).toInt()));
     double ebc = 0.0;
     double d = 0.0;
     double gs = 0.0;
+
+    // ext-s12b: im Maischplan spaet zugegebene Malze geben nur einen Teil ihrer Farbe ab
+    // (Farbausbeute nach Kontaktzeit, Annahme ungeprueft); Extrakt bleibt unveraendert
+    const QMap<QString, double> zugaben = mitZugabe ? bh->modelMaischplan()->malzZugaben(data(row, ColID)) : QMap<QString, double>();
+    const double tau = bh->farbmalzTau();
 
     ProxyModel modelMalzschuettung;
     modelMalzschuettung.setSourceModel(bh->modelMalzschuettung());
@@ -1372,6 +1443,12 @@ void ModelSud::updateFarbe(int row)
     for (int r = 0; r < modelMalzschuettung.rowCount(); ++r)
     {
         double farbe = modelMalzschuettung.data(r, ModelMalzschuettung::ColFarbe).toDouble();
+        if (!zugaben.isEmpty())
+        {
+            auto it = zugaben.constFind(modelMalzschuettung.data(r, ModelMalzschuettung::ColName).toString().trimmed());
+            if (it != zugaben.constEnd())
+                farbe *= BierCalc::farbausbeute(it.value(), tau);
+        }
         double menge = modelMalzschuettung.data(r, ModelMalzschuettung::Colerg_Menge).toDouble();
         d += menge * farbe;
         gs += menge;
@@ -1405,7 +1482,7 @@ void ModelSud::updateFarbe(int row)
         ebc = (d / gs) * sw / 10 + 1.5 * t/60;
         ebc += dataAnlage(row, ModelAusruestung::ColKorrekturFarbe).toDouble();
     }
-    setData(row, Colerg_Farbe, ebc);
+    return ebc;
 }
 
 double ModelSud::updateSwAusMalzmengen(int row)

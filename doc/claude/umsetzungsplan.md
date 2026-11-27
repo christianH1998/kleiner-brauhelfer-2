@@ -137,7 +137,7 @@ Eine gebündelte, idempotente Migration in `database_update.cpp` mit `ALTER TABL
   - Schritte: Außentemperatur, Schüttung gewogen, Wasser Ist (Haupt-/Nachguss), Maischschritte (Aufheiz-/Rastdauer), Vorderwürze (Menge/SW), Kochbeginn, vor Hopfenseihen, Kochende, Anstellen, Abfüllen (Jungbiermenge/SW). Stammwürze-Eingabe direkt in °P, Brix über das bestehende Rechenfenster (`DlgRestextrakt`).
   - Schreibschutz wie Tab Braudaten.
 
-**S12b Farbmalz-Zugabe im Maischplan (ext-s12b)** – *neu, Anwender 2026-11-24, nach Commit S12*
+**S12b Farbmalz-Zugabe im Maischplan (ext-s12b)** – *umgesetzt (2026-11-27), DB 2012 (`Maischplan.Malze`); Zuordnung per Dialog „Malze…“ an Zeilen „Zuschütten“, Malzanteil folgt der Schüttung (Differenz zu Lasten „Einmaischen“), τ im Dialog einstellbar (Einstellung, alle Sude), Test `--rundlauf-farbmalz`*
 - Eingabe: Maischplan-Zeile Art „Zuschütten“ (Wasser 0 möglich) mit Auswahl, welche Malze der Schüttung hier zugegeben werden; nicht zugeordnete Malze = Einmaischen (bisher).
 - Kontaktzeit = Summe der Dauern ab dieser Zeile bis Ende Maischplan (Rasten + Aufheizzeiten nach Richtwert, Läuterruhe als Maischplan-Zeile; Zugabe zur Hälfte der Läuterruhe = Läuterruhe in zwei Zeilen teilen).
 - Farbe: Malzfarbe × Farbausbeute f(t) = 1 − e^(−t/τ), τ = 10 min als Richtwert einstellbar, gekennzeichnet „Annahme, ungeprüft“. Extrakt (SW/Malzmengen) **unverändert** (Anwender 2026-11-24; Fehler bei kleinen Farbmalzmengen ~0,2 °P, sichtbar im Protokoll, Ausgleich über Kalibrierung S14).

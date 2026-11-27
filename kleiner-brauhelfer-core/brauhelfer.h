@@ -294,6 +294,13 @@ public:
     Q_INVOKABLE int sudTeilen(int sudId, const QString &name1, const QString &name2, double prozent);
     Q_INVOKABLE bool rohstoffAbziehen(Brauhelfer::RohstoffTyp typ, const QString& name, double menge);
 
+    // Richtwerte fuer Maischplan-Zeiten und Farbmalz-Zugabe (ext-s12b), von der GUI aus den
+    // Einstellungen gesetzt; Aenderung rechnet Rezepte mit Malz-Zugabe im Maischplan neu
+    double aufheizrate() const;
+    void setAufheizrate(double rate);
+    double farbmalzTau() const;
+    void setFarbmalzTau(double tau);
+
 signals:
     void databasePathChanged(const QString &databasePath);
     void readonlyChanged(bool readonly);
@@ -306,6 +313,8 @@ private:
     QString mDatabasePath;
     bool mReadonly;
     Database* mDb;
+    double mAufheizrate;
+    double mFarbmalzTau;
 };
 
 #endif // BRAUHELFER_H

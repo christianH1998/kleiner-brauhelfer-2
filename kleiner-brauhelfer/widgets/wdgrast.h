@@ -4,6 +4,8 @@
 #include "wdgabstractproxy.h"
 
 class SudObject;
+class QLabel;
+class QPushButton;
 
 namespace Ui {
 class WdgRast;
@@ -39,6 +41,7 @@ private slots:
     void on_tbMengeMalz_valueChanged(double value);
     void on_tbAnteilMalz_valueChanged(double value);
     void on_btnAnteilMalz_clicked();
+    void btnMalzeClicked();
     void on_tbTempMalz_valueChanged(double value);
     void on_tbMengeMaische_valueChanged(double value);
     void on_tbAnteilMaische_valueChanged(double value);
@@ -63,12 +66,15 @@ private:
 
 private:
     void checkEnabled();
+    void updateMalzZugabe(bool sichtbar);
 
 private:
     Ui::WdgRast *ui;
     SudObject *mSud;
     bool mEnabled;
     bool mRastNameManuallyEdited;
+    QLabel *mLblMalzeInfo;
+    QPushButton *mBtnMalze;
 };
 
 #endif // WDGRAST_H

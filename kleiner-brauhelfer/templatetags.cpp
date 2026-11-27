@@ -238,6 +238,7 @@ void TemplateTags::erstelleTagListe(QVariantMap &ctx, int sudRow)
                 break;
             case Brauhelfer::RastTyp::Zuschuetten:
                 map[QStringLiteral("Zuschuetten")] = true;
+                map[QStringLiteral("Malze")] = ModelMaischplan::malzListe(model->data(row, ModelMaischplan::ColMalze)).join(QStringLiteral(", ")); // ext-s12b
                 map[QStringLiteral("MengeWasser")] = locale.toString(model->data(row, ModelMaischplan::ColMengeWasser).toDouble(), 'f', 1);
                 map[QStringLiteral("WasserTemp")] = QString::number(model->data(row, ModelMaischplan::ColTempWasser).toInt());
                 map[QStringLiteral("MengeMalz")] = locale.toString(model->data(row, ModelMaischplan::ColMengeMalz).toDouble(), 'f', 2);

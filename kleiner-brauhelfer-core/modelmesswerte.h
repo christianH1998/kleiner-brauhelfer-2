@@ -55,6 +55,7 @@ public:
         SchrittKochen = 12,
         SchrittWhirlpool = 13,
         SchrittKuehlen = 14,
+        SchrittLaeuterruhe = 15,
         SchrittMaischschritt = 100
     };
     Q_ENUM(Schritt)

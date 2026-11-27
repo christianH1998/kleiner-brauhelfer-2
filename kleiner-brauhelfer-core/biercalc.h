@@ -363,6 +363,16 @@ public:
                                    double tVon, double tBis, double* temperaturEnde = nullptr);
 
     /**
+     * @brief Farbausbeute eines spaet zugegebenen Malzes (ext-s12b, Annahme, ungeprueft)
+     * @details f(t) = 1 - e^(-t/tau): Anteil der Malzfarbe, der bei einer Kontaktzeit t
+     * in die Wuerze uebergeht. tau <= 0 bedeutet volle Ausbeute.
+     * @param t Kontaktzeit [min]
+     * @param tau Zeitkonstante [min] (Richtwert 10 min)
+     * @return Farbausbeute [0..1]
+     */
+    Q_INVOKABLE static double farbausbeute(double t, double tau);
+
+    /**
      * @brief mischungstemperaturTm
      * @param m1
      * @param c1
