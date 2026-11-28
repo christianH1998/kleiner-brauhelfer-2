@@ -778,3 +778,99 @@ Test:
     Zuschütten nach Abmaischen, 15 min) 54,6 -> 48,8 EBC, Maischplan-Anteile 97,5/2,5 %
     korrekt gespeichert; der Vergleich gegen den Stand vorher zeigt nur diesen Sud.
   - Rundlauftests Hopfen/Malz/Wasser/Nachiso/Protokoll und Umkehrtest: unverändert OK.
+
+
+==========================================================================================
+Stufe S13 (ext-s13): Abfüllart und Zucker fest in g/L
+==========================================================================================
+Neu im Reiter Abfüllen, Gruppe "Jungbiermenge und Abfüllart": Auswahl "Abfüllart" (ersetzt
+das Feld "Spunden"). Je Art werden nur die passenden Felder angezeigt:
+  1. Zucker in den ganzen Sud (Flasche oder Fass): Temperatur, Süßkraft, Wasser
+     Zuckerlösung -> zusätzlich benötigter Zucker, pro Flasche, je Liter, Konzentration.
+  2. Zucker je Flasche (fester Wert je Liter): neues Eingabefeld "Zucker je Liter (fest)"
+     in g/L, beim ersten Wählen aus dem Rechner vorbelegt (S06), Knopf "Vorschlag
+     übernehmen". Rechts: Vorschlag des Rechners, Zucker gesamt, pro Flasche, je 0,5-L- und
+     je 0,33-L-Flasche. Keine Zuckerlösung, keine Verdünnung.
+  3. Speise (fehlender Rest mit Zucker): verfügbare Speise -> benötigte Speise, je
+     Flasche; reicht sie nicht, zusätzlich der Restzucker (wie bisher).
+  4. Spunden (rechtzeitig schlauchen): Spundungsdruck, Grünschlauchzeitpunkt (mit
+     Schnellgärprobe); kein Zucker.
+  5. Fass mit Zwangskarbonisierung (CO2-Flasche): Druck aus Ziel-CO2 und Temperatur
+     Jungbier, kein Zucker.
+Unter der Auswahl steht ein kurzer Hinweis zur gewählten Art; jeder Eintrag hat einen
+Tooltip.
+
+Zwei Alkoholwerte (Gruppe Vergärung):
+  - "Alkohol Jungbier" (beim Spunden "Alkohol beim Schlauchen"): Stand beim Abfüllen.
+  - "Alkohol fertiges Bier (erwartet)": nach Nachgärung, je Abfüllart:
+      Zucker gesamt / Speise: mit Zuckeranteil und Verdünnung durch die Zuckerlösung,
+      Zucker je Flasche: mit dem festen g/L-Wert, ohne Verdünnung,
+      Spunden: wie im Rezept (erwarteter Vergärungsgrad), sobald die Schnellgärprobe
+        aktiv ist mit deren Restextrakt (Messung),
+      Zwangskarbonisierung: kein Alkoholzuwachs.
+
+Karbonisierungsrechner (Nachbesserung nach Anwendertest):
+  - Neues Feld "Ziel-Karbonisierung" (g CO2/L) in der Gruppe "Jungbiermenge und
+    Abfüllart". Es ist derselbe Wert wie "CO2" im Reiter Rezept und bis zum Abfüllen
+    änderbar; Zucker, Speise, Spundungs-/Fassdruck und Schlauchzeitpunkt folgen daraus.
+  - Daneben und im Tooltip (auch am CO2-Feld im Reiter Rezept): Richtwerte nach Bierart
+    aus J. Palmer, "How to Brew" (Volumen CO2, umgerechnet 1 Vol. ≈ 1,96 g/L): Brit. Ales
+    2,9–3,9, Porter/Stout 3,3–4,5, Belg. Ales 3,7–4,7, Amer. Ales/Lager/Pils 4,3–5,3,
+    Frucht-Lambic 5,9–8,8, Weizen 6,5–8,8 g/L; Hinweis auf druckfeste Flaschen über ca. 6 g/L.
+  - Spunden: In der Gruppe "Spundungsdruck" steht "Schlauchen bei Restextrakt (Soll)" in
+    °P. Mit aktiver Schnellgärprobe aus deren Endvergärung, ohne Schnellgärprobe aus dem
+    Vergärungsgrad der Hefe geschätzt – dann mit orangem Hinweis, dass der Wert nur
+    geschätzt ist und für eine zuverlässige Karbonisierung eine Schnellgärprobe nötig ist.
+    Liegt der Restextrakt des Jungbiers schon darunter, erscheint ein Hinweis, dass das
+    Ziel-CO2 ohne Zucker nicht mehr erreicht wird. Reine Anzeige, Werte bleiben unverändert.
+
+Spunden, zweite Nachbesserung:
+  - Liegt der Restextrakt des Jungbiers unter dem Sollwert, erscheint immer ein (oranger)
+    Hinweis mit dem aktuellen Wert, auch mit Schnellgärprobe.
+  - Neue Checkbox "Fehlenden Restextrakt mit Zucker ausgleichen" (gespeichert als
+    Abfüllart 6 "Spunden mit Zuckerausgleich", keine DB-Änderung). Zucker = fehlendes CO2
+    aus Ziel-CO2, Rest-CO2 bei Temperatur Jungbier und dem CO2, das der Restextrakt bis
+    zur Endvergärung (Schnellgärprobe bzw. Schätzung aus der Hefe) noch liefert. Anzeige:
+    g gesamt, g/L und g je Flasche (mit Süßkraft). Der Zucker fließt in den Alkohol des
+    fertigen Biers ein (ohne Verdünnung). Reicht der Restextrakt: "Kein Zucker nötig".
+Dritte Nachbesserung:
+  - Zuckerausgleich beim Spunden: kein Zucker, solange der Restextrakt (auf 0,1 °P gerundet,
+    wie angezeigt) den Sollwert erreicht. Der Zucker erscheint jetzt in der Gruppe
+    Karbonisierung ("Zuckerausgleich beim Spunden") mit g gesamt, g/L, g je Flasche.
+  - Zucker in die Flasche: Standard ist die Berechnung aus der Ziel-Karbonisierung.
+    Checkbox "Fester Wert je Liter" schaltet auf einen eigenen Wert (z. B. Erfahrungswert,
+    Karbonisierungsdrops) um; der Rechnervorschlag bleibt zum Vergleich sichtbar.
+Prüfliste: doc/claude/fachmodelle.md §8 listet alle nicht verifizierten Berechnungen und
+Richtwerte (P1–P22) zur Prüfung bei Projektabschluss.
+
+Altsude und Sude ohne Auswahl: Die Art wird wie bisher abgeleitet (Spunden -> Spunden,
+Speisemenge > 0 -> Speise, sonst Zucker gesamt) und angezeigt, die Rechnung bleibt exakt
+wie bisher. Erst eine Auswahl speichert die Art (Spalte Sud.Abfuellart, seit DB 2010
+vorhanden, keine neue Migration).
+Beim Wählen (ein Rückgängig-Schritt):
+  - das Kennzeichen Spunden folgt der Art,
+  - bei Zucker je Flasche, Spunden und Zwangskarbonisierung wird "Wasser Zuckerlösung" auf
+    0 gesetzt (sonst stünde es unsichtbar in der abgefüllten Menge),
+  - bei Zucker je Flasche wird der feste Wert aus dem Rechner vorbelegt, falls leer.
+Eine eingetragene Speisemenge bleibt erhalten (sie mindert weiter die Anstellwürze) und
+bleibt dann sichtbar, wird bei den Zucker-Arten aber nicht vom Zucker abgezogen.
+
+Hinweis Süßkraft: Der feste g/L-Wert gilt für den Zucker mit der eingestellten Süßkraft.
+Für den Alkohol rechnet der Kern mit Süßkraft 1 (Haushaltszucker), weil die Süßkraft eine
+Programmeinstellung und kein Sud-Wert ist.
+
+Technik: Brauhelfer::Abfuellart, ModelSud virtuelle Felder AbfuellartEffektiv und
+ZuckerProLiterVorschlag, ZuckerAnteil/SpeiseAnteil/erg_Alkohol je Art (Art 0 = Code wie
+bisher), TabAbfuellen (cbAbfuellart, tbZuckerProLiterFest, btnZuckerProLiterVorschlag,
+lblAbfuellartHinweis). Übersetzungen (translations/*.ts) noch nicht nachgezogen.
+
+Test:
+  - Build ohne Fehler.
+  - Regressionsvergleich gegen den Stand S12b (gleiche Testdatenbank): keine
+    Abweichungen; neue Felder AbfuellartEffektiv, ZuckerProLiterVorschlag.
+  - Neuer Rundlauftest kbh-dump --rundlauf-abfuellart an allen Testsuden: Ableitung wie
+    bisher; Auswahl der abgeleiteten Art ändert nichts; Zucker gesamt = Vorschlag × Menge
+    ohne Speise; Zucker je Flasche ohne Wert = Vorschlag, mit 6 g/L = 6 g/L × Menge,
+    Alkohol ohne Verdünnung, 0 g/L = kein Zucker; Zwangskarbonisierung ohne Zucker/Speise
+    und ohne Zuwachs; Spunden = Rezept-Alkohol bzw. Schnellgärprobe; Rückweg exakt: alle OK.
+  - Rundlauftests Hopfen/Malz/Wasser/Nachiso/Protokoll/Farbmalz und Umkehrtest: OK.

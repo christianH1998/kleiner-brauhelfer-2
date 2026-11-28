@@ -1,5 +1,6 @@
 #include "tabrezept.h"
 #include "ui_tabrezept.h"
+#include "tababfuellen.h"
 #include <cmath>
 #include <QGraphicsScene>
 #include <QGraphicsSvgItem>
@@ -49,6 +50,7 @@ void TabRezept::setup(SudObject *sud)
     mSud = sud;
 
     ui->tbCO2->setColumn(mSud, ModelSud::ColCO2);
+    ui->tbCO2->setToolTip(TabAbfuellen::co2RichtwerteHtml()); // Richtwerte nach Bierart (ext-s13)
     ui->tbSW->setColumn(mSud, ModelSud::ColSW);
     ui->tbMenge->setColumn(mSud, ModelSud::ColMenge);
     ui->tbFaktorHauptguss->setColumn(mSud, ModelSud::ColFaktorHauptguss);

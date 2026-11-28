@@ -121,6 +121,19 @@ public:
     };
     Q_ENUM(NachisoModell)
 
+    // Sud.Abfuellart (ab DB 2010, Auswahl ab ext-s13): Art der Karbonisierung
+    enum class Abfuellart
+    {
+        Abgeleitet = 0,          // keine Auswahl: aus Spunden/Speisemenge abgeleitet, Rechnung wie bisher
+        ZuckerGesamt = 1,        // Zucker(loesung) in den ganzen Sud (Flasche oder Fass)
+        ZuckerFlasche = 2,       // Zucker je Flasche, fester Wert g/L (Sud.ZuckerProLiter), keine Verduennung
+        Speise = 3,              // Speise, fehlender Rest mit Zucker
+        Spunden = 4,             // rechtzeitig schlauchen (Gruenschlauchen), kein Zucker
+        Zwangskarbonisierung = 5, // Fass mit CO2 aus der Gasflasche, kein Zucker
+        SpundenZucker = 6        // Spunden, fehlender Restextrakt (zu spaet geschlaucht) mit Zucker ausgeglichen
+    };
+    Q_ENUM(Abfuellart)
+
     // Sud.WasserPreset (ab DB 2010, ext-s10); setzt nur die Faktoren HG/NG
     enum class WasserPreset
     {

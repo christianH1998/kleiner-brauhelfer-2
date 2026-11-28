@@ -921,7 +921,7 @@
              </property>
             </widget>
            </item>
-           <item row="1" column="5">
+           <item row="3" column="5">
             <spacer name="horizontalSpacer_12">
              <property name="orientation">
               <enum>Qt::Orientation::Horizontal</enum>
@@ -954,7 +954,7 @@
              </property>
             </widget>
            </item>
-           <item row="1" column="0">
+           <item row="3" column="0">
             <spacer name="horizontalSpacer_11">
              <property name="orientation">
               <enum>Qt::Orientation::Horizontal</enum>
@@ -983,13 +983,73 @@
              </property>
             </widget>
            </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="lblSchlauchenBei">
+             <property name="text">
+              <string>Schlauchen bei Restextrakt (Soll)</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="DoubleSpinBox" name="tbSchlauchenBei">
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
+             </property>
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum>
+             </property>
+             <property name="decimals">
+              <number>1</number>
+             </property>
+             <property name="minimum">
+              <double>-99.000000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>99.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.100000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="2">
+            <widget class="QLabel" name="lblSchlauchenBeiEinheit">
+             <property name="text">
+              <string notr="true">°P</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0" colspan="8">
+            <widget class="QLabel" name="lblSchlauchenHinweis">
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0" colspan="8">
+            <widget class="CheckBox" name="cbSpundenZucker">
+             <property name="text">
+              <string>Fehlenden Restextrakt mit Zucker ausgleichen</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="0" colspan="8">
+            <widget class="QLabel" name="lblSpundenZucker">
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
           </layout>
          </widget>
         </item>
         <item>
          <widget class="QGroupBox" name="groupBox_8">
           <property name="title">
-           <string>Jungbiermenge</string>
+           <string>Jungbiermenge und Abfüllart</string>
           </property>
           <layout class="QGridLayout" name="gridLayout_16">
            <property name="verticalSpacing">
@@ -1029,19 +1089,85 @@
             </widget>
            </item>
            <item row="1" column="0">
-            <widget class="QLabel" name="label_171">
+            <widget class="QLabel" name="lblAbfuellart">
              <property name="text">
-              <string>Spunden</string>
+              <string>Abfüllart</string>
              </property>
             </widget>
            </item>
-           <item row="1" column="1">
-            <widget class="CheckBox" name="cbSpunden">
-             <property name="toolTip">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Wird das Feld &lt;span style=&quot; font-weight:600;&quot;&gt;Spunden&lt;/span&gt; angehakt, berechnet der Kleinen Brauhelfer keine Zucker- oder Speisegabe und blendet die entsprechenden Felder aus.&lt;/p&gt;&lt;p&gt;Unter Spunden wird die Karbonisierung mit CO₂ auf Gebinde wie Fässer oder Kegs verstanden.&lt;/p&gt;&lt;p&gt;Durch das auf den gewünschten Druck einstellbare Spundungsventil ist keine exkate Berechnung von Zucker oder Speise nötig. Oft wird gespundetes Bier mit einer Gasflasche zusätzlich zwangskarbonisiert.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <item row="1" column="1" colspan="7">
+            <widget class="ComboBox" name="cbAbfuellart">
+             <item>
+              <property name="text">
+               <string>Zucker in den ganzen Sud (Flasche oder Fass)</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Zucker je Flasche (fester Wert je Liter)</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Speise (fehlender Rest mit Zucker)</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Spunden (rechtzeitig schlauchen)</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Fass mit Zwangskarbonisierung (CO₂-Flasche)</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="lblCO2">
+             <property name="text">
+              <string>Ziel-Karbonisierung</string>
              </property>
-             <property name="layoutDirection">
-              <enum>Qt::LayoutDirection::RightToLeft</enum>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="DoubleSpinBoxSud" name="tbCO2">
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
+             </property>
+             <property name="decimals">
+              <number>1</number>
+             </property>
+             <property name="minimum">
+              <double>1.000000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>15.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.100000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="2">
+            <widget class="QLabel" name="lblCO2Einheit">
+             <property name="text">
+              <string notr="true">g/L</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="5" colspan="3">
+            <widget class="QLabel" name="lblCO2Richtwerte">
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0" colspan="8">
+            <widget class="QLabel" name="lblAbfuellartHinweis">
+             <property name="wordWrap">
+              <bool>true</bool>
              </property>
             </widget>
            </item>
@@ -1650,6 +1776,46 @@
              </property>
             </widget>
            </item>
+           <item row="6" column="0">
+            <widget class="CheckBox" name="lblZuckerProLiterFest">
+             <property name="toolTip">
+              <string>Eigenen festen Zuckerwert je Liter verwenden (z. B. Erfahrungswert, Karbonisierungsdrops) statt der Berechnung aus der Ziel-Karbonisierung</string>
+             </property>
+             <property name="text">
+              <string>Fester Wert je Liter</string>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="1">
+            <widget class="DoubleSpinBoxSud" name="tbZuckerProLiterFest">
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
+             </property>
+             <property name="decimals">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <double>99.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.100000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="2">
+            <widget class="QLabel" name="lblZuckerProLiterFestEinheit">
+             <property name="text">
+              <string notr="true">g/L</string>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="1" colspan="2">
+            <widget class="PushButton" name="btnZuckerProLiterVorschlag">
+             <property name="text">
+              <string>Vorschlag übernehmen</string>
+             </property>
+            </widget>
+           </item>
            <item row="0" column="1">
             <widget class="DoubleSpinBoxSud" name="tbTemperaturKarbonisierung">
              <property name="toolTip">
@@ -2180,6 +2346,11 @@
  </widget>
  <customwidgets>
   <customwidget>
+   <class>ComboBox</class>
+   <extends>QComboBox</extends>
+   <header>widgets/combobox.h</header>
+  </customwidget>
+  <customwidget>
    <class>DoubleSpinBox</class>
    <extends>QDoubleSpinBox</extends>
    <header>widgets/doublespinbox.h</header>
@@ -2261,7 +2432,9 @@
   <tabstop>tbSpundungsdruck</tabstop>
   <tabstop>tbJungbiermengeAbfuellen</tabstop>
   <tabstop>tbJungbierVerlust</tabstop>
-  <tabstop>cbSpunden</tabstop>
+  <tabstop>cbAbfuellart</tabstop>
+  <tabstop>tbCO2</tabstop>
+  <tabstop>cbSpundenZucker</tabstop>
   <tabstop>tbTemperaturKarbonisierung</tabstop>
   <tabstop>tbSpeisemengeAbgefuellt</tabstop>
   <tabstop>tbSpeisemengeGesamt</tabstop>
@@ -2270,6 +2443,8 @@
   <tabstop>tbZuckerGesamt</tabstop>
   <tabstop>tbZuckerFlasche</tabstop>
   <tabstop>tbWassserZuckerloesung</tabstop>
+  <tabstop>tbZuckerProLiterFest</tabstop>
+  <tabstop>btnZuckerProLiterVorschlag</tabstop>
   <tabstop>tbKonzentrationZuckerloesung</tabstop>
   <tabstop>tbAlkohol</tabstop>
   <tabstop>tbBiermengeAbfuellen</tabstop>

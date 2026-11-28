@@ -69,6 +69,8 @@ ModelSud::ModelSud(Brauhelfer *bh, const QSqlDatabase &db) :
     mVirtualField.append(QStringLiteral("SWErwartet"));
     mVirtualField.append(QStringLiteral("MengeEffektiv"));
     mVirtualField.append(QStringLiteral("MengeEffektivQuelle"));
+    mVirtualField.append(QStringLiteral("AbfuellartEffektiv"));
+    mVirtualField.append(QStringLiteral("ZuckerProLiterVorschlag"));
     connect(this, &SqlTableModel::modelReset, this, &ModelSud::onModelReset);
     connect(this, &SqlTableModel::rowsInserted, this, &ModelSud::onModelReset);
     connect(this, &SqlTableModel::rowsRemoved, this, &ModelSud::onModelReset);
@@ -554,8 +556,36 @@ QVariant ModelSud::dataExt(const QModelIndex &idx) const
         double jungbiermenge = data(idx.row(), ColJungbiermengeAbfuellen).toDouble();
         return BierCalc::speise(co2Soll, sw, sreSchnellgaerprobe, sreJungbier, T) * jungbiermenge * 1000;
     }
+    case ColAbfuellartEffektiv:
+    {
+        // Gewaehlte Abfuellart (ext-s13); ohne Auswahl wie bisher aus Spunden/Speisemenge abgeleitet
+        int art = data(idx.row(), ColAbfuellart).toInt();
+        if (art > static_cast<int>(Brauhelfer::Abfuellart::Abgeleitet) && art <= static_cast<int>(Brauhelfer::Abfuellart::SpundenZucker))
+            return art;
+        if (data(idx.row(), ColSpunden).toBool())
+            return static_cast<int>(Brauhelfer::Abfuellart::Spunden);
+        if (data(idx.row(), ColSpeisemenge).toDouble() > 0.0)
+            return static_cast<int>(Brauhelfer::Abfuellart::Speise);
+        return static_cast<int>(Brauhelfer::Abfuellart::ZuckerGesamt);
+    }
+    case ColZuckerProLiterVorschlag:
+    {
+        // Rechner (ext-s06/s13): benoetigter Zucker [g/L Jungbier] fuer das Ziel-CO2, ohne Speise
+        double co2Soll = data(idx.row(), ColCO2).toDouble();
+        double sw = data(idx.row(), ColSWIst).toDouble();
+        double sreJungbier = data(idx.row(), ColSWJungbier).toDouble();
+        double T = data(idx.row(), ColTemperaturKarbonisierung).toDouble();
+        double sreSchnellgaerprobe = data(idx.row(), ColSREIst).toDouble();
+        double zucker = BierCalc::zucker(co2Soll, sw, sreSchnellgaerprobe, sreJungbier, T);
+        if (!std::isfinite(zucker) || zucker < 0.0)
+            zucker = 0.0;
+        return zucker;
+    }
     case ColSpeiseAnteil:
     {
+        int art = data(idx.row(), ColAbfuellart).toInt();
+        if (art != static_cast<int>(Brauhelfer::Abfuellart::Abgeleitet) && art != static_cast<int>(Brauhelfer::Abfuellart::Speise))
+            return 0.0; // ext-s13: Speise nur bei Abfuellart "Speise"
         if (data(idx.row(), ColSpunden).toBool())
             return 0.0;
         double speiseVerfuegbar = data(idx.row(), ColSpeisemenge).toDouble() * 1000;
@@ -568,6 +598,41 @@ QVariant ModelSud::dataExt(const QModelIndex &idx) const
     }
     case ColZuckerAnteil:
     {
+        // ext-s13: je gewaehlter Abfuellart; ohne Auswahl (0) wie bisher
+        switch (static_cast<Brauhelfer::Abfuellart>(data(idx.row(), ColAbfuellart).toInt()))
+        {
+        case Brauhelfer::Abfuellart::Spunden:
+        case Brauhelfer::Abfuellart::Zwangskarbonisierung:
+            return 0.0;
+        case Brauhelfer::Abfuellart::ZuckerGesamt:
+            return data(idx.row(), ColZuckerProLiterVorschlag).toDouble() * data(idx.row(), ColJungbiermengeAbfuellen).toDouble();
+        case Brauhelfer::Abfuellart::SpundenZucker:
+        {
+            // Zucker fuer das CO2, das der verbleibende Restextrakt nicht mehr liefert. Ende der
+            // Gaerung = Schnellgaerprobe, sonst Schaetzung aus dem Vergaerungsgrad; Temperatur Jungbier.
+            double sreEnde = data(idx.row(), ColSchnellgaerprobeAktiv).toBool() ? data(idx.row(), ColSWSchnellgaerprobe).toDouble() : data(idx.row(), ColSREErwartet).toDouble();
+            const double co2 = data(idx.row(), ColCO2).toDouble();
+            const double sw = data(idx.row(), ColSWIst).toDouble();
+            const double sre = data(idx.row(), ColSWJungbier).toDouble();
+            const double temp = data(idx.row(), ColTemperaturJungbier).toDouble();
+            // Kein Zucker, solange der Restextrakt (auf 0,1 °P wie angezeigt) den Sollwert erreicht
+            const double soll = BierCalc::gruenschlauchzeitpunkt(co2, sw, sreEnde, temp);
+            if (std::round(sre * 10.0) >= std::round(soll * 10.0))
+                return 0.0;
+            double zucker = BierCalc::zucker(co2, sw, sreEnde, sre, temp);
+            if (!std::isfinite(zucker) || zucker < 0.0)
+                zucker = 0.0;
+            return zucker * data(idx.row(), ColJungbiermengeAbfuellen).toDouble();
+        }
+        case Brauhelfer::Abfuellart::ZuckerFlasche:
+        {
+            QVariant fest = data(idx.row(), ColZuckerProLiter);
+            double proLiter = fest.isNull() ? data(idx.row(), ColZuckerProLiterVorschlag).toDouble() : fest.toDouble();
+            return proLiter * data(idx.row(), ColJungbiermengeAbfuellen).toDouble();
+        }
+        default:
+            break;
+        }
         if (data(idx.row(), ColSpunden).toBool())
             return 0.0;
         double co2Soll = data(idx.row(), ColCO2).toDouble();
@@ -1155,11 +1220,28 @@ void ModelSud::update(int row, int colChanged)
         double menge = data(row, ColJungbiermengeAbfuellen).toDouble();
         double verschneidung = 0.0;
         double alcZucker = 0.0;
-        if (!data(row, ColSpunden).toBool())
+        Brauhelfer::Abfuellart art = static_cast<Brauhelfer::Abfuellart>(data(row, ColAbfuellart).toInt());
+        if (art == Brauhelfer::Abfuellart::Abgeleitet)
         {
+            // keine Auswahl: wie bisher
+            if (!data(row, ColSpunden).toBool())
+            {
+                alcZucker = BierCalc::alkoholVonZucker(data(row, ColZuckerAnteil).toDouble() / menge);
+                if (alcZucker > 0)
+                    verschneidung = data(row, ColVerschneidungAbfuellen).toDouble();
+            }
+        }
+        else
+        {
+            // ext-s13: Zuckeranteil je Abfuellart (Spunden/Zwangskarbonisierung: 0)
             alcZucker = BierCalc::alkoholVonZucker(data(row, ColZuckerAnteil).toDouble() / menge);
-            if (alcZucker > 0)
+            // Verduennung durch Zuckerloesung nur, wenn Zucker in den ganzen Sud kommt
+            if (alcZucker > 0 && (art == Brauhelfer::Abfuellart::ZuckerGesamt || art == Brauhelfer::Abfuellart::Speise))
                 verschneidung = data(row, ColVerschneidungAbfuellen).toDouble();
+            // Rechtzeitig schlauchen: Restextrakt vergaert in Flasche/Fass. Fertiges Bier = Rezept
+            // (erwarteter Vergaerungsgrad), bis eine Schnellgaerprobe gemessen ist.
+            if ((art == Brauhelfer::Abfuellart::Spunden || art == Brauhelfer::Abfuellart::SpundenZucker) && !data(row, ColSchnellgaerprobeAktiv).toBool())
+                sre = data(row, ColSREErwartet).toDouble();
         }
         setData(row, Colerg_Alkohol, BierCalc::alkohol(sw, sre, alcZucker) / (1 + verschneidung/menge));
 

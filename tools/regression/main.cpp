@@ -14,6 +14,7 @@
 //   --rundlauf-nachiso: Rundlauftest Modell "Bittere nach Kochende" (Whirlpool mit Abkuehlkurve, Exit 0 = OK).
 //   --rundlauf-protokoll: Rundlauftest Brauprotokoll (Messwerte schuetzen Ist-Felder, Entfernen exakt, Exit 0 = OK).
 //   --rundlauf-farbmalz: Rundlauftest Malz-Zugabe im Maischplan (Farbausbeute, Malzanteile, Entfernen exakt, Exit 0 = OK).
+//   --rundlauf-abfuellart: Rundlauftest Abfuellart (Zucker/Speise/Alkohol je Art, Rueckweg exakt, Exit 0 = OK).
 //   --migrate: aeltere Datenbank vorher aktualisieren (auf der Kopie; mit --save auf der Datei).
 
 #include <QCoreApplication>
@@ -1000,6 +1001,151 @@ static int rundlaufFarbmalz(Brauhelfer& bh, QTextStream& out)
     return fehler;
 }
 
+// ---- Rundlauftest Abfuellart (ext-s13) ----
+static bool gleich(double a, double b)
+{
+    return std::fabs(a - b) <= 1e-9 * std::max(1.0, std::max(std::fabs(a), std::fabs(b)));
+}
+
+static int rundlaufAbfuellart(Brauhelfer& bh, QTextStream& out)
+{
+    int fehler = 0;
+    ModelSud* sud = bh.modelSud();
+    const QStringList nurArt = {QStringLiteral("Sud.Abfuellart"), QStringLiteral("Sud.AbfuellartEffektiv")};
+    for (int row = 0; row < sud->rowCount(); ++row)
+    {
+        const QString name = sud->data(row, ModelSud::ColSudname).toString();
+        sud->setData(row, ModelSud::ColStatus, static_cast<int>(Brauhelfer::SudStatus::Rezept));
+        QStringList p;
+        const QVariant artAlt = sud->data(row, ModelSud::ColAbfuellart);
+        const QVariant spundenAlt = sud->data(row, ModelSud::ColSpunden);
+        const QVariant sgpAlt = sud->data(row, ModelSud::ColSchnellgaerprobeAktiv);
+        const QVariant zplAlt = sud->data(row, ModelSud::ColZuckerProLiter);
+        const QMap<QString, QVariant> s0 = sudSnapshot(bh, row);
+        auto zahl = [&](int col) { return sud->data(row, col).toDouble(); };
+        auto setze = [&](int col, const QVariant& v) { sud->setData(row, col, v); };
+        const double menge = zahl(ModelSud::ColJungbiermengeAbfuellen);
+        const double sw = zahl(ModelSud::ColSWIst);
+
+        // 1) Ableitung wie bisher
+        const bool spunden = spundenAlt.toBool();
+        const bool speise = zahl(ModelSud::ColSpeisemenge) > 0.0;
+        const int erwartet = spunden ? 4 : (speise ? 3 : 1);
+        if (artAlt.toInt() == 0 && sud->data(row, ModelSud::ColAbfuellartEffektiv).toInt() != erwartet)
+            p << QStringLiteral("abgeleitete Art %1 statt %2").arg(sud->data(row, ModelSud::ColAbfuellartEffektiv).toInt()).arg(erwartet);
+
+        // 2) Auswahl der abgeleiteten Art aendert nichts (beim Spunden ohne Schnellgaerprobe nur der Alkohol)
+        setze(ModelSud::ColAbfuellart, erwartet);
+        {
+            QStringList ohne = nurArt;
+            if (erwartet == 4 && !sgpAlt.toBool())
+                ohne << QStringLiteral("Sud.erg_Alkohol");
+            const QStringList d = diffOhne(s0, sudSnapshot(bh, row), ohne);
+            if (!d.isEmpty())
+                p << QStringLiteral("Auswahl der abgeleiteten Art %1 aendert: ").arg(erwartet) + d.join(QStringLiteral("; "));
+        }
+
+        // Fuer die folgenden Arten ohne Spunden-Kennzeichen (wie die GUI)
+        setze(ModelSud::ColSpunden, false);
+        const double vorschlag = zahl(ModelSud::ColZuckerProLiterVorschlag);
+
+        // 3) Zucker gesamt: Speise wird nicht abgezogen
+        setze(ModelSud::ColAbfuellart, 1);
+        if (!gleich(zahl(ModelSud::ColZuckerAnteil), vorschlag * menge)) p << QStringLiteral("Art 1: Zucker != Vorschlag*Menge");
+        if (zahl(ModelSud::ColSpeiseAnteil) != 0.0) p << QStringLiteral("Art 1: Speise != 0");
+        {
+            const double sre = zahl(ModelSud::ColSREIst);
+            const double v = zahl(ModelSud::ColVerschneidungAbfuellen);
+            const double alc = BierCalc::alkoholVonZucker(vorschlag);
+            const double soll = BierCalc::alkohol(sw, sre, alc) / (1 + (alc > 0 ? v : 0.0) / menge);
+            if (!gleich(zahl(ModelSud::Colerg_Alkohol), soll)) p << QStringLiteral("Art 1: Alkohol %1 statt %2").arg(zahl(ModelSud::Colerg_Alkohol)).arg(soll);
+        }
+
+        // 4) Zucker je Flasche: ohne festen Wert = Vorschlag, mit festem Wert = fest; keine Verduennung
+        setze(ModelSud::ColZuckerProLiter, QVariant());
+        setze(ModelSud::ColAbfuellart, 2);
+        if (!gleich(zahl(ModelSud::ColZuckerAnteil), vorschlag * menge)) p << QStringLiteral("Art 2 ohne Wert: Zucker != Vorschlag*Menge");
+        setze(ModelSud::ColZuckerProLiter, 6.0);
+        if (!gleich(zahl(ModelSud::ColZuckerAnteil), 6.0 * menge)) p << QStringLiteral("Art 2: Zucker != 6 g/L * Menge");
+        {
+            const double soll = BierCalc::alkohol(sw, zahl(ModelSud::ColSREIst), BierCalc::alkoholVonZucker(6.0));
+            if (!gleich(zahl(ModelSud::Colerg_Alkohol), soll)) p << QStringLiteral("Art 2: Alkohol %1 statt %2").arg(zahl(ModelSud::Colerg_Alkohol)).arg(soll);
+        }
+        setze(ModelSud::ColZuckerProLiter, 0.0);
+        if (zahl(ModelSud::ColZuckerAnteil) != 0.0) p << QStringLiteral("Art 2 mit 0 g/L: Zucker != 0");
+
+        // 5) Zwangskarbonisierung: kein Zucker, keine Speise, kein Alkoholzuwachs
+        setze(ModelSud::ColAbfuellart, 5);
+        if (zahl(ModelSud::ColZuckerAnteil) != 0.0 || zahl(ModelSud::ColSpeiseAnteil) != 0.0) p << QStringLiteral("Art 5: Zucker/Speise != 0");
+        if (!gleich(zahl(ModelSud::Colerg_Alkohol), BierCalc::alkohol(sw, zahl(ModelSud::ColSREIst)))) p << QStringLiteral("Art 5: Alkohol mit Zuwachs");
+
+        // 6) Spunden: Alkohol = Rezept (erwarteter Vergaerungsgrad), mit Schnellgaerprobe = deren Restextrakt
+        setze(ModelSud::ColSpunden, true);
+        setze(ModelSud::ColAbfuellart, 4);
+        setze(ModelSud::ColSchnellgaerprobeAktiv, false);
+        if (zahl(ModelSud::ColZuckerAnteil) != 0.0) p << QStringLiteral("Art 4: Zucker != 0");
+        if (!gleich(zahl(ModelSud::Colerg_Alkohol), BierCalc::alkohol(sw, zahl(ModelSud::ColSREErwartet)))) p << QStringLiteral("Art 4: Alkohol != Rezept");
+        setze(ModelSud::ColSchnellgaerprobeAktiv, true);
+        if (!gleich(zahl(ModelSud::Colerg_Alkohol), BierCalc::alkohol(sw, zahl(ModelSud::ColSWSchnellgaerprobe)))) p << QStringLiteral("Art 4: Alkohol != Schnellgaerprobe");
+        const double alcSpunden = zahl(ModelSud::Colerg_Alkohol);
+
+        // 6b) Spunden mit Zuckerausgleich: Zucker = fehlendes CO2 (Ende = Schnellgaerprobe bzw. Rezept)
+        setze(ModelSud::ColAbfuellart, 6);
+        for (bool sgp : {true, false})
+        {
+            setze(ModelSud::ColSchnellgaerprobeAktiv, sgp);
+            const double sreEnde = sgp ? zahl(ModelSud::ColSWSchnellgaerprobe) : zahl(ModelSud::ColSREErwartet);
+            const double sollSre = BierCalc::gruenschlauchzeitpunkt(zahl(ModelSud::ColCO2), sw, sreEnde, zahl(ModelSud::ColTemperaturJungbier));
+            const double z = std::round(zahl(ModelSud::ColSWJungbier) * 10.0) >= std::round(sollSre * 10.0) ? 0.0
+                           : std::max(0.0, BierCalc::zucker(zahl(ModelSud::ColCO2), sw, sreEnde, zahl(ModelSud::ColSWJungbier), zahl(ModelSud::ColTemperaturJungbier))) * menge;
+            if (!gleich(zahl(ModelSud::ColZuckerAnteil), z)) p << QStringLiteral("Art 6: Zucker %1 statt %2").arg(zahl(ModelSud::ColZuckerAnteil)).arg(z);
+            const double soll = BierCalc::alkohol(sw, sreEnde, BierCalc::alkoholVonZucker(z / menge));
+            if (!gleich(zahl(ModelSud::Colerg_Alkohol), soll)) p << QStringLiteral("Art 6: Alkohol %1 statt %2").arg(zahl(ModelSud::Colerg_Alkohol)).arg(soll);
+        }
+        // Restextrakt deutlich zu tief (Jungbier endvergoren) => Zucker > 0
+        {
+            const QVariant sreAlt = sud->data(row, ModelSud::ColSWJungbier);
+            setze(ModelSud::ColSWJungbier, zahl(ModelSud::ColSREErwartet));
+            if (zahl(ModelSud::ColCO2) > BierCalc::co2(0.0, zahl(ModelSud::ColTemperaturJungbier)) && !(zahl(ModelSud::ColZuckerAnteil) > 0.0))
+                p << QStringLiteral("Art 6: endvergoren, aber kein Zucker");
+            setze(ModelSud::ColSWJungbier, sreAlt);
+        }
+        // Restextrakt genau auf dem (gerundeten) Sollwert => kein Zucker
+        {
+            const QVariant sreAlt = sud->data(row, ModelSud::ColSWJungbier);
+            const double sreEnde = zahl(ModelSud::ColSchnellgaerprobeAktiv) != 0.0 ? zahl(ModelSud::ColSWSchnellgaerprobe) : zahl(ModelSud::ColSREErwartet);
+            const double sollSre = BierCalc::gruenschlauchzeitpunkt(zahl(ModelSud::ColCO2), sw, sreEnde, zahl(ModelSud::ColTemperaturJungbier));
+            setze(ModelSud::ColSWJungbier, std::round(sollSre * 10.0) / 10.0);
+            if (zahl(ModelSud::ColZuckerAnteil) != 0.0)
+                p << QStringLiteral("Art 6: Restextrakt = Sollwert, trotzdem Zucker %1").arg(zahl(ModelSud::ColZuckerAnteil));
+            setze(ModelSud::ColSWJungbier, sreAlt);
+        }
+
+        // 7) Rueckweg exakt
+        setze(ModelSud::ColSchnellgaerprobeAktiv, sgpAlt);
+        setze(ModelSud::ColSpunden, spundenAlt);
+        setze(ModelSud::ColZuckerProLiter, zplAlt);
+        setze(ModelSud::ColAbfuellart, artAlt);
+        {
+            const QStringList d = snapshotDiff(s0, sudSnapshot(bh, row));
+            if (!d.isEmpty())
+                p << QStringLiteral("Rueckweg: ") + d.join(QStringLiteral("; "));
+        }
+
+        out << (p.isEmpty() ? "OK    " : "FEHLER") << " " << name << ": abgeleitet " << erwartet
+            << ", Vorschlag " << QString::number(vorschlag, 'f', 2) << " g/L, Alkohol bisher "
+            << QString::number(s0.value(QStringLiteral("Sud.erg_Alkohol")).toDouble(), 'f', 2) << " %, Spunden/Schnellgaerprobe "
+            << QString::number(alcSpunden, 'f', 2) << " %\n";
+        if (!p.isEmpty())
+        {
+            ++fehler;
+            out << "      " << p.join(QStringLiteral("\n      ")) << "\n";
+        }
+    }
+    out << (fehler == 0 ? "Rundlauftest Abfuellart: alle OK\n" : QStringLiteral("Rundlauftest Abfuellart: %1 Fehler\n").arg(fehler));
+    return fehler;
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
@@ -1105,6 +1251,16 @@ int main(int argc, char *argv[])
         {
             QTextStream out(stdout);
             int fehler = rundlaufFarbmalz(bh, out);
+            out.flush();
+            bh.discard();
+            bh.disconnectDatabase();
+            return fehler == 0 ? 0 : 3;
+        }
+
+        if (args.contains(QStringLiteral("--rundlauf-abfuellart")) && !save)
+        {
+            QTextStream out(stdout);
+            int fehler = rundlaufAbfuellart(bh, out);
             out.flush();
             bh.discard();
             bh.disconnectDatabase();

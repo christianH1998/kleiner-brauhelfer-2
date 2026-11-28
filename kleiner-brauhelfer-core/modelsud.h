@@ -148,6 +148,8 @@ public:
         ColSWErwartet,
         ColMengeEffektiv,
         ColMengeEffektivQuelle,
+        ColAbfuellartEffektiv,
+        ColZuckerProLiterVorschlag,
         // number of columns
         NumCols
     };

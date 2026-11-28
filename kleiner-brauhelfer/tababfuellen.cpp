@@ -49,6 +49,27 @@ void TabAbfuellen::setup(SudObject *sud)
     ui->tbSpundungsdruck->setColumn(mSud, ModelSud::ColSpundungsdruck);
     ui->tbTemperaturKarbonisierung->setColumn(mSud, ModelSud::ColTemperaturKarbonisierung);
     ui->tbWassserZuckerloesung->setColumn(mSud, ModelSud::ColVerschneidungAbfuellen);
+    ui->tbZuckerProLiterFest->setColumn(mSud, ModelSud::ColZuckerProLiter);
+    // Karbonisierungsrechner (ext-s13): Ziel-CO2 hier eingeben, Zucker/Speise/Druck folgen daraus
+    ui->tbCO2->setColumn(mSud, ModelSud::ColCO2);
+    ui->tbCO2->setToolTip(co2RichtwerteHtml());
+    ui->lblCO2Richtwerte->setText(co2RichtwerteKurz());
+    ui->lblCO2Richtwerte->setToolTip(co2RichtwerteHtml());
+    ui->tbZuckerProLiterFest->setToolTip(tr("<p>Fester Zuckerwert in g je Liter Jungbier (Zucker mit der eingestellten Süßkraft), z. B. weil der Zucker je Flasche abgewogen wird. "
+                                            "Daraus folgen die Mengen je Flasche und der Alkohol des fertigen Biers.</p>"
+                                            "<p>Der Vorschlag des Rechners (rechts) ergibt sich aus Ziel-CO₂, Restextrakt und Temperatur und wird nicht automatisch übernommen.</p>"));
+    ui->btnZuckerProLiterVorschlag->setToolTip(tr("Vorschlag des Rechners als festen Wert übernehmen"));
+    // ext-s13: Umschaltung Berechnung aus Ziel-CO2 <-> fester Zuckerwert je Liter (NULL = Berechnung)
+    connect(ui->lblZuckerProLiterFest, &QCheckBox::clicked, this, [this](bool fest) {
+        gUndoStack->push(new SetModelDataCommand(mSud->bh()->modelSud(), mSud->row(), ModelSud::ColZuckerProLiter,
+                                                 fest ? QVariant(qRound(zuckerProLiterVorschlag() * 10) / 10.0) : QVariant()));
+    });
+    // Abfuellart (ext-s13): Index = Brauhelfer::Abfuellart - 1
+    ui->cbAbfuellart->setItemData(0, tr("Zuckerlösung in den ganzen Sud (Bottich oder Fass). Benötigter Zucker aus Ziel-CO₂, Restextrakt und Temperatur. Das Wasser der Zuckerlösung verdünnt das Bier."), Qt::ToolTipRole);
+    ui->cbAbfuellart->setItemData(1, tr("Fester Zuckerwert je Liter (z. B. je Flasche abgewogen), vorbelegt aus dem Rechner. Ergibt g je Flasche. Keine Verdünnung."), Qt::ToolTipRole);
+    ui->cbAbfuellart->setItemData(2, tr("Speise (zurückbehaltene Würze) wird zugegeben. Reicht sie nicht, wird der Rest mit Zucker ergänzt."), Qt::ToolTipRole);
+    ui->cbAbfuellart->setItemData(3, tr("Rechtzeitig schlauchen: Der Restextrakt vergärt im Fass oder in der Flasche (Spundungsdruck). Kein Zucker. Alkohol des fertigen Biers wie im Rezept, bis eine Schnellgärprobe gemessen ist."), Qt::ToolTipRole);
+    ui->cbAbfuellart->setItemData(4, tr("Fass, CO₂ aus der Gasflasche. Kein Zucker, kein Alkoholzuwachs. Druck aus Ziel-CO₂ und Temperatur."), Qt::ToolTipRole);
     ui->tbKosten->setColumn(mSud, ModelSud::Colerg_Preis);
     ui->lblNebenkostenEinheit->setText(QLocale().currencySymbol());
     ui->lblKostenEinheit->setText(QLocale().currencySymbol() + "/L");
@@ -204,7 +225,11 @@ void TabAbfuellen::checkEnabled()
     ui->tbSWJungbier->setDisabled(abgefuellt);
     ui->btnSWJungbier->setVisible(!abgefuellt);
     ui->tbTemperaturJungbier->setDisabled(abgefuellt);
-    ui->cbSpunden->setEnabled(!abgefuellt);
+    ui->cbAbfuellart->setEnabled(!abgefuellt);
+    ui->tbCO2->setDisabled(abgefuellt);
+    ui->cbSpundenZucker->setEnabled(!abgefuellt);
+    ui->tbZuckerProLiterFest->setDisabled(abgefuellt);
+    ui->lblZuckerProLiterFest->setEnabled(!abgefuellt);
     ui->tbJungbiermengeAbfuellen->setDisabled(abgefuellt);
     ui->tbBiermengeAbfuellen->setDisabled(abgefuellt);
     ui->tbSpeisemengeAbgefuellt->setDisabled(abgefuellt);
@@ -248,15 +273,87 @@ void TabAbfuellen::updateValues()
     ui->lblGruenschlauchzeitpunktEinheit->setVisible(ui->cbSchnellgaerprobeAktiv->isChecked());
     ui->tbAlkoholGaerung->setValue(mSud->getAlkoholJungbier());
 
-    ui->cbSpunden->setChecked(mSud->getSpunden());
     ui->tbJungbierVerlust->setValue(mSud->getWuerzemengeAnstellen() - mSud->getJungbiermengeAbfuellen());
 
-    ui->groupKarbonisierung->setVisible(!ui->cbSpunden->isChecked());
+    // Abfuellart (ext-s13): nur die zur Art gehoerenden Felder anzeigen
+    const int art = mSud->getAbfuellartEffektiv();
+    const bool artGewaehlt = mSud->getAbfuellart() != static_cast<int>(Brauhelfer::Abfuellart::Abgeleitet);
+    const bool artZuckerGesamt = art == static_cast<int>(Brauhelfer::Abfuellart::ZuckerGesamt);
+    const bool artZuckerFlasche = art == static_cast<int>(Brauhelfer::Abfuellart::ZuckerFlasche);
+    const bool artSpeise = art == static_cast<int>(Brauhelfer::Abfuellart::Speise);
+    const bool artSpundenZucker = art == static_cast<int>(Brauhelfer::Abfuellart::SpundenZucker);
+    const bool artSpunden = art == static_cast<int>(Brauhelfer::Abfuellart::Spunden) || artSpundenZucker;
+    const bool artZwang = art == static_cast<int>(Brauhelfer::Abfuellart::Zwangskarbonisierung);
+    if (!ui->cbAbfuellart->hasFocus())
+        ui->cbAbfuellart->setCurrentIndex(artSpundenZucker ? static_cast<int>(Brauhelfer::Abfuellart::Spunden) - 1 : art - 1);
+    QString hinweis;
+    if (artZuckerGesamt)
+        hinweis = tr("Zuckerlösung in den ganzen Sud. Benötigter Zucker aus Ziel-CO₂, Restextrakt und Temperatur.");
+    else if (artZuckerFlasche)
+        hinweis = tr("Zucker direkt in die Flasche, g je Flasche aus Ziel-CO₂ berechnet oder aus einem festen Wert je Liter. Keine Verdünnung durch Zuckerlösung.");
+    else if (artSpeise)
+        hinweis = tr("Speise wird zugegeben, ein fehlender Rest mit Zucker.");
+    else if (artSpunden)
+        hinweis = artSpundenZucker ? tr("Spunden, fehlender Restextrakt wird mit Zucker ausgeglichen (siehe Spundungsdruck).")
+                : artGewaehlt ? tr("Rechtzeitig schlauchen, kein Zucker. Alkohol fertiges Bier wie im Rezept (Vergärungsgrad), bis eine Schnellgärprobe gemessen ist.")
+                              : tr("Spunden, kein Zucker.");
+    else if (artZwang)
+        hinweis = tr("CO₂ aus der Gasflasche, kein Zucker und kein Alkoholzuwachs. Druck siehe oben.");
+    if (!artGewaehlt)
+        hinweis += QStringLiteral(" ") + tr("(Abgeleitet aus den bisherigen Angaben, Rechnung wie bisher. Eine Auswahl speichert die Abfüllart.)");
+    ui->lblAbfuellartHinweis->setText(hinweis);
+
+    ui->groupKarbonisierung->setVisible((!artSpunden || artSpundenZucker) && !artZwang);
+    ui->groupBox_4->setTitle(artZwang ? tr("Zwangskarbonisierung") : tr("Spundungsdruck"));
+    ui->label_sp->setText(artZwang ? tr("Druck CO₂-Flasche") : tr("Spundungsdruck"));
+    for (QWidget* wdg : {static_cast<QWidget*>(ui->label_sp), static_cast<QWidget*>(ui->line_6), static_cast<QWidget*>(ui->tbSpundungsdruck), static_cast<QWidget*>(ui->label_esp)})
+        wdg->setVisible(artSpunden || artZwang);
+    ui->label_alc->setText(artSpunden ? tr("Alkohol beim Schlauchen") : tr("Alkohol Jungbier"));
+
+    // Spunden (ext-s13): Restextrakt, bei dem geschlaucht werden muss, damit der Rest der Gaerung
+    // das Ziel-CO2 liefert. Mit Schnellgaerprobe daraus, sonst aus dem Vergaerungsgrad der Hefe geschaetzt.
+    for (QWidget* wdg : {static_cast<QWidget*>(ui->lblSchlauchenBei), static_cast<QWidget*>(ui->tbSchlauchenBei),
+                         static_cast<QWidget*>(ui->lblSchlauchenBeiEinheit), static_cast<QWidget*>(ui->lblSchlauchenHinweis),
+                         static_cast<QWidget*>(ui->cbSpundenZucker)})
+        wdg->setVisible(artSpunden);
+    if (artSpunden)
+    {
+        const bool sgp = ui->cbSchnellgaerprobeAktiv->isChecked();
+        const double sreEnde = sgp ? mSud->getSWSchnellgaerprobe() : mSud->getSREErwartet();
+        const double soll = BierCalc::gruenschlauchzeitpunkt(mSud->getCO2(), mSud->getSWIst(), sreEnde, mSud->getTemperaturJungbier());
+        ui->tbSchlauchenBei->setValue(soll);
+        QStringList text;
+        if (sgp)
+            text << tr("Berechnet aus der Schnellgärprobe (Endvergärung %1 °P), Ziel-CO₂ und Temperatur Jungbier.").arg(QLocale().toString(sreEnde, 'f', 1));
+        else
+            text << tr("Nur aus dem Vergärungsgrad der Hefe geschätzt (%1 %, Endvergärung ca. %2 °P). "
+                       "Für eine zuverlässige Karbonisierung eine Schnellgärprobe ansetzen und oben aktivieren.")
+                    .arg(QLocale().toString(mSud->getVergaerungsgrad(), 'f', 0), QLocale().toString(sreEnde, 'f', 1));
+        // Immer melden, wenn der Restextrakt des Jungbiers unter dem Sollwert liegt (ext-s13)
+        const bool zuTief = std::round(mSud->getSWJungbier() * 10.0) < std::round(soll * 10.0); // wie Kern (0,1 °P)
+        if (zuTief)
+            text << (artSpundenZucker ? tr("Der Restextrakt des Jungbiers (%1 °P) liegt unter dem Sollwert; das fehlende CO₂ wird mit Zucker ausgeglichen.")
+                                      : tr("Der Restextrakt des Jungbiers (%1 °P) liegt unter dem Sollwert: Das Ziel-CO₂ wird so nicht erreicht. "
+                                           "Abhilfe: unten den Zuckerausgleich aktivieren."))
+                    .arg(QLocale().toString(mSud->getSWJungbier(), 'f', 1));
+        QPalette pal = palette();
+        if (!sgp || (zuTief && !artSpundenZucker))
+            pal.setColor(QPalette::WindowText, gSettings->theme() == Qt::ColorScheme::Dark ? QColor(245, 158, 11) : QColor(204, 102, 0));
+        ui->lblSchlauchenHinweis->setPalette(pal);
+        ui->lblSchlauchenHinweis->setText(text.join(QStringLiteral(" ")));
+        ui->cbSpundenZucker->setChecked(artSpundenZucker);
+    }
+    ui->lblSpundenZucker->setVisible(false); // ext-s13: Zuckerausgleich erscheint in der Gruppe Karbonisierung
     double flascheFaktor = ui->tbFlaschengroesse->value() / mSud->getJungbiermengeAbfuellen();
 
     // ModuleSpeise
     if (gSettings->isModuleEnabled(Settings::ModuleSpeise))
     {
+        // ext-s13: Eingabe Speise nur bei Abfuellart Speise (oder wenn bereits eine Menge eingetragen ist)
+        bool speiseEingabe = artSpeise || mSud->getSpeisemenge() > 0.0;
+        ui->tbSpeisemengeAbgefuellt->setVisible(speiseEingabe);
+        ui->lblSpeisemengeAbgefuellt->setVisible(speiseEingabe);
+        ui->lblSpeisemengeAbgefuelltEinheit->setVisible(speiseEingabe);
         ui->tbSpeisemengeGesamt->setValue((int)mSud->getSpeiseAnteil());
         ui->tbSpeisemengeGesamt->setVisible(ui->tbSpeisemengeGesamt->value() > 0.0);
         ui->lblSpeisemengeGesamt->setVisible(ui->tbSpeisemengeGesamt->value() > 0.0);
@@ -267,37 +364,58 @@ void TabAbfuellen::updateValues()
         ui->lblSpeisemengeFlascheEinheit->setVisible(ui->tbSpeisemengeFlasche->value() > 0.0);
     }
 
-    ui->tbZuckerGesamt->setValue((int)(mSud->getZuckerAnteil() / ui->tbZuckerFaktor->value()));
-    ui->tbZuckerFlasche->setValue(ui->tbZuckerGesamt->value() * flascheFaktor);
-    ui->tbFlaschen->setValue(mSud->geterg_AbgefuellteBiermenge() / ui->tbFlaschengroesse->value());
-    ui->tbKonzentrationZuckerloesung->setValue(ui->tbZuckerGesamt->value() / ui->tbWassserZuckerloesung->value());
-    bool hasZucker = ui->tbZuckerGesamt->value() > 0.0;
-    ui->tbZuckerGesamt->setVisible(hasZucker);
-    ui->lblZuckerGesamt->setVisible(hasZucker);
-    ui->lblZuckerGesamtEinheit->setVisible(hasZucker);
-    ui->tbZuckerFaktor->setVisible(hasZucker);
-    ui->lblZuckerFaktor->setVisible(hasZucker);
-    ui->tbZuckerFlasche->setVisible(hasZucker);
-    ui->lblZuckerFlasche->setVisible(hasZucker);
-    ui->lblZuckerFlascheEinheit->setVisible(hasZucker);
-    ui->lblWassserZuckerloesung->setVisible(hasZucker);
-    ui->tbWassserZuckerloesung->setVisible(hasZucker);
-    ui->tbWassserZuckerloesungEinheit->setVisible(hasZucker);
-    // Zucker je Liter und je Standardflasche (ext-s06): exakter Wert statt gerundeter Gesamtmenge
+    // Zucker (ext-s06, ext-s13): exakter Wert je Liter statt gerundeter Gesamtmenge
     double jungbiermenge = mSud->getJungbiermengeAbfuellen();
-    double zuckerProLiter = jungbiermenge > 0.0 ? mSud->getZuckerAnteil() / ui->tbZuckerFaktor->value() / jungbiermenge : 0.0;
+    double vorschlag = zuckerProLiterVorschlag();
+    double zuckerProLiter = 0.0;
+    if (artZuckerFlasche)
+    {
+        const bool fest = !mSud->bh()->modelSud()->data(mSud->row(), ModelSud::ColZuckerProLiter).isNull();
+        zuckerProLiter = fest ? mSud->getZuckerProLiter() : vorschlag;
+        ui->lblZuckerProLiterFest->setChecked(fest);
+    }
+    else if (jungbiermenge > 0.0)
+    {
+        zuckerProLiter = mSud->getZuckerAnteil() / ui->tbZuckerFaktor->value() / jungbiermenge;
+    }
     if (zuckerProLiter < 0.0 || !std::isfinite(zuckerProLiter))
         zuckerProLiter = 0.0;
-    ui->tbZuckerProLiter->setValue(zuckerProLiter);
+    ui->tbZuckerGesamt->setValue((int)(zuckerProLiter * jungbiermenge));
+    ui->tbZuckerFlasche->setValue(zuckerProLiter * ui->tbFlaschengroesse->value());
+    ui->tbFlaschen->setValue(mSud->geterg_AbgefuellteBiermenge() / ui->tbFlaschengroesse->value());
+    ui->tbKonzentrationZuckerloesung->setValue(ui->tbZuckerGesamt->value() / ui->tbWassserZuckerloesung->value());
+    ui->tbZuckerProLiter->setValue(artZuckerFlasche ? vorschlag : zuckerProLiter);
     ui->tbZucker05->setValue(zuckerProLiter * 0.5);
     ui->tbZucker033->setValue(zuckerProLiter * 0.33);
-    // "pro Flasche" (Flaschengröße) ebenfalls exakt statt aus der gerundeten Gesamtmenge
-    ui->tbZuckerFlasche->setValue(zuckerProLiter * ui->tbFlaschengroesse->value());
-    for (QWidget* wdg : {static_cast<QWidget*>(ui->lblZuckerProLiter), static_cast<QWidget*>(ui->tbZuckerProLiter), static_cast<QWidget*>(ui->lblZuckerProLiterEinheit),
-                         static_cast<QWidget*>(ui->lblZucker05), static_cast<QWidget*>(ui->tbZucker05), static_cast<QWidget*>(ui->lblZucker05Einheit),
-                         static_cast<QWidget*>(ui->lblZucker033), static_cast<QWidget*>(ui->tbZucker033), static_cast<QWidget*>(ui->lblZucker033Einheit)})
+    const bool hasZucker = ui->tbZuckerGesamt->value() > 0.0 || artZuckerFlasche || artSpundenZucker;
+    const bool zuckerLoesung = hasZucker && !artZuckerFlasche && !artSpundenZucker;
+    ui->groupKarbonisierung->setTitle(artSpundenZucker ? (zuckerProLiter > 0.0 ? tr("Zuckerausgleich beim Spunden") : tr("Zuckerausgleich beim Spunden: kein Zucker nötig")) : tr("Karbonisierung"));
+    ui->lblZuckerGesamt->setText(artZuckerFlasche ? tr("Zucker gesamt") : artSpundenZucker ? tr("Zucker zum Ausgleich") : tr("Zusätzlich benötigter Zucker"));
+    for (QWidget* wdg : {static_cast<QWidget*>(ui->tbZuckerGesamt), static_cast<QWidget*>(ui->lblZuckerGesamt), static_cast<QWidget*>(ui->lblZuckerGesamtEinheit),
+                         static_cast<QWidget*>(ui->tbZuckerFaktor), static_cast<QWidget*>(ui->lblZuckerFaktor),
+                         static_cast<QWidget*>(ui->tbZuckerFlasche), static_cast<QWidget*>(ui->lblZuckerFlasche), static_cast<QWidget*>(ui->lblZuckerFlascheEinheit),
+                         static_cast<QWidget*>(ui->lblZuckerProLiter), static_cast<QWidget*>(ui->tbZuckerProLiter), static_cast<QWidget*>(ui->lblZuckerProLiterEinheit)})
         wdg->setVisible(hasZucker);
-    bool hasZuckerLoesung = ui->tbWassserZuckerloesung->value() > 0.0 && hasZucker;
+    for (QWidget* wdg : {static_cast<QWidget*>(ui->lblWassserZuckerloesung), static_cast<QWidget*>(ui->tbWassserZuckerloesung), static_cast<QWidget*>(ui->tbWassserZuckerloesungEinheit)})
+        wdg->setVisible(zuckerLoesung);
+    for (QWidget* wdg : {static_cast<QWidget*>(ui->lblZucker05), static_cast<QWidget*>(ui->tbZucker05), static_cast<QWidget*>(ui->lblZucker05Einheit),
+                         static_cast<QWidget*>(ui->lblZucker033), static_cast<QWidget*>(ui->tbZucker033), static_cast<QWidget*>(ui->lblZucker033Einheit),
+                         static_cast<QWidget*>(ui->lblZuckerProLiterFest), static_cast<QWidget*>(ui->tbZuckerProLiterFest), static_cast<QWidget*>(ui->lblZuckerProLiterFestEinheit)})
+        wdg->setVisible(artZuckerFlasche);
+    {
+        const bool fest = artZuckerFlasche && !mSud->bh()->modelSud()->data(mSud->row(), ModelSud::ColZuckerProLiter).isNull();
+        ui->tbZuckerProLiterFest->setVisible(fest);
+        ui->lblZuckerProLiterFestEinheit->setVisible(fest);
+        ui->lblZuckerProLiter->setText(fest ? tr("Vorschlag Rechner je Liter") : tr("Zucker je Liter Jungbier"));
+    }
+    ui->tbZucker05->setVisible(artZuckerFlasche || artSpundenZucker);
+    ui->lblZucker05->setVisible(artZuckerFlasche || artSpundenZucker);
+    ui->lblZucker05Einheit->setVisible(artZuckerFlasche || artSpundenZucker);
+    ui->tbZucker033->setVisible(artZuckerFlasche || artSpundenZucker);
+    ui->lblZucker033->setVisible(artZuckerFlasche || artSpundenZucker);
+    ui->lblZucker033Einheit->setVisible(artZuckerFlasche || artSpundenZucker);
+    ui->btnZuckerProLiterVorschlag->setVisible(false); // ersetzt durch Umschaltung "Fester Wert je Liter"
+    bool hasZuckerLoesung = ui->tbWassserZuckerloesung->value() > 0.0 && zuckerLoesung;
     ui->lblKonzentrationZuckerloesung->setVisible(hasZuckerLoesung);
     ui->tbKonzentrationZuckerloesung->setVisible(hasZuckerLoesung);
     ui->tbKonzentrationZuckerloesungEinheit->setVisible(hasZuckerLoesung);
@@ -381,9 +499,77 @@ void TabAbfuellen::on_btnSWJungbier_clicked()
     }
 }
 
-void TabAbfuellen::on_cbSpunden_clicked(bool checked)
+QString TabAbfuellen::co2RichtwerteKurz()
 {
-    gUndoStack->push(new SetModelDataCommand(mSud->bh()->modelSud(), mSud->row(), ModelSud::ColSpunden, checked));
+    return tr("Richtwerte g/L: Brit. Ale 2,9–3,9 · Stout 3,3–4,5 · Belg. Ale 3,7–4,7 · Lager/Pils 4,3–5,3 · Weizen 6,5–8,8 (Details im Tooltip)");
+}
+
+QString TabAbfuellen::co2RichtwerteHtml()
+{
+    // Literatur (ext-s13): J. Palmer, How to Brew, Tabelle typische Karbonisierung je Bierstil in
+    // Volumen CO2; umgerechnet mit 1 Vol. = 1,96 g/L (Dichte CO2 bei 0 °C, 1,013 bar), gerundet.
+    return tr("<p><b>Ziel-Karbonisierung</b> in g CO₂ je Liter fertiges Bier. Daraus werden je nach Abfüllart "
+              "Zucker, Speise, Schlauchzeitpunkt oder Druck berechnet.</p>"
+              "<p><b>Richtwerte nach Bierart</b></p>"
+              "<table>"
+              "<tr><td>Britische Ales (Bitter, Mild)</td><td>&nbsp;2,9 – 3,9 g/L</td><td>&nbsp;(1,5 – 2,0 Vol.)</td></tr>"
+              "<tr><td>Porter, Stout</td><td>&nbsp;3,3 – 4,5 g/L</td><td>&nbsp;(1,7 – 2,3 Vol.)</td></tr>"
+              "<tr><td>Belgische Ales</td><td>&nbsp;3,7 – 4,7 g/L</td><td>&nbsp;(1,9 – 2,4 Vol.)</td></tr>"
+              "<tr><td>Amerikanische Ales, Lager, Pils</td><td>&nbsp;4,3 – 5,3 g/L</td><td>&nbsp;(2,2 – 2,7 Vol.)</td></tr>"
+              "<tr><td>Frucht-Lambic</td><td>&nbsp;5,9 – 8,8 g/L</td><td>&nbsp;(3,0 – 4,5 Vol.)</td></tr>"
+              "<tr><td>Deutsches Weizenbier</td><td>&nbsp;6,5 – 8,8 g/L</td><td>&nbsp;(3,3 – 4,5 Vol.)</td></tr>"
+              "</table>"
+              "<p>Quelle: J. Palmer, <i>How to Brew</i>, Tabelle zur Karbonisierung je Bierstil (Volumen CO₂), "
+              "umgerechnet mit 1 Vol. ≈ 1,96 g/L. Richtwerte, Bierstile streuen. Normale Flaschen vertragen "
+              "bis etwa 6 g/L; höhere Werte nur in druckfesten Flaschen (z. B. Weizen- oder Sektflaschen).</p>");
+}
+
+double TabAbfuellen::zuckerProLiterVorschlag() const
+{
+    // Rechner (ext-s06): g/L Zucker mit der eingestellten Suesskraft
+    double v = mSud->getZuckerProLiterVorschlag() / ui->tbZuckerFaktor->value();
+    return std::isfinite(v) && v > 0.0 ? v : 0.0;
+}
+
+void TabAbfuellen::setAbfuellart(int art)
+{
+    // ext-s13: Auswahl als ein Undo-Schritt. Spunden-Spalte folgt der Art (bestehende Rechnung
+    // und Anzeigen nutzen sie weiter). Ohne Zuckerloesung wird deren Wasser auf 0 gesetzt, damit
+    // es nicht verdeckt in der abgefuellten Menge steckt (vor dem Spunden-Wechsel, s. setDataExt).
+    ModelSud* model = mSud->bh()->modelSud();
+    const int row = mSud->row();
+    const bool ohneLoesung = art == static_cast<int>(Brauhelfer::Abfuellart::ZuckerFlasche)
+            || art == static_cast<int>(Brauhelfer::Abfuellart::SpundenZucker)
+            || art == static_cast<int>(Brauhelfer::Abfuellart::Spunden)
+            || art == static_cast<int>(Brauhelfer::Abfuellart::Zwangskarbonisierung);
+    const bool spunden = art == static_cast<int>(Brauhelfer::Abfuellart::Spunden) || art == static_cast<int>(Brauhelfer::Abfuellart::SpundenZucker);
+    gUndoStack->beginMacro(QStringLiteral("macro"));
+    if (ohneLoesung && mSud->getVerschneidungAbfuellen() != 0.0)
+        gUndoStack->push(new SetModelDataCommand(model, row, ModelSud::ColVerschneidungAbfuellen, 0.0));
+    if (mSud->getSpunden() != spunden)
+        gUndoStack->push(new SetModelDataCommand(model, row, ModelSud::ColSpunden, spunden));
+    gUndoStack->push(new SetModelDataCommand(model, row, ModelSud::ColAbfuellart, art));
+    gUndoStack->endMacro();
+}
+
+void TabAbfuellen::on_cbAbfuellart_activated(int index)
+{
+    int art = index + 1;
+    // Spunden mit Zuckerausgleich bleibt bei erneuter Auswahl "Spunden" erhalten
+    if (art == static_cast<int>(Brauhelfer::Abfuellart::Spunden) && mSud->getAbfuellartEffektiv() == static_cast<int>(Brauhelfer::Abfuellart::SpundenZucker))
+        return;
+    if (art != mSud->getAbfuellart())
+        setAbfuellart(art);
+}
+
+void TabAbfuellen::on_cbSpundenZucker_clicked(bool checked)
+{
+    setAbfuellart(static_cast<int>(checked ? Brauhelfer::Abfuellart::SpundenZucker : Brauhelfer::Abfuellart::Spunden));
+}
+
+void TabAbfuellen::on_btnZuckerProLiterVorschlag_clicked()
+{
+    gUndoStack->push(new SetModelDataCommand(mSud->bh()->modelSud(), mSud->row(), ModelSud::ColZuckerProLiter, qRound(zuckerProLiterVorschlag() * 10) / 10.0));
 }
 
 void TabAbfuellen::on_tbZuckerFaktor_valueChanged(double)

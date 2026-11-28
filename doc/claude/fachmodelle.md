@@ -15,6 +15,7 @@ Kennzeichnung: **[C]** im Code verifiziert · **[Q]** direkt in Quelle geprüft 
 | Q6 | Brewer's Friend, Beer Priming Calculator, https://www.brewersfriend.com/beer-priming-calculator | [S]: Rest-CO2 hängt von der höchsten Temperatur nach Gärende ab |
 | Q7 | MEBAK K-410.01.002 „Sudhausausbeute – Heißwürzeausbeute“ (2020-10) | maßgeblich, aber nicht abrufbar (HTTP 503) [U] |
 | Q8 | Brewfather Issue #1371 (gitlab.com/warpkode/public/brewfather) | schwach [S]: Sudhausausbeute ≈ 80 % der Brewhouse Efficiency (Faustregel) |
+| Q9 | J. Palmer, *How to Brew* (Kapitel Abfüllen/Karbonisierung, Tabelle typischer CO2-Gehalte je Bierstil in Volumen) | [S] aus Fachkenntnis übernommen, Ausgabe/Seite nicht eingesehen; Werte decken sich weitgehend mit der bisherigen KBH-Hilfe am Feld CO2 (Lager 4,0–5,5, Weizen 6,5–9,0, Brit. Ales 3,0–4,0, Stout 3,4–4,5, Belg. Ales 3,8–4,8 g/L) |
 | — | Code-Kommentare `biercalc.cpp` (realbeer.com/spencer/attenuation.html, brewersfriend.com) | Herkunft der Code-Formeln, nicht separat geprüft |
 
 Empfehlung: Kling (Q4) und eine Fachquelle zur Ausbeute (MEBAK oder Narziß/Back) vor Umsetzung von Wasser- und Kalibriermodell vom Anwender bereitstellen lassen.
@@ -78,7 +79,37 @@ Empfehlung: Kling (Q4) und eine Fachquelle zur Ausbeute (MEBAK oder Narziß/Back
 - Zucker-Alkohol [C]: `alkoholVonZucker(g/L)` = g·0,488/10 (Ergebnis w/v, wird zu w/w addiert ⇒ Einheitenmischung, Fehler ~1 % relativ [A]). +6 g/L ⇒ 5,51 %vol [A].
 - CO2-Löslichkeit [C]: c(p,T) = (1,013 + p)·e^(−10,73797 + 2617,25/(T+273,15))·10 [g/L]. Rest-CO2 (p=0): 20 °C 1,66 g/L, 12 °C 2,13 g/L [A]; plausibel ggü. Q6 (~0,86 vol bei 20 °C ≈ 1,7 g/L; 1 vol ≈ 1,96 g/L) [S][A].
 - Zucker [C]: (CO2_soll − CO2_rest(T_Jungbier) − CO2 aus Restvergärung) / 0,468. Konstanten 0,468 g CO2/g und 0,488 g Alkohol/g: Herkunft [U]. Stöchiometrie [A]: Saccharose 0,515 g CO2/g · 0,538 g EtOH/g; Glukose 0,489 · 0,511; Glukose-Monohydrat 0,444 · 0,465 (theoretisch, ohne Hefebiomasse). `ZuckerFaktor` und `FlaschenGroesse` liegen **global in der INI** (`TabAbfuellen`), nicht pro Sud [C].
+- Richtwerte Ziel-CO2 je Bierart (ext-s13, Tooltip Ziel-Karbonisierung) [S] Q9, Vol. × 1,96 g/L: Brit. Ales 1,5–2,0 Vol. (2,9–3,9 g/L), Porter/Stout 1,7–2,3 (3,3–4,5), Belg. Ales 1,9–2,4 (3,7–4,7), Amer. Ales/Lager 2,2–2,7 (4,3–5,3), Frucht-Lambic 3,0–4,5 (5,9–8,8), Weizen 3,3–4,5 (6,5–8,8).
+- Schlauchzeitpunkt beim Spunden [C]: `gruenschlauchzeitpunkt(CO2_soll, SW, SRE_Ende, T_Jungbier)` = SRE bei TRE_Ende + (CO2_soll − CO2_rest(T))/(0,468·10). SRE_Ende = Schnellgärprobe, sonst (ext-s13, nur Anzeige) `SREErwartet` aus dem Vergärungsgrad der Hefe [A] – Schätzung, Abweichung des realen Endvergärungsgrads um 1 °P ändert den Schlauchpunkt um ≈ 1 °P bzw. das CO2 um ≈ 4,7 g/L ⇒ ohne Schnellgärprobe unzuverlässig.
 - Zwangskarbonisierung [A]: Gleichgewichtsdruck p = `BierCalc::p(CO2_soll, T_Lager)` (= `spundungsdruck`) [C]; kein Alkoholzuwachs.
+
+## 8 Prüfliste: nicht verifizierte Berechnungen und Richtwerte (Abschlussprüfung)
+Prüfung durch den Anwender bei Projektabschluss. Spalte „Status“ zunächst überall **nicht verifiziert**; nach Prüfung durch Quellenangabe (Werk, Auflage, Seite/Tabelle) ersetzen und den Wert ggf. im Code korrigieren (Ort in Spalte „Code“). Bei Korrektur: Regressionsvergleich, betroffene Rundlauftests und Änderungsprotokoll nachziehen. Neue ungeprüfte Annahmen in späteren Stufen hier ergänzen.
+
+| Nr. | Thema | Wert / Formel (heute) | Code / Ort | Herkunft bisher | Status |
+|---|---|---|---|---|---|
+| P1 | Bittere Tinseth | U = 1,65·0,000125^(SG−1)·(1−e^(−0,04·t))/4,15; SG−1 ≈ 0,004·P | `BierCalc::tinseth`, `ModelHopfengaben` | Q2 nur sekundär | nicht verifiziert |
+| P2 | Zuschläge Bittere | ×1,1 Pellets; ×1,1 bei Gaben > 15 min vor Kochende | `ModelHopfengaben` | Code-Kommentar MMuM, Herkunft unklar | nicht verifiziert |
+| P3 | Isomerisierungsrate | r(T) = 0,046·e^(0,031·T); 80 °C ⇒ 0,549; unter 80 °C 0 | `BierCalc::isomerisierungsrate`, Nachiso | Q3 sekundär, Konstanten dort nicht bestätigt | nicht verifiziert |
+| P4 | Whirlpool-Abkühlung | Verdunstung 0,089 kW/(m²·kPa) (ASHRAE, Pool), Konvektion 1,31·ΔT^(1/3) W/(m²·K), Strahlung ε 0,95; Abkühlung 20 L/36 cm ≈ 19 K in 30 min | `BierCalc::whirlpoolMinuten` | Formeln für andere Anwendungen, extrapoliert; über Endtemperatur kalibrierbar | nicht verifiziert |
+| P5 | Farbmodell | EBC = (Σ m·EBC/Σ m)·P/10 + 1,5·t_Koch/60 + Korrektur | `ModelSud::updateFarbe` | eigenes kbh-Modell (Original) | nicht verifiziert |
+| P6 | Farbmalz späte Zugabe | f(t) = 1 − e^(−t/τ), τ = 10 min | `BierCalc::farbausbeute`, Einstellung τ | Annahme (S12b) | nicht verifiziert |
+| P7 | Aufheizrate Maische | 1 K/min Richtwert | `Brauhelfer::aufheizrate`, Einstellung | Annahme (S12) | nicht verifiziert |
+| P8 | Wasser-Voreinstellungen | HG/NG je kg: Helles 4,0/3,0, Dunkles 3,0/4,0, Benutzerdefiniert 3,5/3,5; Weizen 2,5–2,8/3,5–4 | `ModelSud` Presets, TabRezept-Tooltip | Anwendervorgabe nach Kling (Q4 nicht eingesehen), Q5 schwach | nicht verifiziert |
+| P9 | Treberaufnahme | 0,96 L/kg Standard (typisch 0,8–1,0) | `Ausruestung.Treberaufnahme`, `ModelSud::updateWasser` | Code-Konstante Original | nicht verifiziert |
+| P10 | Malzverdrängung | 0,75 L/kg (Volumen Maische, Topfgröße) | `BierCalc::MalzVerdraengung` | Code-Konstante Original | nicht verifiziert |
+| P11 | Sudhausausbeute-Bezug | klassisch mit Faktor 0,96 (Q1); MEBAK; Faustregel SHA ≈ 80 % der Brewhouse Efficiency | `fachmodelle` §1, Hinweistexte | Q1 geprüft, Q7 nicht abrufbar, Q8 schwach | nicht verifiziert |
+| P12 | Alkoholformel | Balling: Alk_w = (P − TRE)/(2,0665 − 0,010665·P), TRE = 0,1808·P + 0,8192·SRE, Alk_v = Alk_w·ρ/0,794 | `BierCalc::alkohol`, `toTRE` | Code, Quelle nicht zitiert | nicht verifiziert |
+| P13 | Zucker → CO2 / Alkohol | 0,468 g CO2/g Zucker; 0,488 g Alkohol/g (w/v zu w/w addiert); Stöchiometrie Saccharose 0,515/0,538 | `BierCalc::co2Zucker`, `alkoholVonZucker` | Herkunft unklar | nicht verifiziert |
+| P14 | Süßkraft-Faktoren | Haushaltszucker 1,00, Traubenzucker 0,69, Fruchtzucker 1,14 (Tooltip); Kern rechnet festen g/L-Wert mit Süßkraft 1 | `TabAbfuellen` (INI `ZuckerFaktor`) | Original-Tooltip; „Süßkraft“ fachlich ≠ CO2-Ausbeute | nicht verifiziert |
+| P15 | CO2-Löslichkeit | c(p,T) = (1,013 + p)·e^(−10,73797 + 2617,25/(T+273,15))·10 g/L | `BierCalc::co2`, `p` | plausibel ggü. Q6 | nicht verifiziert |
+| P16 | Rest-CO2-Temperatur | höchste Temperatur nach Gärende (Feld Temperatur Karbonisierung); beim Spunden Temperatur Jungbier | `ZuckerAnteil`, `gruenschlauchzeitpunkt` | Q6 sekundär | nicht verifiziert |
+| P17 | Ziel-CO2 nach Bierart | Brit. Ales 2,9–3,9; Porter/Stout 3,3–4,5; Belg. Ales 3,7–4,7; Amer. Ales/Lager/Pils 4,3–5,3; Frucht-Lambic 5,9–8,8; Weizen 6,5–8,8 g/L (1 Vol. ≈ 1,96 g/L) | `TabAbfuellen::co2RichtwerteHtml` | Q9 Palmer, nicht eingesehen | nicht verifiziert |
+| P18 | Flaschenfestigkeit | normale Flaschen bis ca. 6 g/L | `TabAbfuellen::co2RichtwerteHtml` | Faustregel | nicht verifiziert |
+| P19 | Speise / Restextrakt → CO2 | CO2 = 0,468·10·(TRE_Anfang − TRE_Ende) g/L | `BierCalc::co2Vergaerung`, `speise` | wie P13 | nicht verifiziert |
+| P20 | Schlauchzeitpunkt ohne Schnellgärprobe | Endvergärung aus Vergärungsgrad der Hefe (`SREErwartet`); 1 °P Fehler ≈ 4,7 g/L CO2 | `TabAbfuellen` (Anzeige), Abfüllart 6 | eigene Ableitung, Hefewerte = Herstellerangaben | nicht verifiziert |
+| P21 | Zuckerausgleich beim Spunden | Zucker = (CO2_soll − Rest-CO2(T_Jungbier) − CO2 aus Restextrakt)/0,468, ohne Verdünnung | `ModelSud` `ZuckerAnteil` Art 6 | eigene Ableitung aus P13/P15/P19 | nicht verifiziert |
+| P22 | Zwangskarbonisierung | Druck = Gleichgewicht `p(CO2_soll, T_Jungbier)` | `BierCalc::spundungsdruck` | eigene Ableitung aus P15 | nicht verifiziert |
 
 ## 7 Prüfszenarien (für spätere Tests)
 1. ρ(12) = 1,04838; SHA Q1-Beispiel = 69,44 % (mit 0,96) bzw. 72,34 % (kbh ohne Umrechnung).
